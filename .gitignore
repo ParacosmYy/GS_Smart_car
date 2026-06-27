@@ -1,0 +1,21 @@
+# ADS / TASKING build output
+Debug/
+Release/
+*.o
+*.d
+*.src
+*.elf
+*.hex
+*.map
+*.mdf
+*.opt
+
+# Local IDE and OS noise
+.metadata/
+*.launch
+Thumbs.db
+desktop.ini
+
+# Local worktrees
+.worktrees/
+worktrees/
