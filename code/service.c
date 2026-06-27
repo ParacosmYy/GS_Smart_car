@@ -10,11 +10,11 @@ int16 my_abs(int16 value)
 {
     if(value > 0)
     {
-        return value ;
+        return value;
     }
     else if(value < 0)
     {
-        return value ;
+        return (int16)(-value);
     }
     else
     {
