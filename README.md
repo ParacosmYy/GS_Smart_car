@@ -19,7 +19,7 @@
 
 ## 📐 系统架构
 
-五层单向依赖：**App → Service → BSP/Platform → Vendor**，配置与公共层横向贯穿。箭头标注运行时数据类型，虚线表示编译期/启动期依赖。
+五层单向依赖：**应用层 → 服务层 → 板级/平台层 → 原厂库**，配置与公共层横向贯穿。箭头标注运行时数据类型，虚线表示编译期/启动期依赖。
 
 ```mermaid
 %%{init: {'theme':'base','themeVariables':{'primaryColor':'#f6f8fa','primaryTextColor':'#24292f','primaryBorderColor':'#d0d7de','lineColor':'#57606a','fontSize':'14px','fontFamily':'ui-sans-serif,system-ui,-apple-system,Segoe UI,Helvetica,Arial,sans-serif','clusterBkg':'#ffffff','clusterBorder':'#d0d7de'}}}%%
@@ -36,10 +36,10 @@ flowchart TD
 
     subgraph SVC[" 🧠 Service · 算法服务 "]
         VIS["Vision<br/>视觉处理"]:::svcLayer
-        SEN["Sensor<br/>陀螺仪/编码器"]:::svcLayer
+        SEN["传感器服务<br/>陀螺仪/编码器"]:::svcLayer
         CTL["Control<br/>决策输出"]:::svcLayer
         PID["PID<br/>通用控制器"]:::svcLayer
-        DBG["DebugDisplay<br/>调试显示服务"]:::svcLayer
+        DBG["调试显示服务<br/>TFT 数据编排"]:::svcLayer
     end
 
     subgraph BSP[" ⚙️ BSP · 板级驱动 "]
@@ -56,23 +56,23 @@ flowchart TD
         INT["init.c<br/>初始化序列"]:::cfgLayer
     end
 
-    subgraph LIB[" 📚 Vendor · 只读 "]
+    subgraph LIB[" 📚 原厂库 · 只读 "]
         VEN["libraries/<br/>逐飞 + iLLD"]:::libLayer
     end
 
     %% 主数据流（运行时调用）
-    APP1 -->|frame ready| VIS
-    APP1 -->|sensor evt| SEN
-    APP1 -->|tick| CTL
+    APP1 -->|帧就绪| VIS
+    APP1 -->|传感器事件| SEN
+    APP1 -->|周期调度| CTL
     VIS -->|中线偏差| CTL
     SEN -->|轮速/航向角| CTL
     CTL -->|PWM duty| SRV
     CTL -->|speed cmd| MTR
     DBG -->|UI 数据| DSP
-    APP1 -->|key event| INP
+    APP1 -->|按键事件| INP
     PID -.->|反馈环| CTL
 
-    %% 硬件抽象（BSP 调用 Vendor）
+    %% 硬件抽象（BSP 调用平台/原厂库）
     MTR --> VEN
     SRV --> VEN
     VIS --> VEN
@@ -86,13 +86,13 @@ flowchart TD
 
 > **依赖铁律：** 实线 = 运行时调用，虚线 = 编译期/启动期依赖。上层 → 下层单向，**严禁反向调用**。各模块文件清单见下方[模块一览](#-模块一览)。
 
-> **ISR 边界：** `user/isr.c` 只保留 `IFX_INTERRUPT` 入口，清标志、事件发布与编码器累加集中在 `code/platform/isr_adapter.c`。`EVT_GYRO_10MS` 使用计数语义，避免主循环阻塞时丢 tick。
+> **中断边界：** `user/isr.c` 只保留 `IFX_INTERRUPT` 入口，清标志、事件发布与编码器累加集中在 `code/platform/isr_adapter.c`。`EVT_GYRO_10MS` 使用计数语义，避免主循环阻塞时丢失 10ms 节拍。
 
 ---
 
 ## 🔄 数据流
 
-左 → 右单向流水线：中断适配 → 事件调度 → Service 算法 → BSP/Platform 输出。箭头标注每一跳的物理量或数据结构。
+左 → 右单向流水线：中断适配 → 事件调度 → 服务算法 → 板级/平台输出。箭头标注每一跳的物理量或数据结构。
 
 ```mermaid
 %%{init: {'theme':'base','themeVariables':{'primaryColor':'#f6f8fa','primaryTextColor':'#24292f','primaryBorderColor':'#d0d7de','lineColor':'#57606a','fontSize':'13px','fontFamily':'ui-sans-serif,system-ui,-apple-system,Segoe UI,Helvetica,Arial,sans-serif','clusterBkg':'#ffffff','clusterBorder':'#d0d7de'}}}%%
@@ -110,8 +110,8 @@ flowchart LR
     end
 
     subgraph PROC[" ⚙️ 实时处理 "]
-        ISR["ISR adapter<br/>PIT 10ms<br/>计数 + 置事件"]:::isr
-        SENSOR["Sensor service<br/>轮速平均<br/>陀螺仪积分"]:::vision
+        ISR["中断适配<br/>PIT 10ms<br/>计数 + 置事件"]:::isr
+        SENSOR["传感器服务<br/>轮速平均<br/>陀螺仪积分"]:::vision
         VISION["Vision_Process<br/>OTSU · 滤波<br/>边线 · 中线"]:::vision
         CONTROL["Control_Update<br/>舵机 PID<br/>电机 PID"]:::control
     end
@@ -124,20 +124,20 @@ flowchart LR
     CAM    -->|DMA 帧| VISION
     ENC    -->|脉冲计数| ISR
     GYRO   -->|SPI 帧| ISR
-    ISR    -->|事件/tick| SENSOR
+    ISR    -->|事件/节拍| SENSOR
     SENSOR -->|轮速快照/航向角| CONTROL
     VISION -->|中线偏差| CONTROL
     CONTROL -->|舵机 duty| SERVO
     CONTROL -->|电机 duty| MOTOR
 ```
 
-> **采样周期：** PIT 10ms 触发 ISR adapter 发布事件；陀螺仪积分和编码器平均在 Sensor service 中完成。摄像头 DMA 帧异步到达，主循环按 `frame ready` 标志触发 Vision。
+> **采样周期：** PIT 10ms 触发中断适配层发布事件；陀螺仪积分和编码器平均在传感器服务中完成。摄像头 DMA 帧异步到达，主循环按帧就绪标志触发视觉服务。
 
 ---
 
 ## 🚀 调度架构
 
-当前已引入事件驱动 + 优先级调度器，ISR adapter 只做有界整数工作和事件发布，算法在主循环按事件类型 dispatch，为后续 CPU1 视觉 offload 保留边界。
+当前已引入事件驱动 + 优先级调度器，中断适配层只做有界整数工作和事件发布，算法在主循环按事件类型分发，为后续 CPU1 视觉分担计算保留边界。
 
 ```mermaid
 %%{init: {'theme':'base','themeVariables':{'primaryColor':'#f6f8fa','primaryTextColor':'#24292f','primaryBorderColor':'#d0d7de','lineColor':'#57606a','fontSize':'13px','fontFamily':'ui-sans-serif,system-ui,-apple-system,Segoe UI,Helvetica,Arial,sans-serif','clusterBkg':'#ffffff','clusterBorder':'#d0d7de'}}}%%
@@ -158,8 +158,8 @@ flowchart LR
         HANDLER["isr_adapter.c<br/>原子事件发布"]:::isr
     end
 
-    subgraph BUS[" 📨 Event Flags "]
-        Q["event.c<br/>bitmask + gyro counter"]:::queue
+    subgraph BUS[" 📨 事件标志 "]
+        Q["event.c<br/>位掩码 + 陀螺仪计数"]:::queue
     end
 
     subgraph SCHED[" 🎯 Scheduler "]
@@ -169,22 +169,22 @@ flowchart LR
     subgraph TASKS[" 🧩 Tasks "]
         T_VIS["Vision<br/>图像处理"]:::task
         T_CTL["Control<br/>PID 计算"]:::task
-        T_SEN["Sensor<br/>轮速融合"]:::task
+        T_SEN["传感器<br/>轮速融合"]:::task
         T_DSP["Display<br/>UI 刷新"]:::task
     end
 
-    PIT -->|tick| HANDLER
+    PIT -->|节拍| HANDLER
     DMA -->|frame_ready| HANDLER
     ENC -->|speed_pulse| HANDLER
-    HANDLER -->|set event| Q
-    Q     -->|get event| SCH
+    HANDLER -->|置事件| Q
+    Q     -->|取事件| SCH
     SCH   -->|VISION_EVT| T_VIS
     SCH   -->|CONTROL_EVT| T_CTL
     SCH   -->|SENSOR_EVT| T_SEN
     SCH   -->|DISPLAY_EVT| T_DSP
 ```
 
-> **关键收益：** ISR 只做「清标志 + 累加/置事件」（μs 级），算法在主循环按事件类型 dispatch，可按优先级抢占 Display；陀螺仪 tick 使用计数事件，不会被普通 bitmask 合并吞掉。
+> **关键收益：** 中断只做「清标志 + 累加/置事件」（微秒级），算法在主循环按事件类型分发，可按优先级抢占显示任务；陀螺仪节拍使用计数事件，不会被普通位掩码合并吞掉。
 
 ---
 
@@ -212,17 +212,17 @@ GS_Smart_car/
 │   │   └── config.h               #     所有可调参数 (PID/舵机/电机/阈值)
 │   ├── platform/                  #   平台抽象 — PAL + TC264 适配
 │   │   ├── platform.h             #     平台无关接口
-│   │   ├── platform_tc264.c       #     逐飞/TC264 Vendor 适配
+│   │   ├── platform_tc264.c       #     逐飞/TC264 原厂库适配
 │   │   └── isr_adapter.c/h        #     ISR 入口适配与事件发布
 │   ├── scheduler/                 #   裸机事件调度
-│   │   ├── event.c/h              #     bitmask + gyro pending counter
+│   │   ├── event.c/h              #     位掩码 + 陀螺仪待处理计数
 │   │   └── scheduler.c/h          #     协作式任务调度器
 │   └── common/                    #   公共层 — 共享设施
-│       ├── data.c/h               #     全局变量 (z_angle/encoder_speed)
+│       ├── data.c/h               #     全局变量 (z_angle/编码器速度)
 │       ├── init.c/h               #     初始化序列
 │       └── utils.c/h              #     工具函数 (my_abs)
 │
-├── libraries/                     # Vendor 只读 — 逐飞库 + Infineon iLLD
+├── libraries/                     # 原厂库只读 — 逐飞库 + Infineon iLLD
 │   ├── infineon_libraries/        #   TC26B iLLD SDK
 │   ├── zf_common/                 #   逐飞公共 (时钟/FIFO/字体/头文件)
 │   ├── zf_driver/                 #   逐飞驱动 (GPIO/PWM/UART/SPI/ADC/DMA)
@@ -237,7 +237,7 @@ GS_Smart_car/
 │
 ├── tests/                         # 主机端单元测试
 │   ├── test_my_abs.c              #   my_abs 测试 (gcc 编译)
-│   ├── test_event.c               #   事件系统/gyro tick 计数测试
+│   ├── test_event.c               #   事件系统/陀螺仪节拍计数测试
 │   └── stubs/                     #   桩文件 (脱离嵌入式 SDK 编译)
 │
 ├── ARCHITECTURE.md                # 📖 详细架构文档 (329行)
@@ -312,7 +312,7 @@ gcc -Itests/stubs -Icode/platform -Icode/scheduler tests/test_event.c code/sched
 |:---:|:---:|:---|:---|:---|
 | App | 主循环 | `app/smartcar_app.c` | 摄像头帧标志 | 编排 V→C→A 流水线 |
 | Service | 视觉 | `service/vision/vision.c` | 灰度图像 | 中线偏差 `calculate_error` |
-| Service | 传感器 | `service/sensor/sensor.c` | gyro tick + encoder snapshot | 航向角 + 轮速 |
+| Service | 传感器 | `service/sensor/sensor.c` | 陀螺仪节拍 + 编码器快照 | 航向角 + 轮速 |
 | Service | 控制 | `service/control/control.c` | 偏差 + 轮速 | PID 输出 → PWM |
 | Service | PID | `service/control/pid.c` | 目标值 + 反馈 | PID 计算结果 |
 | Service | 调试显示 | `service/diagnostics/debug_display.c` | 视觉/轮速/PID 数据 | TFT 调试画面 |
@@ -321,7 +321,7 @@ gcc -Itests/stubs -Icode/platform -Icode/scheduler tests/test_event.c code/sched
 | BSP | 显示 | `bsp/display.c` | 边线/中线数据 | TFT180 画面 |
 | Common | 数据 | `common/data.c` | — | 全局共享变量 |
 | Common | 初始化 | `common/init.c` | — | 全外设就绪 |
-| Platform | ISR adapter | `platform/isr_adapter.c` | TC264 中断入口 | 事件 + 编码器累加 |
+| Platform | 中断适配 | `platform/isr_adapter.c` | TC264 中断入口 | 事件 + 编码器累加 |
 
 ---
 
@@ -379,10 +379,10 @@ scope: app | vision | control | bsp | config | common | isr | core
 - [x] ~~全量中文注释 + 架构文档~~
 - [ ] ADS 编译验证（需硬件环境）
 - [x] ~~ISR 算法迁移到主循环（时序优化）~~
-- [x] ~~ISR adapter 分层：入口与处理解耦~~
-- [x] ~~Sensor/DebugDisplay service 下沉~~
-- [x] ~~显示像素接口 PAL 化，Display 不再直接依赖 Vendor~~
-- [x] ~~陀螺仪事件计数化，避免 10ms tick 合并丢失~~
+- [x] ~~中断适配分层：入口与处理解耦~~
+- [x] ~~传感器/调试显示服务下沉~~
+- [x] ~~显示像素接口 PAL 化，显示模块不再直接依赖原厂库~~
+- [x] ~~陀螺仪事件计数化，避免 10ms 节拍合并丢失~~
 - [ ] CPU1 视觉处理 offload（双核并行）
 - [ ] 万能头文件瘦身（消除传递依赖）
 

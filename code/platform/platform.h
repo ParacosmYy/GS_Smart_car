@@ -1,6 +1,6 @@
 ﻿/**
  * @file platform.h
- * @brief 硬件平台抽象层（Platform Abstraction Layer）
+ * @brief 硬件平台抽象层
  *
  *        本文件定义平台无关的硬件接口。所有自研代码（BSP/Service/App/Common）
  *        只依赖此头文件，不直接调用任何芯片 SDK（逐飞库 / STM32 HAL 等）。
@@ -15,7 +15,7 @@
  *                                  ↓
  *                          platform_<mcu>.c（实现层）
  *                                  ↓
- *                              Vendor SDK
+ *                              原厂 SDK
  */
 
 #ifndef PLATFORM_H_

@@ -9,7 +9,7 @@ extern "C" {
  * @brief 控制更新
  *        根据视觉偏差与编码器速度计算舵机和电机的PID输出
  *
- * 读取：calculate_error（视觉）、Sensor service 的左右编码器速度。
+ * 读取：calculate_error（视觉）、传感器服务的左右编码器速度。
  * 写入：servo_pid_output、left_motor_pid_output、right_motor_pid_output。
  * 当 lost_count 超过 LOST_LINE_THRESHOLD 时直接返回，不做计算。
  */

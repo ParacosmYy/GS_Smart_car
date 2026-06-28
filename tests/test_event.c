@@ -35,19 +35,19 @@ int main(void)
     event_set_isr(EVT_CAM_FRAME);
     event_set_isr(EVT_GYRO_10MS);
 
-    failures += expect_equal_u32("pending events",
+    failures += expect_equal_u32("待处理事件",
                                  event_get(),
                                  EVT_CAM_FRAME | EVT_GYRO_10MS);
-    failures += expect_equal_u32("events cleared", event_get(), EVT_NONE);
+    failures += expect_equal_u32("事件已清空", event_get(), EVT_NONE);
 
     event_set_isr(EVT_GYRO_10MS);
     event_set_isr(EVT_GYRO_10MS);
     event_set_isr(EVT_GYRO_10MS);
 
-    failures += expect_equal_u32("gyro tick 1", event_get(), EVT_GYRO_10MS);
-    failures += expect_equal_u32("gyro tick 2", event_get(), EVT_GYRO_10MS);
-    failures += expect_equal_u32("gyro tick 3", event_get(), EVT_GYRO_10MS);
-    failures += expect_equal_u32("gyro ticks drained", event_get(), EVT_NONE);
+    failures += expect_equal_u32("陀螺仪节拍1", event_get(), EVT_GYRO_10MS);
+    failures += expect_equal_u32("陀螺仪节拍2", event_get(), EVT_GYRO_10MS);
+    failures += expect_equal_u32("陀螺仪节拍3", event_get(), EVT_GYRO_10MS);
+    failures += expect_equal_u32("陀螺仪节拍已取完", event_get(), EVT_NONE);
 
     failures += expect_equal_u32("disable count", s_disable_count, 11U);
     failures += expect_equal_u32("restore count", s_restore_count, 11U);

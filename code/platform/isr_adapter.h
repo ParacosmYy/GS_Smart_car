@@ -3,12 +3,12 @@
  *
  * @file isr_adapter.h
  *
- * @par dependencies
+ * @par 依赖
  * - stdint.h
  *
  * @author GS_Mark
  *
- * @brief TC264 ISR adapter entry points
+ * @brief TC264 中断适配入口声明
  *
  * @version V1.0 2026-06-29
  *
@@ -20,113 +20,113 @@
 extern "C" {
 #endif
 
-//******************************* Includes **********************************//
+//******************************* 包含文件 **********************************//
 #include <stdint.h>
-//******************************* Includes **********************************//
+//******************************* 包含文件 **********************************//
 
-//******************************* Declaring *********************************//
+//******************************* 接口声明 **********************************//
 /**
- * @brief Handle CCU60 PIT channel 0 interrupt.
+ * @brief 处理 CCU60 PIT 通道 0 中断
  */
 void IsrAdapter_Ccu60PitCh0(void);
 
 /**
- * @brief Handle CCU60 PIT channel 1 interrupt.
+ * @brief 处理 CCU60 PIT 通道 1 中断
  */
 void IsrAdapter_Ccu60PitCh1(void);
 
 /**
- * @brief Handle CCU61 PIT channel 0 interrupt.
+ * @brief 处理 CCU61 PIT 通道 0 中断
  */
 void IsrAdapter_Ccu61PitCh0(void);
 
 /**
- * @brief Handle CCU61 PIT channel 1 interrupt.
+ * @brief 处理 CCU61 PIT 通道 1 中断
  */
 void IsrAdapter_Ccu61PitCh1(void);
 
 /**
- * @brief Handle ERU channel 0/4 interrupt.
+ * @brief 处理 ERU 通道 0/4 中断
  */
 void IsrAdapter_ExtiCh0Ch4(void);
 
 /**
- * @brief Handle ERU channel 1/5 interrupt.
+ * @brief 处理 ERU 通道 1/5 中断
  */
 void IsrAdapter_ExtiCh1Ch5(void);
 
 /**
- * @brief Handle ERU channel 3/7 interrupt.
+ * @brief 处理 ERU 通道 3/7 中断
  */
 void IsrAdapter_ExtiCh3Ch7(void);
 
 /**
- * @brief Handle DMA channel 5 interrupt.
+ * @brief 处理 DMA 通道 5 中断
  */
 void IsrAdapter_DmaCh5(void);
 
 /**
- * @brief Handle UART0 TX interrupt.
+ * @brief 处理 UART0 发送中断
  */
 void IsrAdapter_Uart0Tx(void);
 
 /**
- * @brief Handle UART0 RX interrupt.
+ * @brief 处理 UART0 接收中断
  */
 void IsrAdapter_Uart0Rx(void);
 
 /**
- * @brief Handle UART1 TX interrupt.
+ * @brief 处理 UART1 发送中断
  */
 void IsrAdapter_Uart1Tx(void);
 
 /**
- * @brief Handle UART1 RX interrupt.
+ * @brief 处理 UART1 接收中断
  */
 void IsrAdapter_Uart1Rx(void);
 
 /**
- * @brief Handle UART2 TX interrupt.
+ * @brief 处理 UART2 发送中断
  */
 void IsrAdapter_Uart2Tx(void);
 
 /**
- * @brief Handle UART2 RX interrupt.
+ * @brief 处理 UART2 接收中断
  */
 void IsrAdapter_Uart2Rx(void);
 
 /**
- * @brief Handle UART3 TX interrupt.
+ * @brief 处理 UART3 发送中断
  */
 void IsrAdapter_Uart3Tx(void);
 
 /**
- * @brief Handle UART3 RX interrupt.
+ * @brief 处理 UART3 接收中断
  */
 void IsrAdapter_Uart3Rx(void);
 
 /**
- * @brief Handle UART0 error interrupt.
+ * @brief 处理 UART0 错误中断
  */
 void IsrAdapter_Uart0Error(void);
 
 /**
- * @brief Handle UART1 error interrupt.
+ * @brief 处理 UART1 错误中断
  */
 void IsrAdapter_Uart1Error(void);
 
 /**
- * @brief Handle UART2 error interrupt.
+ * @brief 处理 UART2 错误中断
  */
 void IsrAdapter_Uart2Error(void);
 
 /**
- * @brief Handle UART3 error interrupt.
+ * @brief 处理 UART3 错误中断
  */
 void IsrAdapter_Uart3Error(void);
 
 /**
- * @brief Take and reset encoder accumulation snapshot.
+ * @brief 获取并清零编码器累加快照
  */
 void IsrAdapter_TakeEncoderSnapshot(int *p_left_sum, int *p_right_sum, int *p_sample_count);
 

@@ -394,7 +394,7 @@ void Vision_Process(void)
 /**
  * @brief 查询摄像头是否已有新帧。
  *
- * Steps:
+ * 处理步骤：
  *  1. 通过 PAL 查询摄像头帧完成标志。
  *  2. 将 bool 结果收敛成模块对外的 uint8_t。
  *
@@ -416,7 +416,7 @@ uint8_t Vision_IsFrameReady(void)
 /**
  * @brief 清除摄像头帧就绪标志。
  *
- * Steps:
+ * 处理步骤：
  *  1. 委托 PAL 清除摄像头帧完成标志。
  *
  * @return void : 无返回值。

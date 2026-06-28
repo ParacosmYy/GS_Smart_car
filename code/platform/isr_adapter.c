@@ -3,7 +3,7 @@
  *
  * @file isr_adapter.c
  *
- * @par dependencies
+ * @par 依赖
  * - isr_adapter.h
  * - platform.h
  * - event.h
@@ -12,49 +12,48 @@
  *
  * @author GS_Mark
  *
- * @brief TC264 ISR adapter implementation.
+ * @brief TC264 中断适配层实现。
  *
- * Processing flow:
- * ISR entry functions in user/isr.c call this adapter. The adapter clears
- * hardware flags, performs bounded integer ISR work, and publishes events to
- * the cooperative scheduler.
+ * 处理流程：
+ * user/isr.c 中的中断入口统一调用本适配层。本文件负责清除硬件标志、
+ * 执行有界的整数型中断工作，并向协作式调度器发布事件。
  *
  * @version V1.0 2026-06-29
  *
  *****************************************************************************/
 
-//******************************** Includes *********************************//
+//******************************** 包含文件 *********************************//
 #include "isr_adapter.h"
 
 #include "event.h"
 #include "platform.h"
 #include "scheduler.h"
 #include "zf_common_headfile.h"
-//******************************** Includes *********************************//
+//******************************** 包含文件 *********************************//
 
-//******************************** Defines **********************************//
+//******************************** 宏定义 ***********************************//
 #define ISR_ADAPTER_ENCODER_WINDOW_SAMPLES   (5)
-//******************************** Defines **********************************//
+//******************************** 宏定义 ***********************************//
 
-//******************************** Variables ********************************//
+//******************************** 变量 *************************************//
 static volatile int s_left_speed_sum = 0;
 static volatile int s_right_speed_sum = 0;
 static volatile int s_sample_count = 0;
 
 extern volatile int pit_ch1_count;
-//******************************** Variables ********************************//
+//******************************** 变量 *************************************//
 
-//******************************** Implement ********************************//
+//******************************** 实现 *************************************//
 /**
- * @brief Handle CCU60 PIT channel 0 interrupt.
+ * @brief 处理 CCU60 PIT 通道 0 中断。
  *
- * Steps:
- *  1. Enable nested interrupt handling for TC264 compatibility.
- *  2. Clear PIT flag.
- *  3. Accumulate encoder counts and clear hardware counters.
- *  4. Publish encoder window event after enough samples.
+ * 处理步骤：
+ *  1. 按 TC264 机制重新打开全局中断，允许更高优先级中断响应。
+ *  2. 清除 PIT 中断标志。
+ *  3. 累加左右编码器计数，并清零硬件编码器计数器。
+ *  4. 累计到测速窗口后发布编码器事件。
  *
- * @return void : None.
+ * @return void : 无返回值。
  *
  * */
 void IsrAdapter_Ccu60PitCh0(void)
@@ -75,14 +74,14 @@ void IsrAdapter_Ccu60PitCh0(void)
 }
 
 /**
- * @brief Handle CCU60 PIT channel 1 interrupt.
+ * @brief 处理 CCU60 PIT 通道 1 中断。
  *
- * Steps:
- *  1. Enable nested interrupt handling for TC264 compatibility.
- *  2. Clear PIT flag.
- *  3. Advance system tick and publish gyro tick event.
+ * 处理步骤：
+ *  1. 按 TC264 机制重新打开全局中断，允许更高优先级中断响应。
+ *  2. 清除 PIT 中断标志。
+ *  3. 推进系统时间基，并发布陀螺仪 10ms 事件。
  *
- * @return void : None.
+ * @return void : 无返回值。
  *
  * */
 void IsrAdapter_Ccu60PitCh1(void)
@@ -96,13 +95,13 @@ void IsrAdapter_Ccu60PitCh1(void)
 }
 
 /**
- * @brief Handle CCU61 PIT channel 0 interrupt.
+ * @brief 处理 CCU61 PIT 通道 0 中断。
  *
- * Steps:
- *  1. Enable nested interrupt handling for TC264 compatibility.
- *  2. Clear PIT flag.
+ * 处理步骤：
+ *  1. 按 TC264 机制重新打开全局中断，允许更高优先级中断响应。
+ *  2. 清除 PIT 中断标志。
  *
- * @return void : None.
+ * @return void : 无返回值。
  *
  * */
 void IsrAdapter_Ccu61PitCh0(void)
@@ -112,13 +111,13 @@ void IsrAdapter_Ccu61PitCh0(void)
 }
 
 /**
- * @brief Handle CCU61 PIT channel 1 interrupt.
+ * @brief 处理 CCU61 PIT 通道 1 中断。
  *
- * Steps:
- *  1. Enable nested interrupt handling for TC264 compatibility.
- *  2. Clear PIT flag.
+ * 处理步骤：
+ *  1. 按 TC264 机制重新打开全局中断，允许更高优先级中断响应。
+ *  2. 清除 PIT 中断标志。
  *
- * @return void : None.
+ * @return void : 无返回值。
  *
  * */
 void IsrAdapter_Ccu61PitCh1(void)
@@ -128,13 +127,13 @@ void IsrAdapter_Ccu61PitCh1(void)
 }
 
 /**
- * @brief Handle ERU channel 0/4 interrupt.
+ * @brief 处理 ERU 通道 0/4 中断。
  *
- * Steps:
- *  1. Enable nested interrupt handling for TC264 compatibility.
- *  2. Clear any active ERU source flags.
+ * 处理步骤：
+ *  1. 按 TC264 机制重新打开全局中断，允许更高优先级中断响应。
+ *  2. 检查并清除已触发的 ERU 源标志。
  *
- * @return void : None.
+ * @return void : 无返回值。
  *
  * */
 void IsrAdapter_ExtiCh0Ch4(void)
@@ -153,13 +152,13 @@ void IsrAdapter_ExtiCh0Ch4(void)
 }
 
 /**
- * @brief Handle ERU channel 1/5 interrupt.
+ * @brief 处理 ERU 通道 1/5 中断。
  *
- * Steps:
- *  1. Enable nested interrupt handling for TC264 compatibility.
- *  2. Clear any active ERU source flags.
+ * 处理步骤：
+ *  1. 按 TC264 机制重新打开全局中断，允许更高优先级中断响应。
+ *  2. 检查并清除已触发的 ERU 源标志。
  *
- * @return void : None.
+ * @return void : 无返回值。
  *
  * */
 void IsrAdapter_ExtiCh1Ch5(void)
@@ -178,14 +177,14 @@ void IsrAdapter_ExtiCh1Ch5(void)
 }
 
 /**
- * @brief Handle ERU channel 3/7 interrupt.
+ * @brief 处理 ERU 通道 3/7 中断。
  *
- * Steps:
- *  1. Enable nested interrupt handling for TC264 compatibility.
- *  2. Clear camera VSYNC source and call camera callback.
- *  3. Clear spare ERU source if active.
+ * 处理步骤：
+ *  1. 按 TC264 机制重新打开全局中断，允许更高优先级中断响应。
+ *  2. 清除摄像头场同步源标志，并调用摄像头采集回调。
+ *  3. 如预留 ERU 源被触发，也同步清除。
  *
- * @return void : None.
+ * @return void : 无返回值。
  *
  * */
 void IsrAdapter_ExtiCh3Ch7(void)
@@ -205,13 +204,13 @@ void IsrAdapter_ExtiCh3Ch7(void)
 }
 
 /**
- * @brief Handle DMA channel 5 interrupt.
+ * @brief 处理 DMA 通道 5 中断。
  *
- * Steps:
- *  1. Enable nested interrupt handling for TC264 compatibility.
- *  2. Call camera DMA completion callback.
+ * 处理步骤：
+ *  1. 按 TC264 机制重新打开全局中断，允许更高优先级中断响应。
+ *  2. 调用摄像头 DMA 完成回调。
  *
- * @return void : None.
+ * @return void : 无返回值。
  *
  * */
 void IsrAdapter_DmaCh5(void)
@@ -221,12 +220,12 @@ void IsrAdapter_DmaCh5(void)
 }
 
 /**
- * @brief Handle UART0 TX interrupt.
+ * @brief 处理 UART0 发送中断。
  *
- * Steps:
- *  1. Enable nested interrupt handling for TC264 compatibility.
+ * 处理步骤：
+ *  1. 按 TC264 机制重新打开全局中断，允许更高优先级中断响应。
  *
- * @return void : None.
+ * @return void : 无返回值。
  *
  * */
 void IsrAdapter_Uart0Tx(void)
@@ -235,13 +234,13 @@ void IsrAdapter_Uart0Tx(void)
 }
 
 /**
- * @brief Handle UART0 RX interrupt.
+ * @brief 处理 UART0 接收中断。
  *
- * Steps:
- *  1. Enable nested interrupt handling for TC264 compatibility.
- *  2. Dispatch debug UART receive handler when enabled.
+ * 处理步骤：
+ *  1. 按 TC264 机制重新打开全局中断，允许更高优先级中断响应。
+ *  2. 若启用调试串口中断，则分发到调试串口接收处理函数。
  *
- * @return void : None.
+ * @return void : 无返回值。
  *
  * */
 void IsrAdapter_Uart0Rx(void)
@@ -254,12 +253,12 @@ void IsrAdapter_Uart0Rx(void)
 }
 
 /**
- * @brief Handle UART1 TX interrupt.
+ * @brief 处理 UART1 发送中断。
  *
- * Steps:
- *  1. Enable nested interrupt handling for TC264 compatibility.
+ * 处理步骤：
+ *  1. 按 TC264 机制重新打开全局中断，允许更高优先级中断响应。
  *
- * @return void : None.
+ * @return void : 无返回值。
  *
  * */
 void IsrAdapter_Uart1Tx(void)
@@ -268,13 +267,13 @@ void IsrAdapter_Uart1Tx(void)
 }
 
 /**
- * @brief Handle UART1 RX interrupt.
+ * @brief 处理 UART1 接收中断。
  *
- * Steps:
- *  1. Enable nested interrupt handling for TC264 compatibility.
- *  2. Dispatch camera UART callback.
+ * 处理步骤：
+ *  1. 按 TC264 机制重新打开全局中断，允许更高优先级中断响应。
+ *  2. 分发到摄像头配置串口回调。
  *
- * @return void : None.
+ * @return void : 无返回值。
  *
  * */
 void IsrAdapter_Uart1Rx(void)
@@ -284,12 +283,12 @@ void IsrAdapter_Uart1Rx(void)
 }
 
 /**
- * @brief Handle UART2 TX interrupt.
+ * @brief 处理 UART2 发送中断。
  *
- * Steps:
- *  1. Enable nested interrupt handling for TC264 compatibility.
+ * 处理步骤：
+ *  1. 按 TC264 机制重新打开全局中断，允许更高优先级中断响应。
  *
- * @return void : None.
+ * @return void : 无返回值。
  *
  * */
 void IsrAdapter_Uart2Tx(void)
@@ -298,13 +297,13 @@ void IsrAdapter_Uart2Tx(void)
 }
 
 /**
- * @brief Handle UART2 RX interrupt.
+ * @brief 处理 UART2 接收中断。
  *
- * Steps:
- *  1. Enable nested interrupt handling for TC264 compatibility.
- *  2. Dispatch wireless UART callback.
+ * 处理步骤：
+ *  1. 按 TC264 机制重新打开全局中断，允许更高优先级中断响应。
+ *  2. 分发到无线串口接收处理函数。
  *
- * @return void : None.
+ * @return void : 无返回值。
  *
  * */
 void IsrAdapter_Uart2Rx(void)
@@ -314,12 +313,12 @@ void IsrAdapter_Uart2Rx(void)
 }
 
 /**
- * @brief Handle UART3 TX interrupt.
+ * @brief 处理 UART3 发送中断。
  *
- * Steps:
- *  1. Enable nested interrupt handling for TC264 compatibility.
+ * 处理步骤：
+ *  1. 按 TC264 机制重新打开全局中断，允许更高优先级中断响应。
  *
- * @return void : None.
+ * @return void : 无返回值。
  *
  * */
 void IsrAdapter_Uart3Tx(void)
@@ -328,13 +327,13 @@ void IsrAdapter_Uart3Tx(void)
 }
 
 /**
- * @brief Handle UART3 RX interrupt.
+ * @brief 处理 UART3 接收中断。
  *
- * Steps:
- *  1. Enable nested interrupt handling for TC264 compatibility.
- *  2. Dispatch GNSS UART callback.
+ * 处理步骤：
+ *  1. 按 TC264 机制重新打开全局中断，允许更高优先级中断响应。
+ *  2. 分发到 GNSS 串口接收回调。
  *
- * @return void : None.
+ * @return void : 无返回值。
  *
  * */
 void IsrAdapter_Uart3Rx(void)
@@ -344,13 +343,13 @@ void IsrAdapter_Uart3Rx(void)
 }
 
 /**
- * @brief Handle UART0 error interrupt.
+ * @brief 处理 UART0 错误中断。
  *
- * Steps:
- *  1. Enable nested interrupt handling for TC264 compatibility.
- *  2. Dispatch ASCLIN error handler.
+ * 处理步骤：
+ *  1. 按 TC264 机制重新打开全局中断，允许更高优先级中断响应。
+ *  2. 分发到 ASCLIN 错误处理函数。
  *
- * @return void : None.
+ * @return void : 无返回值。
  *
  * */
 void IsrAdapter_Uart0Error(void)
@@ -360,13 +359,13 @@ void IsrAdapter_Uart0Error(void)
 }
 
 /**
- * @brief Handle UART1 error interrupt.
+ * @brief 处理 UART1 错误中断。
  *
- * Steps:
- *  1. Enable nested interrupt handling for TC264 compatibility.
- *  2. Dispatch ASCLIN error handler.
+ * 处理步骤：
+ *  1. 按 TC264 机制重新打开全局中断，允许更高优先级中断响应。
+ *  2. 分发到 ASCLIN 错误处理函数。
  *
- * @return void : None.
+ * @return void : 无返回值。
  *
  * */
 void IsrAdapter_Uart1Error(void)
@@ -376,13 +375,13 @@ void IsrAdapter_Uart1Error(void)
 }
 
 /**
- * @brief Handle UART2 error interrupt.
+ * @brief 处理 UART2 错误中断。
  *
- * Steps:
- *  1. Enable nested interrupt handling for TC264 compatibility.
- *  2. Dispatch ASCLIN error handler.
+ * 处理步骤：
+ *  1. 按 TC264 机制重新打开全局中断，允许更高优先级中断响应。
+ *  2. 分发到 ASCLIN 错误处理函数。
  *
- * @return void : None.
+ * @return void : 无返回值。
  *
  * */
 void IsrAdapter_Uart2Error(void)
@@ -392,13 +391,13 @@ void IsrAdapter_Uart2Error(void)
 }
 
 /**
- * @brief Handle UART3 error interrupt.
+ * @brief 处理 UART3 错误中断。
  *
- * Steps:
- *  1. Enable nested interrupt handling for TC264 compatibility.
- *  2. Dispatch ASCLIN error handler.
+ * 处理步骤：
+ *  1. 按 TC264 机制重新打开全局中断，允许更高优先级中断响应。
+ *  2. 分发到 ASCLIN 错误处理函数。
  *
- * @return void : None.
+ * @return void : 无返回值。
  *
  * */
 void IsrAdapter_Uart3Error(void)
@@ -408,18 +407,18 @@ void IsrAdapter_Uart3Error(void)
 }
 
 /**
- * @brief Take and reset encoder accumulation snapshot.
+ * @brief 获取并清零编码器累加快照。
  *
- * Steps:
- *  1. Enter the shortest possible global interrupt critical section.
- *  2. Copy encoder sums and sample count to caller buffers.
- *  3. Reset the adapter-owned accumulators for the next window.
+ * 处理步骤：
+ *  1. 进入尽可能短的全局中断临界区。
+ *  2. 将编码器累加值和采样次数复制到调用方缓冲区。
+ *  3. 清零适配层内部累加器，准备下一轮测速窗口。
  *
- * @param[out] p_left_sum     : Left encoder accumulated count.
- * @param[out] p_right_sum    : Right encoder accumulated count.
- * @param[out] p_sample_count : Number of accumulated samples.
+ * @param[out] p_left_sum     : 左编码器累加值。
+ * @param[out] p_right_sum    : 右编码器累加值。
+ * @param[out] p_sample_count : 已累加的采样次数。
  *
- * @return void : None.
+ * @return void : 无返回值。
  *
  * */
 void IsrAdapter_TakeEncoderSnapshot(int *p_left_sum, int *p_right_sum, int *p_sample_count)
