@@ -10,6 +10,7 @@
 ![Language](https://img.shields.io/badge/Language-C99-orange?style=flat-square)
 ![Framework](https://img.shields.io/badge/Framework-SEEKFREE%20TC264-purple?style=flat-square)
 ![Architecture](https://img.shields.io/badge/Architecture-Five%20Layer-teal?style=flat-square)
+![Firmware Branch](https://img.shields.io/badge/Firmware-tc264--four--wheel--servo--camera--car-black?style=flat-square)
 ![License](https://img.shields.io/badge/License-GPL--3.0-red?style=flat-square)
 
 </div>
@@ -20,7 +21,9 @@
 
 本仓库是一台基于 **Infineon AURIX TC264D 双核 MCU** 的智能循迹小车完整工程，采用**五层架构**设计，底层依赖逐飞科技（SEEKFREE）TC264 开源库。
 
-> 🔗 **固件代码位于 [`master`](https://github.com/ParacosmYy/GS_Smart_car/tree/master) 分支**，本分支（`main`）为项目展示入口。
+> 🔗 **固件代码位于 [`tc264-four-wheel-servo-camera-car`](https://github.com/ParacosmYy/GS_Smart_car/tree/tc264-four-wheel-servo-camera-car) 分支**，本分支（`main`）为项目展示入口。
+>
+> `master` 分支已退役并从远端删除；后续固件维护、代码审查、实车调试统一进入项目专属分支。
 
 ### 核心能力
 
@@ -39,29 +42,33 @@
 ```mermaid
 graph TD
     subgraph APP ["🚀 App 层"]
-        A1["smartcar_app.c<br/>主循环编排"]
+        A1["SmartcarApp<br/>主循环编排"]
+        A2["SmartcarIsrBridge<br/>中断事件桥接"]
     end
-    subgraph SVC ["🧠 Service 层"]
-        V["vision.c · 视觉处理"]
-        C["control.c · PID 决策"]
-        P["pid.c · 通用 PID"]
+    subgraph SVC ["🧠 Service / Handler 层"]
+        V["Vision Handler<br/>图像状态 + 中线输出"]
+        SE["Sensor Handler<br/>编码器/陀螺仪状态"]
+        C["Control Service<br/>PID 决策"]
+        P["PID Context<br/>控制器实例"]
     end
-    subgraph BSP ["⚙️ BSP 层"]
-        M["motor.c · 电机"]
-        S["servo.c · 舵机"]
-        D["display.c · TFT 显示"]
-        I["input.c · 按键输入"]
+    subgraph BSP ["⚙️ Driver 层"]
+        M["Motor Driver<br/>H 桥 PWM"]
+        S["Servo Driver<br/>50Hz PWM"]
+        D["Display Driver<br/>TFT180"]
+        I["Input Driver<br/>按键输入"]
     end
     subgraph SUP ["📦 支撑层"]
         CF["config.h · 参数集中"]
-        DA["data.c · 共享数据"]
+        DA["Context · 状态收敛"]
         IN["init.c · 系统初始化"]
     end
     subgraph VEN ["📚 Vendor"]
         L["libraries/ · 逐飞库 + iLLD"]
     end
 
+    A2 --> A1
     A1 --> V --> C
+    A1 --> SE --> C
     A1 --> C
     C --> M & S
     A1 --> D
@@ -74,7 +81,9 @@ graph TD
     style VEN fill:#fce4ec,stroke:#c62828,stroke-width:2px
 ```
 
-> **依赖铁律：** `App → Service → BSP → Vendor`，单向向下，严禁反向调用。
+> **依赖铁律：** `App → Service/Handler → Driver/Platform → Vendor`，单向向下，严禁反向调用。
+
+> **下一阶段工程目标：** 将零散 `static` 状态逐步收敛进 `xxx_context_t` / `xxx_handle_t`，公开 API 只接收 handle 或返回快照；Driver 只负责硬件动作，Handler 负责状态机与数据整理，Service 负责业务策略。
 
 ---
 
@@ -92,31 +101,55 @@ flowchart LR
     ACT --> MTR["🛞 电机"]
 ```
 
-每帧执行流程：`Vision_Process() → Control_Update() → Actuator_Apply()`
+每帧执行流程：`Vision_Process() → SensorService_*() → Control_Update() → Actuator_Apply()`
 
 ---
 
 ## 📁 工程结构
 
-> 完整代码见 [`master`](https://github.com/ParacosmYy/GS_Smart_car/tree/master) 分支
+> 完整代码见 [`tc264-four-wheel-servo-camera-car`](https://github.com/ParacosmYy/GS_Smart_car/tree/tc264-four-wheel-servo-camera-car) 分支
 
 ```
-GS_Smart_car/                       (master 分支)
+GS_Smart_car/                       (tc264-four-wheel-servo-camera-car 分支)
 ├── code/                           ★ 自研代码 — 五层架构
 │   ├── app/                        │  应用层：主循环编排
-│   ├── service/                    │  算法层：视觉 + 控制 + PID
+│   ├── service/                    │  服务/Handler：视觉 + 传感器 + 控制 + PID
 │   │   ├── vision/                 │    ├ OTSU 二值化 / 边线检测 / 加权中线
+│   │   ├── sensor/                 │    ├ 编码器快照 / 陀螺仪积分
+│   │   ├── diagnostics/            │    ├ TFT 调试显示编排
 │   │   └── control/                │    └ PID 决策 / 舵机电机输出
-│   ├── bsp/                        │  驱动层：电机 / 舵机 / 显示 / 输入 / 蜂鸣器
+│   ├── bsp/                        │  Driver：电机 / 舵机 / 显示 / 输入 / 蜂鸣器
+│   ├── platform/                   │  PAL + TC264 ISR adapter
+│   ├── scheduler/                  │  裸机事件调度器
 │   ├── config/                     │  配置层：所有可调参数 (config.h)
 │   └── common/                     │  公共层：全局变量 / 初始化 / 工具函数
 │
 ├── libraries/                      逐飞库 + Infineon iLLD (只读)
 ├── user/                           SDK 入口：CPU0/CPU1 main + ISR
 ├── tests/                          主机端单元测试 (gcc 编译)
-├── ARCHITECTURE.md                 📖 详细架构文档 (329 行)
 └── .cproject                       AURIX Development Studio 工程文件
 ```
+
+---
+
+## 🧱 Driver + Handler 演进方向
+
+当前固件已经完成中断边界、调度器、SensorService、DebugDisplayService 等基础分层。下一轮重构重点不是继续堆文件夹，而是把状态所有权变清楚：
+
+| 层级 | 职责 | 推荐形态 |
+|:---:|:---|:---|
+| Driver | 直接控制硬件，不保存业务状态 | `motor_driver_t` + `MotorDriver_SetDuty()` |
+| Handler | 持有设备状态、采样窗口、状态机 | `encoder_handler_t` + `EncoderHandler_ProcessSample()` |
+| Service | 编排多个 Handler，输出业务结果 | `SensorService_GetSnapshot()` |
+| App | 只描述调度与业务流程 | `SmartcarApp_RunOnce()` |
+
+推荐迁移原则：
+
+- `static` 变量不禁止，但必须有明确 owner，优先放入 `xxx_context_t`。
+- 公共头文件不暴露可写全局状态，改为 `GetSnapshot()` / `GetStatus()` / `Control()`。
+- Driver 不反向调用 Handler / Service。
+- Handler 可以依赖 Driver，但只通过接口访问硬件。
+- Service 不直接碰 Vendor，也不直接碰 TC264 宏。
 
 ---
 
@@ -141,8 +174,8 @@ GS_Smart_car/                       (master 分支)
 <summary><b>📋 编译 & 烧录</b></summary>
 
 ```bash
-# 1. 克隆工程 (master 分支包含完整固件)
-git clone -b master https://github.com/ParacosmYy/GS_Smart_car.git
+# 1. 克隆工程（项目专属固件分支包含完整代码）
+git clone -b tc264-four-wheel-servo-camera-car https://github.com/ParacosmYy/GS_Smart_car.git
 
 # 2. 用 AURIX Development Studio 打开工程目录
 #    File → Open Projects → 选择根目录 → Build
@@ -226,14 +259,16 @@ scope: app | vision | control | bsp | config | common | isr | core
 
 - [x] 仓库卫生（.gitignore + 构建产物清理）
 - [x] 五层架构重构（App / Service / BSP / Config / Common）
+- [x] 项目专属固件分支维护（tc264-four-wheel-servo-camera-car）
 - [x] 死代码清理（-334 行，20+ 符号移除）
 - [x] 模块物理分离（vision / control 独立目录）
 - [x] 参数集中化（config.h 统一管理）
 - [x] GBK → UTF-8 编码迁移
-- [x] 全量中文注释 + ARCHITECTURE.md
+- [x] 注释规范化 + README 架构说明
 - [x] 企业级 README
 - [ ] ADS 编译验证
-- [ ] ISR 算法迁移到主循环
+- [x] ISR 算法迁移到主循环
+- [ ] Driver + Handler + Context 对象化重构
 - [ ] CPU1 视觉处理 offload（双核并行）
 
 ---
@@ -242,8 +277,8 @@ scope: app | vision | control | bsp | config | common | isr | core
 
 | 文档 | 位置 | 说明 |
 |:---|:---|:---|
-| 📖 架构文档 | [`ARCHITECTURE.md`](https://github.com/ParacosmYy/GS_Smart_car/blob/master/ARCHITECTURE.md) | 五层架构详解、数据流、扩展指南 |
-| 📋 固件 README | [`master/README.md`](https://github.com/ParacosmYy/GS_Smart_car/blob/master/README.md) | 固件工程详细说明 |
+| 📋 固件 README | [`tc264-four-wheel-servo-camera-car/README.md`](https://github.com/ParacosmYy/GS_Smart_car/blob/tc264-four-wheel-servo-camera-car/README.md) | 固件工程详细说明 |
+| 🧱 架构方向 | 本 README 的 Driver + Handler 演进方向 | Context/Handle 封装、状态所有权、单向依赖 |
 
 ---
 
