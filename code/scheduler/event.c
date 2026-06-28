@@ -3,7 +3,7 @@
  * @brief Event flag system implementation.
  */
 #include "event.h"
-#include "platform/system/pal_system.h"
+#include "platform/system/system_port.h"
 
 static volatile event_mask_t s_events = 0;
 static volatile uint32_t s_gyro_10ms_pending = 0;
@@ -13,7 +13,7 @@ void event_post_from_isr(event_mask_t events)
     event_mask_t normal_events = EVT_NONE;
     uint32_t irq_state = 0;
 
-    irq_state = pal_irq_global_disable();
+    irq_state = SystemPort_IrqGlobalDisable();
     normal_events = events & (~EVT_GYRO_10MS);
     s_events |= normal_events;
 
@@ -24,7 +24,7 @@ void event_post_from_isr(event_mask_t events)
             s_gyro_10ms_pending++;
         }
     }
-    pal_irq_global_restore(irq_state);
+    SystemPort_IrqGlobalRestore(irq_state);
 }
 
 void event_set_isr(event_mask_t events)
@@ -37,7 +37,7 @@ event_mask_t event_get(void)
     event_mask_t pending = EVT_NONE;
     uint32_t irq_state = 0;
 
-    irq_state = pal_irq_global_disable();
+    irq_state = SystemPort_IrqGlobalDisable();
     pending = s_events;
     s_events = 0;
 
@@ -46,7 +46,7 @@ event_mask_t event_get(void)
         pending |= EVT_GYRO_10MS;
         s_gyro_10ms_pending--;
     }
-    pal_irq_global_restore(irq_state);
+    SystemPort_IrqGlobalRestore(irq_state);
 
     return pending;
 }

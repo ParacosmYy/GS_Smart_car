@@ -33,7 +33,7 @@
 * 2022-09-15       pudding            first version
 ********************************************************************************************************************/
 
-#include "platform/system/pal_system.h"
+#include "platform/system/system_port.h"
 #pragma section all "cpu1_dsram"
 // 将本语句与#pragma section all restore语句之间的全局变量都放在CPU1的RAM中
 
@@ -55,13 +55,13 @@
 void core1_main(void)
 {
     disable_Watchdog();                     // 关闭看门狗
-    pal_irq_global_ctrl(0);             // 打开全局中断
+    SystemPort_IrqGlobalCtrl(0);        // 打开全局中断
     // 此处编写用户代码 例如外设初始化代码等
 
 
 
     // 此处编写用户代码 例如外设初始化代码等
-    pal_sys_core_sync();                 // 等待所有核心初始化完毕
+    SystemPort_CoreSync();              // 等待所有核心初始化完毕
     while (1)
     {
         // 此处编写需要循环执行的代码
