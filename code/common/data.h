@@ -4,9 +4,10 @@
  *  Created on: 2025年10月31日
  *      Author: Paracosm
  *
- *  全局共享变量声明文件
- *  通过 extern 方式向外提供 data.c 中定义的全局变量，
- *  供 vision、control、actuator 等模块共享访问。
+ * @brief Global runtime data declarations.
+ *
+ * This header exposes the small set of legacy shared variables still consumed
+ * by vision, control and sensor services.
  */
 
 #ifndef CODE_DATA_H_

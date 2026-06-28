@@ -6,8 +6,6 @@
  * @par dependencies
  * - isr_adapter.h
  * - platform.h
- * - event.h
- * - scheduler.h
  * - zf_common_headfile.h
  *
  * @author GS_Mark
@@ -16,8 +14,8 @@
  *
  * Processing flow:
  * ISR entry functions in user/isr.c call this adapter. The adapter clears
- * hardware flags, performs bounded integer ISR work, and publishes events to
- * the cooperative scheduler.
+ * hardware flags and performs bounded integer ISR work. Scheduler event
+ * publication is owned by the app-level ISR bridge.
  *
  * @version V1.0 2026-06-29
  *
@@ -26,9 +24,7 @@
 //******************************** Includes *********************************//
 #include "isr_adapter.h"
 
-#include "event.h"
 #include "platform.h"
-#include "scheduler.h"
 #include "zf_common_headfile.h"
 //******************************** Includes *********************************//
 
@@ -40,8 +36,6 @@
 static volatile int s_left_speed_sum = 0;
 static volatile int s_right_speed_sum = 0;
 static volatile int s_sample_count = 0;
-
-extern volatile int pit_ch1_count;
 //******************************** Variables ********************************//
 
 //******************************** Implement ********************************//
@@ -52,13 +46,15 @@ extern volatile int pit_ch1_count;
  *  1. 按 TC264 机制重新打开全局中断，允许更高优先级中断响应。
  *  2. 清除 PIT 中断标志。
  *  3. 累加左右编码器计数，并清零硬件编码器计数器。
- *  4. 累计到测速窗口后发布编码器事件。
+ *  4. 累计到测速窗口后返回编码器窗口完成事件。
  *
- * @return void : 无返回值。
+ * @return isr_adapter_event_t : 平台中断事件。
  *
  * */
-void IsrAdapter_Ccu60PitCh0(void)
+isr_adapter_event_t IsrAdapter_Ccu60PitCh0(void)
 {
+    isr_adapter_event_t events = ISR_ADAPTER_EVT_NONE;
+
     pal_irq_global_ctrl(0);
     pal_pit_clear_flag(PAL_CH_PIT_0);
 
@@ -70,8 +66,10 @@ void IsrAdapter_Ccu60PitCh0(void)
 
     if (s_sample_count >= ISR_ADAPTER_ENCODER_WINDOW_SAMPLES)
     {
-        event_set_isr(EVT_ENCODER_50MS);
+        events |= ISR_ADAPTER_EVT_ENCODER_WINDOW;
     }
+
+    return events;
 }
 
 /**
@@ -80,19 +78,17 @@ void IsrAdapter_Ccu60PitCh0(void)
  * 处理步骤：
  *  1. 按 TC264 机制重新打开全局中断，允许更高优先级中断响应。
  *  2. 清除 PIT 中断标志。
- *  3. 推进系统时间基，并发布陀螺仪 10ms 事件。
+ *  3. 返回陀螺仪 10ms tick 事件，由 App ISR bridge 发布调度事件。
  *
- * @return void : 无返回值。
+ * @return isr_adapter_event_t : 平台中断事件。
  *
  * */
-void IsrAdapter_Ccu60PitCh1(void)
+isr_adapter_event_t IsrAdapter_Ccu60PitCh1(void)
 {
     pal_irq_global_ctrl(0);
     pal_pit_clear_flag(PAL_CH_PIT_1);
 
-    g_system_ms += 10U;
-    pit_ch1_count++;
-    event_set_isr(EVT_GYRO_10MS);
+    return ISR_ADAPTER_EVT_GYRO_TICK;
 }
 
 /**
@@ -422,7 +418,7 @@ void IsrAdapter_Uart3Error(void)
  * @return void : 无返回值。
  *
  * */
-void IsrAdapter_TakeEncoderSnapshot(int *p_left_sum, int *p_right_sum, int *p_sample_count)
+void pal_encoder_take_snapshot(int *p_left_sum, int *p_right_sum, int *p_sample_count)
 {
     uint32_t irq_state = 0;
 

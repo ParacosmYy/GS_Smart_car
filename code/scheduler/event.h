@@ -1,6 +1,6 @@
 /**
  * @file event.h
- * @brief 事件标志系统 —— ISR 通知主循环的轻量机制
+ * @brief Lightweight event flag system for ISR-to-main-loop notification.
  *
  *        ISR 调用 event_set_isr() 设置事件位
  *        主循环调用 event_get() 获取并清除全部待处理事件

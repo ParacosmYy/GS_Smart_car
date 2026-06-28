@@ -24,6 +24,25 @@
 #include "vision.h"
 //******************************** Includes *********************************//
 
+//******************************** Defines **********************************//
+#define DEBUG_DISPLAY_IMAGE_X             0
+#define DEBUG_DISPLAY_IMAGE_Y             0
+#define DEBUG_DISPLAY_IMAGE_WIDTH         94
+#define DEBUG_DISPLAY_IMAGE_HEIGHT        60
+#define DEBUG_DISPLAY_ENCODER_LABEL_X     0
+#define DEBUG_DISPLAY_ENCODER_VALUE_X     50
+#define DEBUG_DISPLAY_LEFT_ENCODER_Y      80
+#define DEBUG_DISPLAY_RIGHT_ENCODER_Y     60
+#define DEBUG_DISPLAY_PID_LABEL_X         0
+#define DEBUG_DISPLAY_PID_VALUE_X         50
+#define DEBUG_DISPLAY_LEFT_PID_Y          100
+#define DEBUG_DISPLAY_RIGHT_PID_Y         120
+#define DEBUG_DISPLAY_ERROR_Y             140
+#define DEBUG_DISPLAY_ENCODER_DIGITS      4
+#define DEBUG_DISPLAY_PID_DIGITS          6
+#define DEBUG_DISPLAY_ERROR_DIGITS        4
+//******************************** Defines **********************************//
+
 //******************************** Implement ********************************//
 /**
  * @brief 绘制视觉边线与中线。
@@ -35,7 +54,7 @@
  * @return void : 无返回值。
  *
  * */
-void DebugDisplay_DrawVisionLines(void)
+void DebugDisplayService_DrawVisionLines(void)
 {
     Display_DrawTrackLines(left_line_list, right_line_list, mid_line_list, zip_MT9V03X_H);
 }
@@ -52,23 +71,45 @@ void DebugDisplay_DrawVisionLines(void)
  * @return void : 无返回值。
  *
  * */
-void DebugDisplay_Update(event_mask_t events)
+void DebugDisplayService_Update(uint32_t events)
 {
     (void)events;
 
-    pal_disp_gray(0, 0, mt9v03x_image_bandw_zip[0], 94, 60, PAL_CAM_W / 2, PAL_CAM_H / 2, 0);
+    pal_disp_gray(DEBUG_DISPLAY_IMAGE_X,
+                  DEBUG_DISPLAY_IMAGE_Y,
+                  mt9v03x_image_bandw_zip[0],
+                  DEBUG_DISPLAY_IMAGE_WIDTH,
+                  DEBUG_DISPLAY_IMAGE_HEIGHT,
+                  PAL_CAM_W / 2,
+                  PAL_CAM_H / 2,
+                  0);
 
-    pal_disp_str(0, 80, "left:");
-    pal_disp_int(50, 80, Sensor_GetLeftEncoderSpeed(), 4);
+    pal_disp_str(DEBUG_DISPLAY_ENCODER_LABEL_X, DEBUG_DISPLAY_LEFT_ENCODER_Y, "left:");
+    pal_disp_int(DEBUG_DISPLAY_ENCODER_VALUE_X,
+                 DEBUG_DISPLAY_LEFT_ENCODER_Y,
+                 SensorService_GetLeftEncoderSpeed(),
+                 DEBUG_DISPLAY_ENCODER_DIGITS);
 
-    pal_disp_str(0, 60, "right:");
-    pal_disp_int(50, 60, Sensor_GetRightEncoderSpeed(), 4);
+    pal_disp_str(DEBUG_DISPLAY_ENCODER_LABEL_X, DEBUG_DISPLAY_RIGHT_ENCODER_Y, "right:");
+    pal_disp_int(DEBUG_DISPLAY_ENCODER_VALUE_X,
+                 DEBUG_DISPLAY_RIGHT_ENCODER_Y,
+                 SensorService_GetRightEncoderSpeed(),
+                 DEBUG_DISPLAY_ENCODER_DIGITS);
 
-    pal_disp_str(0, 100, "l_spd:");
-    pal_disp_str(0, 120, "r_spd:");
-    pal_disp_int(50, 100, (int32_t)left_motor_pid_output, 6);
-    pal_disp_int(50, 120, (int32_t)right_motor_pid_output, 6);
+    pal_disp_str(DEBUG_DISPLAY_PID_LABEL_X, DEBUG_DISPLAY_LEFT_PID_Y, "l_spd:");
+    pal_disp_str(DEBUG_DISPLAY_PID_LABEL_X, DEBUG_DISPLAY_RIGHT_PID_Y, "r_spd:");
+    pal_disp_int(DEBUG_DISPLAY_PID_VALUE_X,
+                 DEBUG_DISPLAY_LEFT_PID_Y,
+                 (int32_t)left_motor_pid_output,
+                 DEBUG_DISPLAY_PID_DIGITS);
+    pal_disp_int(DEBUG_DISPLAY_PID_VALUE_X,
+                 DEBUG_DISPLAY_RIGHT_PID_Y,
+                 (int32_t)right_motor_pid_output,
+                 DEBUG_DISPLAY_PID_DIGITS);
 
-    pal_disp_str(0, 140, "err:");
-    pal_disp_int(50, 140, calculate_error, 4);
+    pal_disp_str(DEBUG_DISPLAY_PID_LABEL_X, DEBUG_DISPLAY_ERROR_Y, "err:");
+    pal_disp_int(DEBUG_DISPLAY_PID_VALUE_X,
+                 DEBUG_DISPLAY_ERROR_Y,
+                 calculate_error,
+                 DEBUG_DISPLAY_ERROR_DIGITS);
 }

@@ -24,7 +24,6 @@
 #include <stdint.h>
 #include "sensor.h"
 #include "data.h"
-#include "isr_adapter.h"
 #include "platform.h"
 //******************************** Includes *********************************//
 
@@ -55,7 +54,7 @@ static float   s_gyro_raw_z        = 0.0f;
  * @return void : 无返回值。
  *
  * */
-void Sensor_ProcessGyro10ms(void)
+void SensorService_ProcessGyro10ms(void)
 {
     float z_angle_speed = 0.0f;
 
@@ -91,12 +90,12 @@ void Sensor_ProcessGyro10ms(void)
  * @return void : 无返回值。
  *
  * */
-void Sensor_ProcessEncoder50ms(void)
+void SensorService_ProcessEncoder50ms(void)
 {
     int left_sum_snapshot = 0;
     int right_sum_snapshot = 0;
     int sample_count_snapshot = 0;
-    IsrAdapter_TakeEncoderSnapshot(&left_sum_snapshot, &right_sum_snapshot, &sample_count_snapshot);
+    pal_encoder_take_snapshot(&left_sum_snapshot, &right_sum_snapshot, &sample_count_snapshot);
 
     s_left_encoder_speed  = left_sum_snapshot / sample_count_snapshot;
     s_right_encoder_speed = right_sum_snapshot / sample_count_snapshot;
@@ -108,7 +107,7 @@ void Sensor_ProcessEncoder50ms(void)
  * @return int : 左轮编码器平均速度。
  *
  * */
-int Sensor_GetLeftEncoderSpeed(void)
+int SensorService_GetLeftEncoderSpeed(void)
 {
     return s_left_encoder_speed;
 }
@@ -119,7 +118,7 @@ int Sensor_GetLeftEncoderSpeed(void)
  * @return int : 右轮编码器平均速度。
  *
  * */
-int Sensor_GetRightEncoderSpeed(void)
+int SensorService_GetRightEncoderSpeed(void)
 {
     return s_right_encoder_speed;
 }

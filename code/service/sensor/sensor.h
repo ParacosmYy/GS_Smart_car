@@ -19,21 +19,21 @@
 /**
  * @brief 处理 10ms 陀螺仪采样事件
  */
-void Sensor_ProcessGyro10ms(void);
+void SensorService_ProcessGyro10ms(void);
 
 /**
  * @brief 处理 50ms 编码器测速事件
  */
-void Sensor_ProcessEncoder50ms(void);
+void SensorService_ProcessEncoder50ms(void);
 
 /**
  * @brief 获取左轮编码器速度
  */
-int Sensor_GetLeftEncoderSpeed(void);
+int SensorService_GetLeftEncoderSpeed(void);
 
 /**
  * @brief 获取右轮编码器速度
  */
-int Sensor_GetRightEncoderSpeed(void);
+int SensorService_GetRightEncoderSpeed(void);
 
 #endif /* SENSOR_H_ */

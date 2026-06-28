@@ -1,6 +1,6 @@
 ﻿/*
  * smartcar_app.h
- *  应用层主循环接口声明
+ * @brief Smart car application lifecycle interface.
  *
  *  对外暴露两个入口：
  *    SmartcarApp_Init()    系统启动时调用一次
@@ -24,7 +24,8 @@ void SmartcarApp_Init(void);
 /**
  * @brief 应用层单次循环
  *
- * 内部执行 Vision → Control → Actuator 三步流水线，并刷新 TFT 调试显示。
+ * The app scheduler drives SensorService / Vision / Control /
+ * DebugDisplayService, then applies actuator output through BSP modules.
  * 由主循环周期性调用。
  */
 void SmartcarApp_RunOnce(void);

@@ -4,7 +4,7 @@
  * @file debug_display.h
  *
  * @par dependencies
- * - event.h
+ * - stdint.h
  *
  * @author GS_Mark
  *
@@ -21,19 +21,19 @@ extern "C" {
 #endif
 
 //******************************* Includes **********************************//
-#include "event.h"
+#include <stdint.h>
 //******************************* Includes **********************************//
 
 //******************************* Declaring *********************************//
 /**
  * @brief 绘制视觉边线与中线
  */
-void DebugDisplay_DrawVisionLines(void);
+void DebugDisplayService_DrawVisionLines(void);
 
 /**
  * @brief 刷新调试显示
  */
-void DebugDisplay_Update(event_mask_t events);
+void DebugDisplayService_Update(uint32_t events);
 
 #ifdef __cplusplus
 }

@@ -24,16 +24,24 @@ extern "C" {
 #include <stdint.h>
 //******************************* Includes **********************************//
 
+//******************************* Defines ***********************************//
+typedef uint32_t isr_adapter_event_t;
+
+#define ISR_ADAPTER_EVT_NONE            (0U)
+#define ISR_ADAPTER_EVT_ENCODER_WINDOW  (1U << 0)
+#define ISR_ADAPTER_EVT_GYRO_TICK       (1U << 1)
+//******************************* Defines ***********************************//
+
 //******************************* Declaring *********************************//
 /**
  * @brief 处理 CCU60 PIT 通道 0 中断
  */
-void IsrAdapter_Ccu60PitCh0(void);
+isr_adapter_event_t IsrAdapter_Ccu60PitCh0(void);
 
 /**
  * @brief 处理 CCU60 PIT 通道 1 中断
  */
-void IsrAdapter_Ccu60PitCh1(void);
+isr_adapter_event_t IsrAdapter_Ccu60PitCh1(void);
 
 /**
  * @brief 处理 CCU61 PIT 通道 0 中断
@@ -124,11 +132,6 @@ void IsrAdapter_Uart2Error(void);
  * @brief 处理 UART3 错误中断
  */
 void IsrAdapter_Uart3Error(void);
-
-/**
- * @brief 获取并清零编码器累加快照
- */
-void IsrAdapter_TakeEncoderSnapshot(int *p_left_sum, int *p_right_sum, int *p_sample_count);
 
 #ifdef __cplusplus
 }

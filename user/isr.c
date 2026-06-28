@@ -35,11 +35,11 @@
 
 #include "isr_config.h"
 #include "isr.h"
-#include "isr_adapter.h"
+#include "smartcar_isr_bridge.h"
 
-// TC264 中断入口受 IFX_INTERRUPT 宏约束保留在本文件，具体处理统一转发到 isr_adapter。
+// TC264 中断入口受 IFX_INTERRUPT 宏约束保留在本文件，具体处理统一转发到 App ISR bridge。
 //----------------------------------------------------------------------
-// **************************** PIT中断函数 ****************************
+// **************************** PIT Interrupt Handlers ****************************
 
 /**
  * @brief 编码器测速中断（CCU60 通道0，10ms 周期）。
@@ -47,7 +47,7 @@
  */
 IFX_INTERRUPT(cc60_pit_ch0_isr, 0, CCU6_0_CH0_ISR_PRIORITY)
 {
-    IsrAdapter_Ccu60PitCh0();
+    SmartcarIsrBridge_Ccu60PitCh0();
 }
 
 
@@ -57,7 +57,7 @@ IFX_INTERRUPT(cc60_pit_ch0_isr, 0, CCU6_0_CH0_ISR_PRIORITY)
  */
 IFX_INTERRUPT(cc60_pit_ch1_isr, 0, CCU6_0_CH1_ISR_PRIORITY)
 {
-    IsrAdapter_Ccu60PitCh1();
+    SmartcarIsrBridge_Ccu60PitCh1();
 }
 
 /**
@@ -75,10 +75,10 @@ IFX_INTERRUPT(cc61_pit_ch1_isr, 0, CCU6_1_CH1_ISR_PRIORITY)
 {
     IsrAdapter_Ccu61PitCh1();
 }
-// **************************** PIT中断函数 ****************************
+// **************************** PIT Interrupt Handlers ****************************
 
 
-// **************************** 外部中断函数 ****************************
+// **************************** External Interrupt Handlers ****************************
 /**
  * @brief 外部中断 ERU 通道0 与通道4 共用入口（当前空置）。
  *        通道0 对应 P15_4，通道4 对应 P15_5，在中断内通过标志位区分来源。
@@ -106,10 +106,10 @@ IFX_INTERRUPT(exti_ch3_ch7_isr, 0, EXTI_CH3_CH7_INT_PRIO)
 {
     IsrAdapter_ExtiCh3Ch7();
 }
-// **************************** 外部中断函数 ****************************
+// **************************** External Interrupt Handlers ****************************
 
 
-// **************************** DMA中断函数 ****************************
+// **************************** DMA Interrupt Handlers ****************************
 /**
  * @brief 摄像头 DMA 采集完成中断（DMA 通道5）。
  *        入口层只转发到 ISR adapter。
@@ -118,10 +118,10 @@ IFX_INTERRUPT(dma_ch5_isr, 0, DMA_INT_PRIO)
 {
     IsrAdapter_DmaCh5();
 }
-// **************************** DMA中断函数 ****************************
+// **************************** DMA Interrupt Handlers ****************************
 
 
-// **************************** 串口中断函数 ****************************
+// **************************** UART Interrupt Handlers ****************************
 // 串口0默认作为调试串口
 /**
  * @brief 串口0 发送中断（当前空置）。

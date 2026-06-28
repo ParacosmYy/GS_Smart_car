@@ -1,13 +1,20 @@
 ﻿/*
  * pid.c
  *
- * PID 算法实现：位置式 + 增量式 PID，以及舵机/电机专用控制函数。
+ * @brief PID algorithm implementation.
+ *
+ * This module provides positional PID, incremental PID, and bounded helper
+ * controllers for steering servo and wheel motors.
  *
  *  Created on: 2025年10月19日
  *      Author: Paracosm
  */
 #include "pid.h"
-#include "platform.h"
+
+//******************************** Defines **********************************//
+#define SERVO_PID_OUTPUT_LIMIT  63.0f
+#define MOTOR_PID_OUTPUT_LIMIT  20.0f
+//******************************** Defines **********************************//
 
 // PID输出结果（供 Actuator_Apply 使用）
 float servo_pid_output = 0.0;
@@ -108,19 +115,19 @@ float IncPID_Calc(IncPID_t *pid, float target, float feedback) {
  * 限幅说明：±63 对应 SERVO_RANGE，舵机PWM增量的最大允许范围，
  * 超过此值会导致舵机打到机械极限并可能损坏。
  */
-float servo_pid_contorl(PosPID_t *steer_pid , float steer_target , float steer_feedback)
+float ServoPid_Control(PosPID_t *steer_pid, float steer_target, float steer_feedback)
 {
     // 位置式PID计算原始输出
     float servo_output = PosPID_Calc(steer_pid, steer_target, steer_feedback);
-    // 输出限幅上限 +63（防止舵机右转超过机械极限）
-    if(servo_output >= 63)
+    // 输出限幅上限（防止舵机右转超过机械极限）
+    if(servo_output >= SERVO_PID_OUTPUT_LIMIT)
     {
-        servo_output = 63;
+        servo_output = SERVO_PID_OUTPUT_LIMIT;
     }
-    // 输出限幅下限 -63（防止舵机左转超过机械极限）
-    else if(servo_output <= -63)
+    // 输出限幅下限（防止舵机左转超过机械极限）
+    else if(servo_output <= -SERVO_PID_OUTPUT_LIMIT)
     {
-        servo_output  = -63 ;
+        servo_output  = -SERVO_PID_OUTPUT_LIMIT;
     }
     return servo_output ;
 }
@@ -136,20 +143,20 @@ float servo_pid_contorl(PosPID_t *steer_pid , float steer_target , float steer_f
  * 限幅说明：±20 为单次控制周期内电机PWM调整上限，
  * 防止单步加速过猛导致车轮打滑或车体失稳。
  */
-float motor_pid_control(IncPID_t *motor_pid, float speed_target, float speed_feedback)
+float MotorPid_Control(IncPID_t *motor_pid, float speed_target, float speed_feedback)
 {
     // 增量式PID计算累计输出
     float motor_output = IncPID_Calc(motor_pid, speed_target, speed_feedback);
 
-    // 输出限幅上限 +20（防止单周期加速过猛）
-    if(motor_output >= 20)
+    // 输出限幅上限（防止单周期加速过猛）
+    if(motor_output >= MOTOR_PID_OUTPUT_LIMIT)
     {
-        motor_output = 20;
+        motor_output = MOTOR_PID_OUTPUT_LIMIT;
     }
-    // 输出限幅下限 -20（防止单周期减速/反转过猛）
-    else if(motor_output <= -20)
+    // 输出限幅下限（防止单周期减速/反转过猛）
+    else if(motor_output <= -MOTOR_PID_OUTPUT_LIMIT)
     {
-        motor_output = -20;
+        motor_output = -MOTOR_PID_OUTPUT_LIMIT;
     }
     return motor_output;
 }

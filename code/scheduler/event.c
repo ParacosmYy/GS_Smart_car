@@ -1,6 +1,6 @@
 /**
  * @file event.c
- * @brief 事件标志系统实现
+ * @brief Event flag system implementation.
  */
 #include "event.h"
 #include "platform.h"

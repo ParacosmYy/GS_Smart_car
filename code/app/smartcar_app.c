@@ -1,13 +1,15 @@
 ﻿/*
  * smartcar_app.c
- *  应用层主循环实现（事件驱动 + 协作式调度器）
+ * @brief Smart car application scheduler implementation.
  *
- *  ISR 只做最少工作（采样 + 置事件），处理逻辑由调度器分发到各任务：
- *    task_gyro      陀螺仪传感器服务处理（事件触发）
- *    task_encoder   编码器传感器服务处理（事件触发）
- *    task_vision    视觉处理 + 元素检测 + 蜂鸣器（事件触发）
- *    task_control   控制 PID + 执行器下发（10ms 周期）
- *    task_display   TFT 调试显示（100ms 周期）
+ * Processing flow:
+ * ISR entries do minimum bounded work and task processing is dispatched by
+ * the cooperative scheduler:
+ *    SmartcarApp_TaskGyro      陀螺仪传感器服务处理（事件触发）
+ *    SmartcarApp_TaskEncoder   编码器传感器服务处理（事件触发）
+ *    SmartcarApp_TaskVision    视觉处理 + 元素检测 + 蜂鸣器（事件触发）
+ *    SmartcarApp_TaskControl   控制 PID + 执行器下发（10ms 周期）
+ *    DebugDisplayService_Update TFT 调试显示（100ms 周期）
  */
 #include "smartcar_app.h"
 #include "control.h"
@@ -23,35 +25,35 @@
  * @brief 陀螺仪处理任务
  *        EVT_GYRO_10MS 触发，10ms 周期。
  */
-static void task_gyro(event_mask_t events)
+static void SmartcarApp_TaskGyro(event_mask_t events)
 {
     if ((events & EVT_GYRO_10MS) == 0U)
     {
         return;
     }
 
-    Sensor_ProcessGyro10ms();
+    SensorService_ProcessGyro10ms();
 }
 
 /**
  * @brief 编码器测速任务（原 ISR 中的 Encoder_CalculateSpeed 逻辑）
  *        EVT_ENCODER_50MS 触发，50ms 周期。
  */
-static void task_encoder(event_mask_t events)
+static void SmartcarApp_TaskEncoder(event_mask_t events)
 {
     if ((events & EVT_ENCODER_50MS) == 0U)
     {
         return;
     }
 
-    Sensor_ProcessEncoder50ms();
+    SensorService_ProcessEncoder50ms();
 }
 
 /**
  * @brief 视觉处理任务
  *        EVT_CAM_FRAME 触发。处理一帧图像、检测特殊元素、蜂鸣器提示。
  */
-static void task_vision(event_mask_t events)
+static void SmartcarApp_TaskVision(event_mask_t events)
 {
     uint8_t element = 0;
 
@@ -61,7 +63,7 @@ static void task_vision(event_mask_t events)
     }
 
     Vision_Process();
-    DebugDisplay_DrawVisionLines();
+    DebugDisplayService_DrawVisionLines();
 
     /* 特殊元素检测 + 蜂鸣器提示 */
     element = Vision_DetectElement();
@@ -84,7 +86,7 @@ static void task_vision(event_mask_t events)
  * @brief 控制任务（周期 10ms）
  *        基于视觉偏差与编码器速度计算 PID，并下发到执行器。
  */
-static void task_control(event_mask_t events)
+static void SmartcarApp_TaskControl(event_mask_t events)
 {
     (void)events;
     Control_Update();
@@ -102,11 +104,11 @@ void SmartcarApp_Init(void)
     scheduler_init();
 
     /* 注册任务（按优先级从高到低）*/
-    scheduler_add(task_gyro,     0,   EVT_GYRO_10MS);    /* 陀螺仪：事件触发 */
-    scheduler_add(task_encoder,  0,   EVT_ENCODER_50MS); /* 编码器：事件触发 */
-    scheduler_add(task_vision,   0,   EVT_CAM_FRAME);    /* 视觉：事件触发   */
-    scheduler_add(task_control,  10,  EVT_NONE);         /* 控制：10ms 周期  */
-    scheduler_add(DebugDisplay_Update, 100, EVT_NONE);   /* 显示：100ms 周期 */
+    scheduler_add(SmartcarApp_TaskGyro,      0,   EVT_GYRO_10MS);    /* 陀螺仪：事件触发 */
+    scheduler_add(SmartcarApp_TaskEncoder,   0,   EVT_ENCODER_50MS); /* 编码器：事件触发 */
+    scheduler_add(SmartcarApp_TaskVision,    0,   EVT_CAM_FRAME);    /* 视觉：事件触发   */
+    scheduler_add(SmartcarApp_TaskControl,   10,  EVT_NONE);         /* 控制：10ms 周期  */
+    scheduler_add(DebugDisplayService_Update, 100, EVT_NONE);        /* 显示：100ms 周期 */
 }
 
 /**

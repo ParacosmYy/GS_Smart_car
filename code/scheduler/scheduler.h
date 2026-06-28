@@ -1,14 +1,14 @@
 /**
  * @file scheduler.h
- * @brief 轻量协作式任务调度器（裸机版"迷你 RTOS"）
+ * @brief Lightweight cooperative task scheduler.
  *
  *        无抢占、无堆栈切换——主循环调用 scheduler_run() 驱动全部任务。
  *        每个任务可由「事件触发」或「周期触发」或两者兼有。
  *
  *        典型用法：
  *          scheduler_init();
- *          scheduler_add(task_vision,  0,  EVT_CAM_FRAME);  // 事件触发
- *          scheduler_add(task_control, 10, 0);              // 10ms 周期
+ *          scheduler_add(SmartcarApp_TaskVision,  0,  EVT_CAM_FRAME);  // 事件触发
+ *          scheduler_add(SmartcarApp_TaskControl, 10, 0);              // 10ms 周期
  *          while (1) { scheduler_run(); }
  */
 #ifndef SCHEDULER_H_

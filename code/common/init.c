@@ -4,11 +4,12 @@
  *  Created on: 2025年10月19日
  *      Author: Paracosm
  *
- *  系统初始化文件
- *  init_all()  顺序初始化全部外设：通信 → 编码器 → 电机/舵机 →
- *  显示与图像 → 按键/蜂鸣器 → 陀螺仪 → PID 控制器。
- *  pit_init_all() 配置两个周期中断定时器（CCU60 通道 0/1），
- *  周期由 config.h 中的 PIT_PERIOD_MS 决定（默认 10ms）。
+ * @brief System initialization implementation.
+ *
+ * init_all() initializes communication, encoders, motor/servo, display,
+ * camera, keys, buzzer, gyro, wireless link and PID controllers in a fixed
+ * boot order. pit_init_all() configures CCU60 periodic interrupt channels
+ * with PIT_PERIOD_MS from config.h.
  */
 #include "init.h"
 #include "platform.h"

@@ -1,6 +1,6 @@
 /**
  * @file scheduler.c
- * @brief 轻量协作式任务调度器实现
+ * @brief Lightweight cooperative task scheduler implementation.
  */
 #include "scheduler.h"
 

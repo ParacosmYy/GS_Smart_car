@@ -1,16 +1,17 @@
 ﻿/**
  * @file platform.h
- * @brief 硬件平台抽象层（Platform Abstraction Layer）
+ * @brief Hardware Platform Abstraction Layer.
  *
- *        本文件定义平台无关的硬件接口。所有自研代码（BSP/Service/App/Common）
- *        只依赖此头文件，不直接调用任何芯片 SDK（逐飞库 / STM32 HAL 等）。
+ *        This file defines platform-neutral hardware interfaces. Self-owned
+ *        code in BSP/Service/App/Common depends on this header instead of
+ *        directly calling a chip SDK such as SEEKFREE or STM32 HAL.
  *
- *        换 MCU 时：
- *          1. 编写新的 platform_<mcu>.c（如 platform_stm32.c）包装目标 SDK
- *          2. 替换编译工程中的 platform_<mcu>.c 源文件
- *          3. 其余代码零改动
+ *        MCU porting flow:
+ *          1. Implement a new platform_<mcu>.c wrapper for the target SDK.
+ *          2. Replace the platform_<mcu>.c source file in the build project.
+ *          3. Keep App/Service/BSP/Common code unchanged.
  *
- *        依赖方向：
+ *        Dependency direction:
  *          App → Service → BSP → platform.h（本文件）
  *                                  ↓
  *                          platform_<mcu>.c（实现层）
@@ -93,6 +94,7 @@ void pal_pit_clear_flag(pal_ch_t ch);
 void    pal_encoder_init (pal_ch_t ch);
 int32_t pal_encoder_get  (pal_ch_t ch);
 void    pal_encoder_clear(pal_ch_t ch);
+void    pal_encoder_take_snapshot(int *p_left_sum, int *p_right_sum, int *p_sample_count);
 
 /*===========================================================================
  *  UART 抽象

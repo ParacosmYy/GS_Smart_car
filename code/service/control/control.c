@@ -21,11 +21,11 @@ void Control_Update(void)
         return;
     }
     // 舵机：位置式PID，目标居中(0)，反馈为视觉中线偏差 calculate_error
-    servo_pid_output = servo_pid_contorl(&servo_pid, 0, calculate_error);
+    servo_pid_output = ServoPid_Control(&servo_pid, 0, calculate_error);
     // 左电机：增量式PID，反馈为编码器实测速度
-    left_motor_pid_output = motor_pid_control(&left_motor_pid, 0, Sensor_GetLeftEncoderSpeed());
+    left_motor_pid_output = MotorPid_Control(&left_motor_pid, 0, SensorService_GetLeftEncoderSpeed());
     // 右电机：增量式PID，反馈为编码器实测速度
-    right_motor_pid_output = motor_pid_control(&right_motor_pid, 0, Sensor_GetRightEncoderSpeed());
+    right_motor_pid_output = MotorPid_Control(&right_motor_pid, 0, SensorService_GetRightEncoderSpeed());
 }
 
 void Actuator_Apply(void)
