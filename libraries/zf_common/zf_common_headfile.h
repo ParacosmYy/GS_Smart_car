@@ -123,6 +123,8 @@
 #include "init.h"
 #include "vision.h"
 #include "platform.h"
+#include "event.h"
+#include "scheduler.h"
 #include "control.h"
 #include "config.h"
 #include "display.h"

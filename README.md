@@ -19,91 +19,164 @@
 
 ## 📐 系统架构
 
+五层单向依赖：**App → Service → BSP → Vendor**，配置与公共层横向贯穿。箭头标注运行时数据类型，虚线表示编译期/启动期依赖。
+
 ```mermaid
-graph TD
-    subgraph APP ["🚀 App 层 — 应用编排"]
-        APP1["smartcar_app.c<br/>主循环: Vision → Control → Actuator"]
+%%{init: {'theme':'base','themeVariables':{'primaryColor':'#f6f8fa','primaryTextColor':'#24292f','primaryBorderColor':'#d0d7de','lineColor':'#57606a','fontSize':'14px','fontFamily':'ui-sans-serif,system-ui,-apple-system,Segoe UI,Helvetica,Arial,sans-serif','clusterBkg':'#ffffff','clusterBorder':'#d0d7de'}}}%%
+flowchart TD
+    classDef appLayer fill:#ddf4ff,stroke:#0969da,stroke-width:2px,color:#0a3069
+    classDef svcLayer fill:#fbefff,stroke:#8250df,stroke-width:2px,color:#5c2b8e
+    classDef bspLayer fill:#dafbe1,stroke:#1a7f37,stroke-width:2px,color:#0a3622
+    classDef cfgLayer fill:#fff8c5,stroke:#bf8700,stroke-width:2px,color:#5c4200
+    classDef libLayer fill:#ffdcd7,stroke:#cf222e,stroke-width:2px,color:#82071e
+
+    subgraph APP[" 🚀 App · 应用编排 "]
+        APP1["smartcar_app<br/>主循环编排"]:::appLayer
     end
 
-    subgraph SVC ["🧠 Service 层 — 算法服务"]
-        VIS["vision.c<br/>OTSU 二值化 · 边线检测 · 加权中线"]
-        CTL["control.c<br/>PID 决策 · 舵机/电机输出"]
-        PID["pid.c<br/>位置式/增量式 PID 通用实现"]
+    subgraph SVC[" 🧠 Service · 算法服务 "]
+        VIS["Vision<br/>视觉处理"]:::svcLayer
+        CTL["Control<br/>决策输出"]:::svcLayer
+        PID["PID<br/>通用控制器"]:::svcLayer
     end
 
-    subgraph BSP ["⚙️ BSP 层 — 板级驱动"]
-        MTR["motor.c<br/>H 桥 PWM · 正反转 · 限幅"]
-        SRV["servo.c<br/>舵机 PWM 50Hz"]
-        DSP["display.c<br/>TFT180 赛道可视化"]
-        INP["input.c<br/>按键 · 拨码开关"]
-        BUZ["buzzer.c<br/>蜂鸣器"]
+    subgraph BSP[" ⚙️ BSP · 板级驱动 "]
+        MTR["Motor<br/>H 桥 PWM"]:::bspLayer
+        SRV["Servo<br/>50Hz PWM"]:::bspLayer
+        DSP["Display<br/>TFT180"]:::bspLayer
+        INP["Input<br/>按键拨码"]:::bspLayer
+        BUZ["Buzzer<br/>蜂鸣器"]:::bspLayer
     end
 
-    subgraph CFG ["📦 Config + Common"]
-        CNF["config.h<br/>所有可调参数集中管理"]
-        DAT["data.c<br/>跨模块共享全局变量"]
-        INT["init.c<br/>系统初始化序列"]
+    subgraph CFG[" 📦 Config + Common "]
+        CNF["config.h<br/>参数集中"]:::cfgLayer
+        DAT["data.c<br/>全局共享"]:::cfgLayer
+        INT["init.c<br/>初始化序列"]:::cfgLayer
     end
 
-    subgraph LIB ["📚 Vendor 只读"]
-        VEN["libraries/<br/>逐飞驱动 + Infineon iLLD"]
+    subgraph LIB[" 📚 Vendor · 只读 "]
+        VEN["libraries/<br/>逐飞 + iLLD"]:::libLayer
     end
 
-    APP1 --> VIS
-    APP1 --> CTL
-    VIS -->|"偏差信号"| CTL
-    CTL --> MTR
-    CTL --> SRV
-    APP1 --> DSP
-    APP1 --> INP
+    %% 主数据流（运行时调用）
+    APP1 -->|frame ready| VIS
+    APP1 -->|tick| CTL
+    VIS -->|中线偏差| CTL
+    CTL -->|PWM duty| SRV
+    CTL -->|speed cmd| MTR
+    APP1 -->|UI 数据| DSP
+    APP1 -->|key event| INP
+    PID -.->|反馈环| CTL
 
+    %% 硬件抽象（BSP 调用 Vendor）
     MTR --> VEN
     SRV --> VEN
     VIS --> VEN
 
-    style APP fill:#e1f5fe,stroke:#0288d1,stroke-width:2px
-    style SVC fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
-    style BSP fill:#e8f5e9,stroke:#388e3c,stroke-width:2px
-    style CFG fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    style LIB fill:#fce4ec,stroke:#c62828,stroke-width:2px
+    %% 配置/初始化依赖（虚线 = 编译期/启动期）
+    CNF -.->|编译期参数| CTL
+    CNF -.->|编译期参数| VIS
+    INT -.->|启动初始化| APP1
+    DAT -.->|运行时共享| APP1
 ```
 
-> **依赖铁律：** 上层 → 下层单向依赖。App → Service → BSP → Vendor。**严禁反向调用。**
+> **依赖铁律：** 实线 = 运行时调用，虚线 = 编译期/启动期依赖。上层 → 下层单向，**严禁反向调用**。各模块文件清单见下方[模块一览](#-模块一览)。
 
 ---
 
 ## 🔄 数据流
 
-```mermaid
-flowchart LR
-    CAM["📷 MT9V03X<br/>灰度摄像头<br/>188×120 @ 30fps"]
-    ENC["⚙️ 编码器<br/>左右轮测速"]
-    GYRO["🧭 ICM20602<br/>陀螺仪 Z 轴"]
-    
-    ISR["⏱️ ISR<br/>PIT 10ms 周期<br/>采样 + 积分"]
-    
-    VISION["👁️ Vision_Process<br/>OTSU → 二值化 → 滤波<br/>→ 边线 → 加权中线"]
-    
-    CONTROL["🎯 Control_Update<br/>舵机PID(偏差)<br/>电机PID(轮速)"]
-    
-    ACT["⚡ Actuator_Apply<br/>PWM 输出"]
-    
-    SERVO_OUT["🔧 舵机<br/>50Hz PWM"]
-    MOTOR_OUT["🛞 电机<br/>20kHz PWM"]
-    
-    CAM -->|"DMA 帧"| VISION
-    ENC --> ISR
-    GYRO --> ISR
-    ISR -->|"轮速快照"| CONTROL
-    VISION -->|"中线偏差<br/>calculate_error"| CONTROL
-    CONTROL --> ACT
-    ACT --> SERVO_OUT
-    ACT --> MOTOR_OUT
+左 → 右单向流水线：传感器采样 → 实时处理（ISR + 算法）→ 执行器输出。箭头标注每一跳的物理量或数据结构。
 
-    style VISION fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
-    style CONTROL fill:#e8f5e9,stroke:#388e3c,stroke-width:2px
-    style ISR fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+```mermaid
+%%{init: {'theme':'base','themeVariables':{'primaryColor':'#f6f8fa','primaryTextColor':'#24292f','primaryBorderColor':'#d0d7de','lineColor':'#57606a','fontSize':'13px','fontFamily':'ui-sans-serif,system-ui,-apple-system,Segoe UI,Helvetica,Arial,sans-serif','clusterBkg':'#ffffff','clusterBorder':'#d0d7de'}}}%%
+flowchart LR
+    classDef sensor  fill:#e7ecf0,stroke:#57606a,stroke-width:2px,color:#24292f
+    classDef isr     fill:#ffd8b5,stroke:#bc4c00,stroke-width:2px,color:#5c2200
+    classDef vision  fill:#fbefff,stroke:#8250df,stroke-width:2px,color:#5c2b8e
+    classDef control fill:#dafbe1,stroke:#1a7f37,stroke-width:2px,color:#0a3622
+    classDef actOut  fill:#ffdcd7,stroke:#cf222e,stroke-width:2px,color:#82071e
+
+    subgraph SENS[" 📷 传感器 "]
+        CAM["MT9V03X<br/>灰度摄像头<br/>188×120 @ 30fps"]:::sensor
+        ENC["编码器<br/>左右轮测速"]:::sensor
+        GYRO["ICM20602<br/>陀螺仪 Z 轴"]:::sensor
+    end
+
+    subgraph PROC[" ⚙️ 实时处理 "]
+        ISR["ISR<br/>PIT 10ms<br/>采样 + 积分"]:::isr
+        VISION["Vision_Process<br/>OTSU · 滤波<br/>边线 · 中线"]:::vision
+        CONTROL["Control_Update<br/>舵机 PID<br/>电机 PID"]:::control
+    end
+
+    subgraph ACT[" ⚡ 执行器 "]
+        SERVO["舵机<br/>50Hz PWM"]:::actOut
+        MOTOR["电机<br/>20kHz PWM"]:::actOut
+    end
+
+    CAM    -->|DMA 帧|          VISION
+    ENC    -->|脉冲计数|         ISR
+    GYRO   -->|SPI 帧|           ISR
+    ISR    -->|轮速快照|         CONTROL
+    VISION -->|中线偏差<br/>calculate_error| CONTROL
+    CONTROL -->|舵机 duty|       SERVO
+    CONTROL -->|电机 duty|       MOTOR
 ```
+
+> **采样周期：** PIT 10ms 触发 ISR 完成传感器采样与积分；摄像头 DMA 帧异步到达，主循环按 `frame ready` 标志触发 Vision。
+
+---
+
+## 🚀 演进架构（规划中）
+
+当前为裸机裸调度主循环；目标引入事件驱动 + 优先级调度器，把算法从 ISR 搬到主循环，降低中断抖动、为双核 offload 铺路（见[演进路线](#-演进路线)）。
+
+```mermaid
+%%{init: {'theme':'base','themeVariables':{'primaryColor':'#f6f8fa','primaryTextColor':'#24292f','primaryBorderColor':'#d0d7de','lineColor':'#57606a','fontSize':'13px','fontFamily':'ui-sans-serif,system-ui,-apple-system,Segoe UI,Helvetica,Arial,sans-serif','clusterBkg':'#ffffff','clusterBorder':'#d0d7de'}}}%%
+flowchart LR
+    classDef hw      fill:#e7ecf0,stroke:#57606a,stroke-width:2px,color:#24292f
+    classDef isr     fill:#ffd8b5,stroke:#bc4c00,stroke-width:2px,color:#5c2200
+    classDef queue   fill:#fff8c5,stroke:#bf8700,stroke-width:2px,color:#5c4200
+    classDef sched   fill:#ddf4ff,stroke:#0969da,stroke-width:2px,color:#0a3069
+    classDef task    fill:#dafbe1,stroke:#1a7f37,stroke-width:2px,color:#0a3622
+
+    subgraph SRC[" ⏱️ 中断源 "]
+        PIT["PIT<br/>10ms 定时"]:::hw
+        DMA["DMA<br/>帧完成"]:::hw
+        ENC["编码器<br/>脉冲"]:::hw
+    end
+
+    subgraph ISRG[" ⚡ ISR "]
+        HANDLER["isr.c<br/>原子事件发布"]:::isr
+    end
+
+    subgraph BUS[" 📨 Event Queue "]
+        Q["lock-free FIFO<br/>事件缓冲"]:::queue
+    end
+
+    subgraph SCHED[" 🎯 Scheduler "]
+        SCH["主循环 dispatch<br/>优先级调度"]:::sched
+    end
+
+    subgraph TASKS[" 🧩 Tasks "]
+        T_VIS["Vision<br/>图像处理"]:::task
+        T_CTL["Control<br/>PID 计算"]:::task
+        T_SEN["Sensor<br/>轮速融合"]:::task
+        T_DSP["Display<br/>UI 刷新"]:::task
+    end
+
+    PIT -->|tick|         HANDLER
+    DMA -->|frame_ready|  HANDLER
+    ENC -->|speed_pulse|  HANDLER
+    HANDLER -->|enqueue|  Q
+    Q     -->|dequeue|    SCH
+    SCH   -->|VISION_EVT|  T_VIS
+    SCH   -->|CONTROL_EVT| T_CTL
+    SCH   -->|SENSOR_EVT|  T_SEN
+    SCH   -->|DISPLAY_EVT| T_DSP
+```
+
+> **关键收益：** ISR 只做「采样 + 入队」（μs 级），算法在主循环按事件类型 dispatch，可按优先级抢占 Display；为后续 CPU1 视觉 offload 提供干净的派发边界。
 
 ---
 

@@ -36,147 +36,58 @@
 #include "isr_config.h"
 #include "isr.h"
 #include "platform.h"
+#include "event.h"
+#include "scheduler.h"   /* g_system_ms */
 
 // 对于TC系列默认是不支持中断嵌套的，希望支持中断嵌套需要在中断内使用 pal_irq_global_ctrl(0); 来开启中断嵌套
 // 简单点说实际上进入中断后TC系列的硬件自动调用了 interrupt_global_disable(); 来拒绝响应任何的中断，因此需要我们自己手动调用 pal_irq_global_ctrl(0); 来开启中断的响应。
 //----------------------------------------------------------------------
-#define GYRO_OFFSET_BUF_SIZE 32
-
-static float   gyro_z_offset_buf[GYRO_OFFSET_BUF_SIZE] = {0.0f};
-static uint8_t gyro_z_offset_idx = 0;
-static float   gyro_z_offset_sum = 0.0f;
-static float   gyro_z_offset     = 0.0f;
-const float GYRO_IDLE_THRESHOLD = 1.0f; // 单位: °/s，可按实际情况调 0.5~2
-
-int left_encoder_speed = 0;
-int right_encoder_speed = 0;
-
-// 速度采样累积变量
-static int left_speed_sum = 0;
-static int right_speed_sum = 0;
-static int sample_count = 0;
-const int MAX_SAMPLES = 5; // 采样次数，3-5 次，这里设为 5
+/* 编码器测速累加器：ISR 每 10ms 累加原始计数，累计 MAX_SAMPLES 次后置
+   EVT_ENCODER_50MS 事件，由主循环 task_encoder 折算平均速度并清零。*/
+int  left_speed_sum  = 0;
+int  right_speed_sum = 0;
+int  sample_count    = 0;
+const int MAX_SAMPLES = 5;   /* 采样窗口（3-5 次），50ms 折算周期 */
 
 // **************************** PIT中断函数 ****************************
-/**
- * @brief 最近一次原始 Z 轴陀螺仪采样值（单位：°/s），文件内静态缓存。
- *
- * 由 Gyro_CompensateDrift() 写入，由 Gyro_Integrate() 读取，让采样与积分
- * 两个环节解耦，同时保留原始数据流向：采样 -> 零漂补偿 -> 角度积分。
- */
-static float gyro_raw_z = 0.0f;
-
-/**
- * @brief 编码器测速：将 MAX_SAMPLES 个 PIT tick 的计数累加折算成平均速度。
- *
- * 每 5 次 PIT 中断（10ms × 5 = 50ms）调用一次。把累积的左右编码器计数除以
- * MAX_SAMPLES 得到 left_encoder_speed 和 right_encoder_speed，然后清零累加器
- * 和硬件编码器计数寄存器，让下一个测速窗口从零开始。输出供电机速度环 PID 使用。
- */
-static void Encoder_CalculateSpeed(void)
-{
-    left_encoder_speed  = left_speed_sum  / MAX_SAMPLES;
-    right_encoder_speed = right_speed_sum / MAX_SAMPLES;
-
-    /* Reset accumulators for the next averaging window. */
-    left_speed_sum  = 0;
-    right_speed_sum = 0;
-    sample_count    = 0;
-
-    pal_encoder_clear(PAL_CH_ENCODER_L);
-    pal_encoder_clear(PAL_CH_ENCODER_R);
-}
-
-/**
- * @brief 陀螺仪采样 + 零漂补偿：读取 Z 轴角速度并刷新静态偏置估计。
- *
- * 通过 SPI 读取 ICM20602，把 Z 轴原始寄存器值换算成角速度存入 gyro_raw_z。
- * 当角速度幅值低于 GYRO_IDLE_THRESHOLD（即车体近似静止）时，把该采样压入
- * GYRO_OFFSET_BUF_SIZE（32）深度的环形缓冲区，并用缓冲区均值更新
- * gyro_z_offset。该偏置会在 Gyro_Integrate() 中被减去，抵消静态零漂。
- */
-static void Gyro_CompensateDrift(void)
-{
-    pal_gyro_read();
-    gyro_raw_z = pal_gyro_z();
-
-    if (fabsf(gyro_raw_z) < GYRO_IDLE_THRESHOLD)
-    {
-        gyro_z_offset_sum -= gyro_z_offset_buf[gyro_z_offset_idx];
-        gyro_z_offset_buf[gyro_z_offset_idx] = gyro_raw_z;
-        gyro_z_offset_sum += gyro_raw_z;
-
-        gyro_z_offset_idx++;
-        if (gyro_z_offset_idx >= GYRO_OFFSET_BUF_SIZE) gyro_z_offset_idx = 0;
-
-        gyro_z_offset = gyro_z_offset_sum / GYRO_OFFSET_BUF_SIZE;
-    }
-}
-
-/**
- * @brief 陀螺仪积分：把去零漂后的 Z 轴角速度累加成航向角。
- *
- * 用最新原始采样 gyro_raw_z 减去 Gyro_CompensateDrift() 维护的滚动零漂偏置，
- * 再乘以固定步长 dt（10ms）累加进全局 z_angle。每次 CCU60 通道 1 的 PIT
- * 中断（10ms）调用一次。z_angle 单位为度（°），正值表示顺时针偏转。
- */
-static void Gyro_Integrate(void)
-{
-    float z_angle_speed = gyro_raw_z - gyro_z_offset;
-    z_angle += z_angle_speed * dt;
-}
 
 /**
  * @brief 编码器测速中断（CCU60 通道0，10ms 周期）。
- *        每 tick 累加左右编码器计数，累计 MAX_SAMPLES（5）次后调用
- *        Encoder_CalculateSpeed() 折算成平均速度供电机 PID 使用。
+ *        每 tick 累加左右编码器计数，累计 MAX_SAMPLES（5）次后置
+ *        EVT_ENCODER_50MS 事件，由主循环 task_encoder 折算平均速度。
  */
 IFX_INTERRUPT(cc60_pit_ch0_isr, 0, CCU6_0_CH0_ISR_PRIORITY)
 {
     pal_irq_global_ctrl(0);                     // 开启中断嵌套
     pal_pit_clear_flag(PAL_CH_PIT_0);
-    //pit_ch0_count ++ ;
 
     /* Accumulate raw encoder counts for this 10 ms tick. */
     left_speed_sum += pal_encoder_get(PAL_CH_ENCODER_L);
     right_speed_sum += pal_encoder_get(PAL_CH_ENCODER_R);
     sample_count++;
 
-    /* Every MAX_SAMPLES ticks, collapse the window into averaged speeds. */
+    /* Every MAX_SAMPLES ticks, signal main loop to compute averaged speed. */
     if (sample_count >= MAX_SAMPLES)
     {
-        Encoder_CalculateSpeed();
+        event_set_isr(EVT_ENCODER_50MS);
     }
-
-//    if(pit_ch0_count >= 3)
-//    {
-//        servo_pid_output = servo_pid_contorl(&servo_pid , 0 , 0);
-//    }
-
 }
 
 
 /**
- * @brief 陀螺仪 Z 轴角度积分中断（CCU60 通道1，10ms 周期）。
- *        调用 Gyro_CompensateDrift() 采样并去零漂，再调用 Gyro_Integrate()
- *        把角速度累加成航向角 z_angle。
+ * @brief 系统时间基 + 陀螺仪触发中断（CCU60 通道1，10ms 周期）。
+ *        递增 g_system_ms（调度器周期判断依赖），并置 EVT_GYRO_10MS
+ *        事件通知主循环执行陀螺仪采样、零漂补偿与角度积分。
  */
 IFX_INTERRUPT(cc60_pit_ch1_isr, 0, CCU6_0_CH1_ISR_PRIORITY)
 {
     pal_irq_global_ctrl(0);                     // 开启中断嵌套
     pal_pit_clear_flag(PAL_CH_PIT_1);
 
+    g_system_ms  += 10;                         // 系统时间基（调度器周期判断依赖）
     pit_ch1_count++;
 
-    Gyro_CompensateDrift();
-    Gyro_Integrate();
-
-    if (pit_ch1_count == 5)
-    {
-        //pal_encoder_clear(PAL_CH_ENCODER_L);
-        //pal_encoder_clear(PAL_CH_ENCODER_R);
-    }
-
+    event_set_isr(EVT_GYRO_10MS);               // 通知主循环执行陀螺仪处理
 }
 
 /**
