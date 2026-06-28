@@ -19,9 +19,6 @@
 
 #define SCH_MAX_TASKS 8   /* 最大注册任务数 */
 
-/* 系统毫秒计数器（由 10ms PIT ISR 递增，调度器用于周期判断）*/
-extern volatile uint32_t g_system_ms;
-
 /* 任务函数原型：接收当前事件掩码，任务自行判断是否需要处理 */
 typedef void (*task_fn_t)(event_mask_t events);
 
@@ -39,6 +36,18 @@ typedef struct
  * @brief 初始化调度器，清空任务表
  */
 void scheduler_init(void);
+
+/**
+ * @brief 从 ISR 上下文推进调度器时间基
+ * @param elapsed_ms 本次中断经过的毫秒数
+ */
+void Scheduler_AddTickFromIsr(uint32_t elapsed_ms);
+
+/**
+ * @brief 获取当前调度器时间戳
+ * @return 当前系统毫秒数
+ */
+uint32_t Scheduler_GetNowMs(void);
 
 /**
  * @brief 注册一个任务

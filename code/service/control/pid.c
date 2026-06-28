@@ -16,16 +16,6 @@
 #define MOTOR_PID_OUTPUT_LIMIT  20.0f
 //******************************** Defines **********************************//
 
-// PID输出结果（供 Actuator_Apply 使用）
-float servo_pid_output = 0.0;
-float left_motor_pid_output = 0;
-float right_motor_pid_output = 0;
-
-// PID结构体实例
-PosPID_t servo_pid  ;
-IncPID_t left_motor_pid ;
-IncPID_t right_motor_pid ;
-
 /**
  * @brief 位置式PID参数初始化
  * @param pid   PID结构体指针

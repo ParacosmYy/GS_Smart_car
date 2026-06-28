@@ -46,7 +46,7 @@
 #define LOST_MIDLINE_GAP        40      /* 相邻行中线跳变阈值，跳变过大视为丢线，过滤毛刺                 */
 
 /* ===== Periodic Interrupt ===== */
-#define PIT_PERIOD_MS           10      /* CCU60 通道周期，单位 ms；默认 10ms，需与 data.c 中 dt 保持一致  */
+#define PIT_PERIOD_MS           10      /* CCU60 通道周期，单位 ms；传感器积分周期默认由此换算              */
 
 /* ===== Buzzer Parameters ===== */
 /* GPIO 有源蜂鸣器（P11_11），通过开关时序产生不同提示音           */

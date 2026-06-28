@@ -6,7 +6,6 @@
  * @par dependencies
  * - smartcar_isr_bridge.h
  * - config.h
- * - data.h
  * - event.h
  * - isr_adapter.h
  * - scheduler.h
@@ -28,11 +27,24 @@
 #include "smartcar_isr_bridge.h"
 
 #include "config.h"
-#include "data.h"
 #include "event.h"
 #include "isr_adapter.h"
 #include "scheduler.h"
 //******************************** Includes *********************************//
+
+//******************************** Types ************************************//
+typedef struct
+{
+    volatile uint32_t gyro_tick_count;
+} smartcar_isr_bridge_context_t;
+//******************************** Types ************************************//
+
+//******************************** Variables ********************************//
+static smartcar_isr_bridge_context_t s_isr_bridge_ctx =
+{
+    0U
+};
+//******************************** Variables ********************************//
 
 //******************************** Implement ********************************//
 /**
@@ -74,8 +86,8 @@ void SmartcarIsrBridge_Ccu60PitCh1(void)
     events = IsrAdapter_Ccu60PitCh1();
     if ((events & ISR_ADAPTER_EVT_GYRO_TICK) != 0U)
     {
-        g_system_ms += PIT_PERIOD_MS;
-        pit_ch1_count++;
+        Scheduler_AddTickFromIsr(PIT_PERIOD_MS);
+        s_isr_bridge_ctx.gyro_tick_count++;
         event_set_isr(EVT_GYRO_10MS);
     }
 }

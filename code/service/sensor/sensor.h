@@ -36,4 +36,19 @@ int SensorService_GetLeftEncoderSpeed(void);
  */
 int SensorService_GetRightEncoderSpeed(void);
 
+/**
+ * @brief 获取陀螺仪积分航向角
+ */
+float SensorService_GetHeadingAngle(void);
+
+/**
+ * @brief 复位陀螺仪积分航向角
+ */
+void SensorService_ResetHeadingAngle(void);
+
+/**
+ * @brief 设置陀螺仪积分采样周期
+ */
+void SensorService_SetGyroSamplePeriod(float sample_period_s);
+
 #endif /* SENSOR_H_ */

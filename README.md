@@ -20,7 +20,7 @@
 
 ## 📐 系统架构
 
-五层单向依赖：**应用层 → 服务层 → 板级/平台层 → 原厂库**，配置与公共层横向贯穿。箭头标注运行时数据类型，虚线表示编译期/启动期依赖。
+五层单向依赖：**应用层 → 服务层 → 板级/平台层 → 原厂库**，配置与公共层横向贯穿。当前阶段同步推进 **Driver + Handler + Context**：Driver 只封装硬件/算法原语，Handler 持有模块状态，Context 明确运行态 owner。
 
 ```mermaid
 %%{init: {'theme':'base','themeVariables':{'primaryColor':'#f6f8fa','primaryTextColor':'#24292f','primaryBorderColor':'#d0d7de','lineColor':'#57606a','fontSize':'14px','fontFamily':'ui-sans-serif,system-ui,-apple-system,Segoe UI,Helvetica,Arial,sans-serif','clusterBkg':'#ffffff','clusterBorder':'#d0d7de'}}}%%
@@ -54,7 +54,7 @@ flowchart TD
 
     subgraph CFG[" 📦 Config + Common "]
         CNF["config.h<br/>参数集中"]:::cfgLayer
-        DAT["data.c<br/>全局共享"]:::cfgLayer
+        DAT["data.c<br/>legacy 兼容"]:::cfgLayer
         INT["init.c<br/>初始化序列"]:::cfgLayer
     end
 
@@ -67,8 +67,8 @@ flowchart TD
     APP1 -->|传感器事件| SEN
     APP1 -->|周期调度| CTL
     APP2 -->|EVT_*| APP1
-    VIS -->|中线偏差| CTL
-    SEN -->|轮速/航向角| CTL
+    VIS -->|控制快照| CTL
+    SEN -->|轮速/航向角快照| CTL
     CTL -->|PWM duty| SRV
     CTL -->|speed cmd| MTR
     DBG -->|UI 数据| DSP
@@ -84,7 +84,7 @@ flowchart TD
     CNF -.->|编译期参数| CTL
     CNF -.->|编译期参数| VIS
     INT -.->|启动初始化| APP1
-    DAT -.->|运行时共享| APP1
+    DAT -.->|历史兼容变量| APP1
 ```
 
 > **依赖铁律：** 实线 = 运行时调用，虚线 = 编译期/启动期依赖。上层 → 下层单向，**严禁反向调用**。各模块文件清单见下方[模块一览](#-模块一览)。
@@ -92,6 +92,8 @@ flowchart TD
 > **维护分支：** 当前工程主维护分支为 `tc264-four-wheel-servo-camera-car`，对应 TC264 四轮舵机镜头车固件。
 
 > **中断边界：** `user/isr.c` 只保留 `IFX_INTERRUPT` 入口；`code/platform/isr_adapter.c` 只做清标志与有界整数采样；`code/app/smartcar_isr_bridge.c` 将平台中断事实翻译为 `EVT_*` 调度事件。`EVT_GYRO_10MS` 使用计数语义，避免主循环阻塞时丢失 10ms 节拍。
+
+> **状态边界：** 运行态状态不再优先放入 `data.c`。`SensorService` 拥有陀螺仪/编码器 context，`Control` 拥有 PID handler 与输出快照，`Vision` 通过 control/debug snapshot 向外提供只读结果，`Scheduler` 自己维护系统时间基。
 
 ---
 
@@ -133,7 +135,7 @@ flowchart LR
     ISR    -->|平台中断事实| BRIDGE
     BRIDGE -->|EVT_GYRO_10MS<br/>EVT_ENCODER_50MS| SENSOR
     SENSOR -->|轮速快照/航向角| CONTROL
-    VISION -->|中线偏差| CONTROL
+    VISION -->|控制快照| CONTROL
     CONTROL -->|舵机 duty| SERVO
     CONTROL -->|电机 duty| MOTOR
 ```
@@ -226,7 +228,7 @@ GS_Smart_car/
 │   │   ├── event.c/h              #     位掩码 + 陀螺仪待处理计数
 │   │   └── scheduler.c/h          #     协作式任务调度器
 │   └── common/                    #   公共层 — 共享设施
-│       ├── data.c/h               #     全局变量 (z_angle/编码器速度)
+│       ├── data.c/h               #     legacy 兼容变量，新状态优先进入 context/handler
 │       ├── init.c/h               #     初始化序列
 │       └── utils.c/h              #     工具函数 (my_abs)
 │
@@ -319,15 +321,15 @@ gcc -Itests/stubs -Icode/platform -Icode/scheduler tests/test_event.c code/sched
 |:---:|:---:|:---|:---|:---|
 | App | 主循环 | `app/smartcar_app.c` | 摄像头帧标志 + ISR bridge 事件 | 编排 Sensor/Vision/Control/DebugDisplay 任务 |
 | App | 中断桥接 | `app/smartcar_isr_bridge.c` | 平台中断事实 | `EVT_*` 调度事件 + 系统时间基 |
-| Service | 视觉 | `service/vision/vision.c` | 灰度图像 | 中线偏差 `calculate_error` |
-| Service | 传感器 | `service/sensor/sensor.c` | 陀螺仪节拍 + 编码器快照 | 航向角 + 轮速 |
-| Service | 控制 | `service/control/control.c` | 偏差 + 轮速 | PID 输出 → PWM |
-| Service | PID | `service/control/pid.c` | 目标值 + 反馈 | PID 计算结果 |
-| Service | 调试显示 | `service/diagnostics/debug_display.c` | 视觉/轮速/PID 数据 | TFT 调试画面 |
+| Service | 视觉 | `service/vision/vision.c` | 灰度图像 | 控制快照 + 调试快照 |
+| Service | 传感器 | `service/sensor/sensor.c` | 陀螺仪节拍 + 编码器快照 | 航向角 + 轮速 context |
+| Service | 控制 | `service/control/control.c` | 视觉快照 + 轮速 | PID handler 输出 → PWM |
+| Service | PID | `service/control/pid.c` | 目标值 + 反馈 | 纯 PID 计算结果 |
+| Service | 调试显示 | `service/diagnostics/debug_display.c` | 视觉/控制/传感器快照 | TFT 调试画面 |
 | BSP | 电机 | `bsp/motor.c` | 速度指令 | H 桥 PWM |
 | BSP | 舵机 | `bsp/servo.c` | PWM 占空比 | 50Hz 舵机信号 |
 | BSP | 显示 | `bsp/display.c` | 边线/中线数据 | TFT180 画面 |
-| Common | 数据 | `common/data.c` | — | 全局共享变量 |
+| Common | 数据 | `common/data.c` | — | legacy 兼容变量 |
 | Common | 初始化 | `common/init.c` | — | 全外设就绪 |
 | Platform | 中断适配 | `platform/isr_adapter.c` | TC264 中断入口 | 清标志 + 编码器累加 + 平台事件 |
 
@@ -391,6 +393,8 @@ scope: app | vision | control | bsp | config | common | isr | core
 - [x] ~~传感器/调试显示服务下沉~~
 - [x] ~~显示像素接口 PAL 化，显示模块不再直接依赖原厂库~~
 - [x] ~~陀螺仪事件计数化，避免 10ms 节拍合并丢失~~
+- [x] ~~Driver + Handler + Context 第一阶段：Sensor/ISR/Control/Vision 状态 owner 收敛~~
+- [x] ~~Vision/Control/DebugDisplay 改为 snapshot 读取，移除跨模块全局输出依赖~~
 - [ ] CPU1 视觉处理 offload（双核并行）
 - [ ] 万能头文件瘦身（消除传递依赖）
 

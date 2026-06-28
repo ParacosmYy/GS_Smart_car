@@ -4,10 +4,9 @@
  *  Created on: 2025年10月31日
  *      Author: Paracosm
  *
- *  全局共享变量定义文件
- *  本文件集中存放跨模块共享的全局变量，包括陀螺仪角度、
- *  采样周期、PIT 中断计数器等。其他模块通过 data.h 中的
- *  extern 声明访问这些变量。
+ *  Legacy global data definition file.
+ *  新架构中运行态数据应优先收敛到明确 owner 的 context/handler。
+ *  本文件仅保留尚未完成迁移的兼容变量。
  */
 
 
@@ -15,13 +14,6 @@
 //-----------define------------------------
 
 //-----------pit中断变量---------------------
-volatile int pit_ch0_count  = 0 ;          // CCU60 通道 0 中断计数（用于主控周期任务）
-volatile int pit_ch1_count  = 0 ;          // CCU60 通道 1 中断计数（用于辅助周期任务）
+volatile int pit_ch0_count  = 0 ;          // CCU60 通道 0 中断计数（兼容保留）
 
 //------------测试变量-----------------------
-
-
-
-
-float z_angle = 0;      // 陀螺仪 Z 轴累计角度，单位：度（°），正值表示顺时针偏转
-float dt = 0.01;        // 控制周期（采样步长），单位：秒（s），默认 10ms，需与 PIT_PERIOD_MS 一致

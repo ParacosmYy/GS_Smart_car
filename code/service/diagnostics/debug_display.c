@@ -17,9 +17,9 @@
 //******************************** Includes *********************************//
 #include <stdint.h>
 #include "debug_display.h"
+#include "control.h"
 #include "display.h"
 #include "platform.h"
-#include "pid.h"
 #include "sensor.h"
 #include "vision.h"
 //******************************** Includes *********************************//
@@ -56,7 +56,13 @@
  * */
 void DebugDisplayService_DrawVisionLines(void)
 {
-    Display_DrawTrackLines(left_line_list, right_line_list, mid_line_list, zip_MT9V03X_H);
+    vision_debug_snapshot_t vision_snapshot = {0};
+
+    Vision_GetDebugSnapshot(&vision_snapshot);
+    Display_DrawTrackLines(vision_snapshot.p_left_line,
+                           vision_snapshot.p_right_line,
+                           vision_snapshot.p_mid_line,
+                           vision_snapshot.line_count);
 }
 
 /**
@@ -73,13 +79,19 @@ void DebugDisplayService_DrawVisionLines(void)
  * */
 void DebugDisplayService_Update(uint32_t events)
 {
+    vision_debug_snapshot_t vision_snapshot = {0};
+    control_output_t control_output = {0.0f, 0.0f, 0.0f};
+
     (void)events;
+
+    Vision_GetDebugSnapshot(&vision_snapshot);
+    Control_GetOutputSnapshot(&control_output);
 
     pal_disp_gray(DEBUG_DISPLAY_IMAGE_X,
                   DEBUG_DISPLAY_IMAGE_Y,
-                  mt9v03x_image_bandw_zip[0],
-                  DEBUG_DISPLAY_IMAGE_WIDTH,
-                  DEBUG_DISPLAY_IMAGE_HEIGHT,
+                  vision_snapshot.p_binary_zip[0],
+                  vision_snapshot.image_width,
+                  vision_snapshot.image_height,
                   PAL_CAM_W / 2,
                   PAL_CAM_H / 2,
                   0);
@@ -100,16 +112,16 @@ void DebugDisplayService_Update(uint32_t events)
     pal_disp_str(DEBUG_DISPLAY_PID_LABEL_X, DEBUG_DISPLAY_RIGHT_PID_Y, "r_spd:");
     pal_disp_int(DEBUG_DISPLAY_PID_VALUE_X,
                  DEBUG_DISPLAY_LEFT_PID_Y,
-                 (int32_t)left_motor_pid_output,
+                 (int32_t)control_output.left_motor,
                  DEBUG_DISPLAY_PID_DIGITS);
     pal_disp_int(DEBUG_DISPLAY_PID_VALUE_X,
                  DEBUG_DISPLAY_RIGHT_PID_Y,
-                 (int32_t)right_motor_pid_output,
+                 (int32_t)control_output.right_motor,
                  DEBUG_DISPLAY_PID_DIGITS);
 
     pal_disp_str(DEBUG_DISPLAY_PID_LABEL_X, DEBUG_DISPLAY_ERROR_Y, "err:");
     pal_disp_int(DEBUG_DISPLAY_PID_VALUE_X,
                  DEBUG_DISPLAY_ERROR_Y,
-                 calculate_error,
+                 vision_snapshot.calculate_error,
                  DEBUG_DISPLAY_ERROR_DIGITS);
 }

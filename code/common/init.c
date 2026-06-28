@@ -18,7 +18,7 @@
 #include "servo.h"
 #include "input.h"
 #include "buzzer.h"
-#include "pid.h"
+#include "control.h"
 
 /**
  * @brief 初始化全部外设与 PID 控制器
@@ -55,11 +55,8 @@ void init_all(void)
     pal_gyro_init();        // ICM20602 六轴陀螺仪初始化，提供 Z 轴角速度
     pal_wireless_init();    // 无线串口初始化，用于上位机数据回传
 
-    //  ---- 步骤 7：PID 控制器参数装载（增益来自 config.h）----
-    PosPID_Init(&servo_pid, SERVO_PID_KP, SERVO_PID_KI, SERVO_PID_KD);              // 舵机位置式 PID
-
-    IncPID_Init(&left_motor_pid, MOTOR_PID_KP, MOTOR_PID_KI, MOTOR_PID_KD);          // 左电机增量式 PID
-    IncPID_Init(&right_motor_pid, MOTOR_PID_KP, MOTOR_PID_KI, MOTOR_PID_KD);         // 右电机增量式 PID
+    //  ---- 步骤 7：控制 Handler 初始化（内部装载 PID 增益）----
+    Control_Init();
 }
 
 /**

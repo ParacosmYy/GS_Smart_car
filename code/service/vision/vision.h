@@ -17,21 +17,26 @@
 #define zip_MT9V03X_H 60 // 压缩后图像高度
 #define zip_MT9V03X_W 94 // 压缩后图像宽度
 
-extern uint8_t mt9v03x_image_bandw[PAL_CAM_H][PAL_CAM_W]; // 原始尺寸二值图（188×120）
-extern uint8_t mt9v03x_image_bandw_zip[60][94];           // 压缩后二值图（94×60）
-extern uint8_t image_threshold ;                          // 当前帧二值化阈值（OTSU 输出）
+typedef struct
+{
+    int16_t calculate_error;   // 中线偏差，供控制器作为 PID 输入
+    uint8_t lost_count;        // 连续丢线计数，超阈值则停止控制
+    uint8_t mid_line;          // 加权平均后的最终中线位置
+    uint8_t image_mid;         // 图像参考中点列
+    uint8_t image_threshold;   // 当前帧二值化阈值
+} vision_control_snapshot_t;
 
-extern uint8_t image_mid ;        // 图像参考中点列（47）
-extern uint8_t mid_line ;         // 加权平均后的最终中线位置
-extern int16_t calculate_error;   // 中线偏差（mid_line - image_mid），PID 输入
-extern int8_t left_line_lost_flag;   // 左边线丢线标志（保留）
-extern int8_t right_line_lost_flag;  // 右边线丢线标志（保留）
-extern uint8_t lost_count;        // 连续丢线计数，超阈值则停止控制
-
-// 按行存储的边线/中线数据（长度 60，索引 0=图像顶部，59=图像底部）
-extern uint8_t left_line_list[zip_MT9V03X_H]  ; // 每行左边界列坐标
-extern uint8_t right_line_list[zip_MT9V03X_H] ; // 每行右边界列坐标
-extern uint8_t mid_line_list[zip_MT9V03X_H] ;   // 每行中线列坐标（左右均值）
+typedef struct
+{
+    const uint8_t (*p_binary_zip)[zip_MT9V03X_W]; // 压缩后二值图
+    const uint8_t *p_left_line;                   // 每行左边界列坐标
+    const uint8_t *p_right_line;                  // 每行右边界列坐标
+    const uint8_t *p_mid_line;                    // 每行中线列坐标
+    uint16_t image_width;                         // 压缩图像宽度
+    uint16_t image_height;                        // 压缩图像高度
+    uint8_t line_count;                           // 边线数组长度
+    int16_t calculate_error;                      // 调试显示用偏差
+} vision_debug_snapshot_t;
 
 /** @brief 灰度图按阈值转二值图（黑=0 赛道，白=255 背景） */
 void set_image_grayscale_to_binary(uint8_t value); //灰度转二值化
@@ -49,6 +54,14 @@ void Vision_Process(void);//找边界 计算权重中值 画线 显示 集合体
 uint8_t Vision_IsFrameReady(void);
 /** @brief 清除摄像头帧就绪标志 */
 void Vision_ClearFrameReady(void);
+/** @brief 读取控制层所需的完整帧快照 */
+void Vision_GetControlSnapshot(vision_control_snapshot_t *p_snapshot);
+/** @brief 读取调试显示所需的视觉快照 */
+void Vision_GetDebugSnapshot(vision_debug_snapshot_t *p_snapshot);
+/** @brief 获取中线偏差 */
+int16_t Vision_GetCalculateError(void);
+/** @brief 获取连续丢线计数 */
+uint8_t Vision_GetLostCount(void);
 
 /**
  * @brief 检测特殊赛道元素（圆环 / 十字路口）

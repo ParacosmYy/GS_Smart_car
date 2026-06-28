@@ -32,17 +32,39 @@
 #define ISR_ADAPTER_ENCODER_WINDOW_SAMPLES   (5)
 //******************************** Defines **********************************//
 
+//******************************** Types ************************************//
+typedef struct
+{
+    volatile int     left_speed_sum;
+    volatile int     right_speed_sum;
+    volatile int     sample_count;
+    volatile uint8_t is_window_ready;
+} isr_adapter_encoder_handler_t;
+
+typedef struct
+{
+    int left_sum;
+    int right_sum;
+    int sample_count;
+} isr_adapter_encoder_snapshot_t;
+//******************************** Types ************************************//
+
 //******************************** Variables ********************************//
-static volatile int     s_left_encoder_speed_sum = 0;
-static volatile int     s_right_encoder_speed_sum = 0;
-static volatile int     s_encoder_sample_count = 0;
-static volatile uint8_t s_is_encoder_window_ready = 0U;
+static isr_adapter_encoder_handler_t s_encoder_handler =
+{
+    0,
+    0,
+    0,
+    0U
+};
 //******************************** Variables ********************************//
 
 //******************************** Declaring ********************************//
 static void IsrAdapter_PreparePitChannel(pal_ch_t pit_channel);
-static void IsrAdapter_AccumulateEncoderSample(void);
-static isr_adapter_event_t IsrAdapter_CheckEncoderWindow(void);
+static void IsrAdapter_EncoderHandlerAccumulate(isr_adapter_encoder_handler_t *p_handler);
+static isr_adapter_event_t IsrAdapter_EncoderHandlerCheckWindow(isr_adapter_encoder_handler_t *p_handler);
+static void IsrAdapter_EncoderHandlerTakeSnapshot(isr_adapter_encoder_handler_t *p_handler,
+                                                  isr_adapter_encoder_snapshot_t *p_snapshot);
 //******************************** Declaring ********************************//
 
 //******************************** Implement ********************************//
@@ -75,17 +97,22 @@ static void IsrAdapter_PreparePitChannel(pal_ch_t pit_channel)
  * @return void : 无返回值。
  *
  * */
-static void IsrAdapter_AccumulateEncoderSample(void)
+static void IsrAdapter_EncoderHandlerAccumulate(isr_adapter_encoder_handler_t *p_handler)
 {
     int left_encoder_count = 0;
     int right_encoder_count = 0;
 
+    if (p_handler == 0)
+    {
+        return;
+    }
+
     left_encoder_count = (int)pal_encoder_get(PAL_CH_ENCODER_L);
     right_encoder_count = (int)pal_encoder_get(PAL_CH_ENCODER_R);
 
-    s_left_encoder_speed_sum += left_encoder_count;
-    s_right_encoder_speed_sum += right_encoder_count;
-    s_encoder_sample_count++;
+    p_handler->left_speed_sum += left_encoder_count;
+    p_handler->right_speed_sum += right_encoder_count;
+    p_handler->sample_count++;
 
     pal_encoder_clear(PAL_CH_ENCODER_L);
     pal_encoder_clear(PAL_CH_ENCODER_R);
@@ -101,18 +128,56 @@ static void IsrAdapter_AccumulateEncoderSample(void)
  * @return isr_adapter_event_t : 平台中断事件。
  *
  * */
-static isr_adapter_event_t IsrAdapter_CheckEncoderWindow(void)
+static isr_adapter_event_t IsrAdapter_EncoderHandlerCheckWindow(isr_adapter_encoder_handler_t *p_handler)
 {
     isr_adapter_event_t events = ISR_ADAPTER_EVT_NONE;
 
-    if ((s_encoder_sample_count >= ISR_ADAPTER_ENCODER_WINDOW_SAMPLES)
-        && (s_is_encoder_window_ready == 0U))
+    if (p_handler == 0)
     {
-        s_is_encoder_window_ready = 1U;
+        return events;
+    }
+
+    if ((p_handler->sample_count >= ISR_ADAPTER_ENCODER_WINDOW_SAMPLES)
+        && (p_handler->is_window_ready == 0U))
+    {
+        p_handler->is_window_ready = 1U;
         events |= ISR_ADAPTER_EVT_ENCODER_WINDOW;
     }
 
     return events;
+}
+
+/**
+ * @brief 复制并复位编码器 Handler 快照。
+ *
+ * 处理步骤：
+ *  1. 复制当前测速窗口累加值。
+ *  2. 清零 Handler 内部状态，打开下一轮窗口上报。
+ *
+ * @param[in,out] p_handler      : 编码器 ISR Handler 上下文。
+ * @param[out]    p_left_sum     : 左编码器累加值。
+ * @param[out]    p_right_sum    : 右编码器累加值。
+ * @param[out]    p_sample_count : 窗口内采样次数。
+ *
+ * @return void : 无返回值。
+ *
+ * */
+static void IsrAdapter_EncoderHandlerTakeSnapshot(isr_adapter_encoder_handler_t *p_handler,
+                                                  isr_adapter_encoder_snapshot_t *p_snapshot)
+{
+    if ((p_handler == 0) || (p_snapshot == 0))
+    {
+        return;
+    }
+
+    p_snapshot->left_sum = p_handler->left_speed_sum;
+    p_snapshot->right_sum = p_handler->right_speed_sum;
+    p_snapshot->sample_count = p_handler->sample_count;
+
+    p_handler->left_speed_sum = 0;
+    p_handler->right_speed_sum = 0;
+    p_handler->sample_count = 0;
+    p_handler->is_window_ready = 0U;
 }
 
 /**
@@ -132,8 +197,8 @@ isr_adapter_event_t IsrAdapter_Ccu60PitCh0(void)
     isr_adapter_event_t events = ISR_ADAPTER_EVT_NONE;
 
     IsrAdapter_PreparePitChannel(PAL_CH_PIT_0);
-    IsrAdapter_AccumulateEncoderSample();
-    events = IsrAdapter_CheckEncoderWindow();
+    IsrAdapter_EncoderHandlerAccumulate(&s_encoder_handler);
+    events = IsrAdapter_EncoderHandlerCheckWindow(&s_encoder_handler);
     return events;
 }
 
@@ -482,6 +547,7 @@ void IsrAdapter_Uart3Error(void)
  * */
 void pal_encoder_take_snapshot(int *p_left_sum, int *p_right_sum, int *p_sample_count)
 {
+    isr_adapter_encoder_snapshot_t snapshot = {0, 0, 0};
     uint32_t irq_state = 0;
 
     if ((p_left_sum == 0) || (p_right_sum == 0) || (p_sample_count == 0))
@@ -490,18 +556,15 @@ void pal_encoder_take_snapshot(int *p_left_sum, int *p_right_sum, int *p_sample_
     }
 
     irq_state = pal_irq_global_disable();
-    *p_left_sum = s_left_encoder_speed_sum;
-    *p_right_sum = s_right_encoder_speed_sum;
-    *p_sample_count = s_encoder_sample_count;
-
-    s_left_encoder_speed_sum = 0;
-    s_right_encoder_speed_sum = 0;
-    s_encoder_sample_count = 0;
-    s_is_encoder_window_ready = 0U;
+    IsrAdapter_EncoderHandlerTakeSnapshot(&s_encoder_handler, &snapshot);
     pal_irq_global_restore(irq_state);
 
-    if (*p_sample_count <= 0)
+    if (snapshot.sample_count <= 0)
     {
-        *p_sample_count = ISR_ADAPTER_ENCODER_WINDOW_SAMPLES;
+        snapshot.sample_count = ISR_ADAPTER_ENCODER_WINDOW_SAMPLES;
     }
+
+    *p_left_sum = snapshot.left_sum;
+    *p_right_sum = snapshot.right_sum;
+    *p_sample_count = snapshot.sample_count;
 }

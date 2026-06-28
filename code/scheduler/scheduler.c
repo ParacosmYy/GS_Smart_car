@@ -4,8 +4,8 @@
  */
 #include "scheduler.h"
 
-/* 系统毫秒计数器（由 10ms PIT ISR 递增）*/
-volatile uint32_t g_system_ms = 0;
+/* 系统毫秒计数器（由 PIT ISR 通过调度器 API 递增）*/
+static volatile uint32_t g_system_ms = 0;
 
 /* 任务表 */
 static sch_task_t s_tasks[SCH_MAX_TASKS];
@@ -14,12 +14,23 @@ static uint8_t    s_count = 0;
 void scheduler_init(void)
 {
     s_count = 0;
+    g_system_ms = 0;
 
     uint8_t i;
     for (i = 0; i < SCH_MAX_TASKS; i++)
     {
         s_tasks[i].active = 0;
     }
+}
+
+void Scheduler_AddTickFromIsr(uint32_t elapsed_ms)
+{
+    g_system_ms += elapsed_ms;
+}
+
+uint32_t Scheduler_GetNowMs(void)
+{
+    return g_system_ms;
 }
 
 int8_t scheduler_add(task_fn_t fn, uint32_t period_ms, event_mask_t trigger)
@@ -42,7 +53,7 @@ int8_t scheduler_add(task_fn_t fn, uint32_t period_ms, event_mask_t trigger)
 void scheduler_run(void)
 {
     event_mask_t events = event_get();
-    uint32_t now = g_system_ms;
+    uint32_t now = Scheduler_GetNowMs();
 
     uint8_t i;
     for (i = 0; i < s_count; i++)
