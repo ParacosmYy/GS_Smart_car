@@ -33,12 +33,88 @@
 //******************************** Defines **********************************//
 
 //******************************** Variables ********************************//
-static volatile int s_left_speed_sum = 0;
-static volatile int s_right_speed_sum = 0;
-static volatile int s_sample_count = 0;
+static volatile int     s_left_encoder_speed_sum = 0;
+static volatile int     s_right_encoder_speed_sum = 0;
+static volatile int     s_encoder_sample_count = 0;
+static volatile uint8_t s_is_encoder_window_ready = 0U;
 //******************************** Variables ********************************//
 
+//******************************** Declaring ********************************//
+static void IsrAdapter_PreparePitChannel(pal_ch_t pit_channel);
+static void IsrAdapter_AccumulateEncoderSample(void);
+static isr_adapter_event_t IsrAdapter_CheckEncoderWindow(void);
+//******************************** Declaring ********************************//
+
 //******************************** Implement ********************************//
+/**
+ * @brief 准备 PIT 中断处理上下文。
+ *
+ * 处理步骤：
+ *  1. 按 TC264 机制重新打开全局中断，允许更高优先级中断响应。
+ *  2. 清除指定 PIT 通道的中断标志。
+ *
+ * @param[in] pit_channel : PIT 逻辑通道。
+ *
+ * @return void : 无返回值。
+ *
+ * */
+static void IsrAdapter_PreparePitChannel(pal_ch_t pit_channel)
+{
+    pal_irq_global_ctrl(0);
+    pal_pit_clear_flag(pit_channel);
+}
+
+/**
+ * @brief 累加一次编码器测速采样。
+ *
+ * 处理步骤：
+ *  1. 读取左右编码器当前计数。
+ *  2. 将计数累加到测速窗口缓存。
+ *  3. 清零硬件编码器计数器，准备下一次 10ms 采样。
+ *
+ * @return void : 无返回值。
+ *
+ * */
+static void IsrAdapter_AccumulateEncoderSample(void)
+{
+    int left_encoder_count = 0;
+    int right_encoder_count = 0;
+
+    left_encoder_count = (int)pal_encoder_get(PAL_CH_ENCODER_L);
+    right_encoder_count = (int)pal_encoder_get(PAL_CH_ENCODER_R);
+
+    s_left_encoder_speed_sum += left_encoder_count;
+    s_right_encoder_speed_sum += right_encoder_count;
+    s_encoder_sample_count++;
+
+    pal_encoder_clear(PAL_CH_ENCODER_L);
+    pal_encoder_clear(PAL_CH_ENCODER_R);
+}
+
+/**
+ * @brief 检查编码器测速窗口是否已完成。
+ *
+ * 处理步骤：
+ *  1. 判断当前采样数是否达到测速窗口大小。
+ *  2. 每个窗口只上报一次完成事件，直到主循环取走快照后重新打开。
+ *
+ * @return isr_adapter_event_t : 平台中断事件。
+ *
+ * */
+static isr_adapter_event_t IsrAdapter_CheckEncoderWindow(void)
+{
+    isr_adapter_event_t events = ISR_ADAPTER_EVT_NONE;
+
+    if ((s_encoder_sample_count >= ISR_ADAPTER_ENCODER_WINDOW_SAMPLES)
+        && (s_is_encoder_window_ready == 0U))
+    {
+        s_is_encoder_window_ready = 1U;
+        events |= ISR_ADAPTER_EVT_ENCODER_WINDOW;
+    }
+
+    return events;
+}
+
 /**
  * @brief 处理 CCU60 PIT 通道 0 中断。
  *
@@ -55,20 +131,9 @@ isr_adapter_event_t IsrAdapter_Ccu60PitCh0(void)
 {
     isr_adapter_event_t events = ISR_ADAPTER_EVT_NONE;
 
-    pal_irq_global_ctrl(0);
-    pal_pit_clear_flag(PAL_CH_PIT_0);
-
-    s_left_speed_sum += pal_encoder_get(PAL_CH_ENCODER_L);
-    s_right_speed_sum += pal_encoder_get(PAL_CH_ENCODER_R);
-    pal_encoder_clear(PAL_CH_ENCODER_L);
-    pal_encoder_clear(PAL_CH_ENCODER_R);
-    s_sample_count++;
-
-    if (s_sample_count >= ISR_ADAPTER_ENCODER_WINDOW_SAMPLES)
-    {
-        events |= ISR_ADAPTER_EVT_ENCODER_WINDOW;
-    }
-
+    IsrAdapter_PreparePitChannel(PAL_CH_PIT_0);
+    IsrAdapter_AccumulateEncoderSample();
+    events = IsrAdapter_CheckEncoderWindow();
     return events;
 }
 
@@ -85,8 +150,7 @@ isr_adapter_event_t IsrAdapter_Ccu60PitCh0(void)
  * */
 isr_adapter_event_t IsrAdapter_Ccu60PitCh1(void)
 {
-    pal_irq_global_ctrl(0);
-    pal_pit_clear_flag(PAL_CH_PIT_1);
+    IsrAdapter_PreparePitChannel(PAL_CH_PIT_1);
 
     return ISR_ADAPTER_EVT_GYRO_TICK;
 }
@@ -103,8 +167,7 @@ isr_adapter_event_t IsrAdapter_Ccu60PitCh1(void)
  * */
 void IsrAdapter_Ccu61PitCh0(void)
 {
-    pal_irq_global_ctrl(0);
-    pal_pit_clear_flag(PAL_CH_PIT_2);
+    IsrAdapter_PreparePitChannel(PAL_CH_PIT_2);
 }
 
 /**
@@ -119,8 +182,7 @@ void IsrAdapter_Ccu61PitCh0(void)
  * */
 void IsrAdapter_Ccu61PitCh1(void)
 {
-    pal_irq_global_ctrl(0);
-    pal_pit_clear_flag(PAL_CH_PIT_3);
+    IsrAdapter_PreparePitChannel(PAL_CH_PIT_3);
 }
 
 /**
@@ -428,13 +490,14 @@ void pal_encoder_take_snapshot(int *p_left_sum, int *p_right_sum, int *p_sample_
     }
 
     irq_state = pal_irq_global_disable();
-    *p_left_sum = s_left_speed_sum;
-    *p_right_sum = s_right_speed_sum;
-    *p_sample_count = s_sample_count;
+    *p_left_sum = s_left_encoder_speed_sum;
+    *p_right_sum = s_right_encoder_speed_sum;
+    *p_sample_count = s_encoder_sample_count;
 
-    s_left_speed_sum = 0;
-    s_right_speed_sum = 0;
-    s_sample_count = 0;
+    s_left_encoder_speed_sum = 0;
+    s_right_encoder_speed_sum = 0;
+    s_encoder_sample_count = 0;
+    s_is_encoder_window_ready = 0U;
     pal_irq_global_restore(irq_state);
 
     if (*p_sample_count <= 0)
