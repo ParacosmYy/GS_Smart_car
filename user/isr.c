@@ -35,9 +35,9 @@
 
 #include "isr_config.h"
 #include "isr.h"
-#include "smartcar_irq_router.h"
+#include "system/irq/smartcar_irq_router.h"
 
-// TC264 中断入口受 IFX_INTERRUPT 宏约束保留在本文件，具体处理统一交给 App IRQ router。
+// TC264 中断入口受 IFX_INTERRUPT 宏约束保留在本文件，具体处理统一交给 system IRQ router。
 //----------------------------------------------------------------------
 // **************************** PIT Interrupt Handlers ****************************
 

@@ -2,7 +2,7 @@
  * @file event.h
  * @brief Lightweight event flag system for ISR-to-main-loop notification.
  *
- *        ISR 调用 event_set_isr() 设置事件位
+ *        ISR 调用 event_post_from_isr() 设置事件位
  *        主循环调用 event_get() 获取并清除全部待处理事件
  *        EVT_GYRO_10MS 使用计数语义，避免主循环阻塞时丢 tick
  *
@@ -25,6 +25,12 @@ typedef uint32_t event_mask_t;
 
 /**
  * @brief ISR 中调用：设置事件标志（原子位或操作）
+ * @param events 一个或多个 EVT_* 标志的位或
+ */
+void event_post_from_isr(event_mask_t events);
+
+/**
+ * @brief 兼容旧接口：ISR 中调用，设置事件标志
  * @param events 一个或多个 EVT_* 标志的位或
  */
 void event_set_isr(event_mask_t events);

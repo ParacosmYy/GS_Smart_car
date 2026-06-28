@@ -13,9 +13,9 @@
  * @brief TC264 ISR adapter implementation.
  *
  * Processing flow:
- * ISR entry functions in user/isr.c call this adapter. The adapter clears
- * hardware flags and performs bounded integer ISR work. Scheduler event
- * publication is owned by the app-level ISR bridge.
+ * System IRQ router calls this adapter after user/isr.c identifies the source.
+ * The adapter clears hardware flags and performs bounded integer ISR work.
+ * Scheduler event publication is owned by SmartcarIrqRouter.
  *
  * @version V1.0 2026-06-29
  *
@@ -208,7 +208,7 @@ isr_adapter_event_t IsrAdapter_Ccu60PitCh0(void)
  * 处理步骤：
  *  1. 按 TC264 机制重新打开全局中断，允许更高优先级中断响应。
  *  2. 清除 PIT 中断标志。
- *  3. 返回陀螺仪 10ms tick 事件，由 App ISR bridge 发布调度事件。
+ *  3. 返回陀螺仪 10ms tick 事件，由 system IRQ router 发布调度事件。
  *
  * @return isr_adapter_event_t : 平台中断事件。
  *
@@ -226,13 +226,16 @@ isr_adapter_event_t IsrAdapter_Ccu60PitCh1(void)
  * 处理步骤：
  *  1. 按 TC264 机制重新打开全局中断，允许更高优先级中断响应。
  *  2. 清除 PIT 中断标志。
+ *  3. 返回空平台事件，保持 adapter 入口签名一致。
  *
- * @return void : 无返回值。
+ * @return isr_adapter_event_t : 平台中断事件。
  *
  * */
-void IsrAdapter_Ccu61PitCh0(void)
+isr_adapter_event_t IsrAdapter_Ccu61PitCh0(void)
 {
     IsrAdapter_PreparePitChannel(PAL_CH_PIT_2);
+
+    return ISR_ADAPTER_EVT_NONE;
 }
 
 /**
@@ -241,13 +244,16 @@ void IsrAdapter_Ccu61PitCh0(void)
  * 处理步骤：
  *  1. 按 TC264 机制重新打开全局中断，允许更高优先级中断响应。
  *  2. 清除 PIT 中断标志。
+ *  3. 返回空平台事件，保持 adapter 入口签名一致。
  *
- * @return void : 无返回值。
+ * @return isr_adapter_event_t : 平台中断事件。
  *
  * */
-void IsrAdapter_Ccu61PitCh1(void)
+isr_adapter_event_t IsrAdapter_Ccu61PitCh1(void)
 {
     IsrAdapter_PreparePitChannel(PAL_CH_PIT_3);
+
+    return ISR_ADAPTER_EVT_NONE;
 }
 
 /**
@@ -257,10 +263,10 @@ void IsrAdapter_Ccu61PitCh1(void)
  *  1. 按 TC264 机制重新打开全局中断，允许更高优先级中断响应。
  *  2. 检查并清除已触发的 ERU 源标志。
  *
- * @return void : 无返回值。
+ * @return isr_adapter_event_t : 平台中断事件。
  *
  * */
-void IsrAdapter_ExtiCh0Ch4(void)
+isr_adapter_event_t IsrAdapter_ExtiCh0Ch4(void)
 {
     pal_irq_global_ctrl(0);
 
@@ -273,6 +279,8 @@ void IsrAdapter_ExtiCh0Ch4(void)
     {
         exti_flag_clear(ERU_CH4_REQ13_P15_5);
     }
+
+    return ISR_ADAPTER_EVT_NONE;
 }
 
 /**
@@ -282,10 +290,10 @@ void IsrAdapter_ExtiCh0Ch4(void)
  *  1. 按 TC264 机制重新打开全局中断，允许更高优先级中断响应。
  *  2. 检查并清除已触发的 ERU 源标志。
  *
- * @return void : 无返回值。
+ * @return isr_adapter_event_t : 平台中断事件。
  *
  * */
-void IsrAdapter_ExtiCh1Ch5(void)
+isr_adapter_event_t IsrAdapter_ExtiCh1Ch5(void)
 {
     pal_irq_global_ctrl(0);
 
@@ -298,6 +306,8 @@ void IsrAdapter_ExtiCh1Ch5(void)
     {
         exti_flag_clear(ERU_CH5_REQ1_P15_8);
     }
+
+    return ISR_ADAPTER_EVT_NONE;
 }
 
 /**
@@ -308,10 +318,10 @@ void IsrAdapter_ExtiCh1Ch5(void)
  *  2. 清除摄像头场同步源标志，并调用摄像头采集回调。
  *  3. 如预留 ERU 源被触发，也同步清除。
  *
- * @return void : 无返回值。
+ * @return isr_adapter_event_t : 平台中断事件。
  *
  * */
-void IsrAdapter_ExtiCh3Ch7(void)
+isr_adapter_event_t IsrAdapter_ExtiCh3Ch7(void)
 {
     pal_irq_global_ctrl(0);
 
@@ -325,6 +335,8 @@ void IsrAdapter_ExtiCh3Ch7(void)
     {
         exti_flag_clear(ERU_CH7_REQ16_P15_1);
     }
+
+    return ISR_ADAPTER_EVT_NONE;
 }
 
 /**
@@ -333,14 +345,17 @@ void IsrAdapter_ExtiCh3Ch7(void)
  * 处理步骤：
  *  1. 按 TC264 机制重新打开全局中断，允许更高优先级中断响应。
  *  2. 调用摄像头 DMA 完成回调。
+ *  3. 返回摄像头帧完成事实，由 system IRQ router 发布调度事件。
  *
- * @return void : 无返回值。
+ * @return isr_adapter_event_t : 平台中断事件。
  *
  * */
-void IsrAdapter_DmaCh5(void)
+isr_adapter_event_t IsrAdapter_DmaCh5(void)
 {
     pal_irq_global_ctrl(0);
     camera_dma_handler();
+
+    return ISR_ADAPTER_EVT_CAMERA_FRAME;
 }
 
 /**
@@ -349,12 +364,14 @@ void IsrAdapter_DmaCh5(void)
  * 处理步骤：
  *  1. 按 TC264 机制重新打开全局中断，允许更高优先级中断响应。
  *
- * @return void : 无返回值。
+ * @return isr_adapter_event_t : 平台中断事件。
  *
  * */
-void IsrAdapter_Uart0Tx(void)
+isr_adapter_event_t IsrAdapter_Uart0Tx(void)
 {
     pal_irq_global_ctrl(0);
+
+    return ISR_ADAPTER_EVT_NONE;
 }
 
 /**
@@ -364,16 +381,18 @@ void IsrAdapter_Uart0Tx(void)
  *  1. 按 TC264 机制重新打开全局中断，允许更高优先级中断响应。
  *  2. 若启用调试串口中断，则分发到调试串口接收处理函数。
  *
- * @return void : 无返回值。
+ * @return isr_adapter_event_t : 平台中断事件。
  *
  * */
-void IsrAdapter_Uart0Rx(void)
+isr_adapter_event_t IsrAdapter_Uart0Rx(void)
 {
     pal_irq_global_ctrl(0);
 
 #if DEBUG_UART_USE_INTERRUPT
     debug_interrupr_handler();
 #endif
+
+    return ISR_ADAPTER_EVT_NONE;
 }
 
 /**
@@ -382,12 +401,14 @@ void IsrAdapter_Uart0Rx(void)
  * 处理步骤：
  *  1. 按 TC264 机制重新打开全局中断，允许更高优先级中断响应。
  *
- * @return void : 无返回值。
+ * @return isr_adapter_event_t : 平台中断事件。
  *
  * */
-void IsrAdapter_Uart1Tx(void)
+isr_adapter_event_t IsrAdapter_Uart1Tx(void)
 {
     pal_irq_global_ctrl(0);
+
+    return ISR_ADAPTER_EVT_NONE;
 }
 
 /**
@@ -397,13 +418,15 @@ void IsrAdapter_Uart1Tx(void)
  *  1. 按 TC264 机制重新打开全局中断，允许更高优先级中断响应。
  *  2. 分发到摄像头配置串口回调。
  *
- * @return void : 无返回值。
+ * @return isr_adapter_event_t : 平台中断事件。
  *
  * */
-void IsrAdapter_Uart1Rx(void)
+isr_adapter_event_t IsrAdapter_Uart1Rx(void)
 {
     pal_irq_global_ctrl(0);
     camera_uart_handler();
+
+    return ISR_ADAPTER_EVT_NONE;
 }
 
 /**
@@ -412,12 +435,14 @@ void IsrAdapter_Uart1Rx(void)
  * 处理步骤：
  *  1. 按 TC264 机制重新打开全局中断，允许更高优先级中断响应。
  *
- * @return void : 无返回值。
+ * @return isr_adapter_event_t : 平台中断事件。
  *
  * */
-void IsrAdapter_Uart2Tx(void)
+isr_adapter_event_t IsrAdapter_Uart2Tx(void)
 {
     pal_irq_global_ctrl(0);
+
+    return ISR_ADAPTER_EVT_NONE;
 }
 
 /**
@@ -427,13 +452,15 @@ void IsrAdapter_Uart2Tx(void)
  *  1. 按 TC264 机制重新打开全局中断，允许更高优先级中断响应。
  *  2. 分发到无线串口接收处理函数。
  *
- * @return void : 无返回值。
+ * @return isr_adapter_event_t : 平台中断事件。
  *
  * */
-void IsrAdapter_Uart2Rx(void)
+isr_adapter_event_t IsrAdapter_Uart2Rx(void)
 {
     pal_irq_global_ctrl(0);
     pal_wireless_rx_handler();
+
+    return ISR_ADAPTER_EVT_NONE;
 }
 
 /**
@@ -442,12 +469,14 @@ void IsrAdapter_Uart2Rx(void)
  * 处理步骤：
  *  1. 按 TC264 机制重新打开全局中断，允许更高优先级中断响应。
  *
- * @return void : 无返回值。
+ * @return isr_adapter_event_t : 平台中断事件。
  *
  * */
-void IsrAdapter_Uart3Tx(void)
+isr_adapter_event_t IsrAdapter_Uart3Tx(void)
 {
     pal_irq_global_ctrl(0);
+
+    return ISR_ADAPTER_EVT_NONE;
 }
 
 /**
@@ -457,13 +486,15 @@ void IsrAdapter_Uart3Tx(void)
  *  1. 按 TC264 机制重新打开全局中断，允许更高优先级中断响应。
  *  2. 分发到 GNSS 串口接收回调。
  *
- * @return void : 无返回值。
+ * @return isr_adapter_event_t : 平台中断事件。
  *
  * */
-void IsrAdapter_Uart3Rx(void)
+isr_adapter_event_t IsrAdapter_Uart3Rx(void)
 {
     pal_irq_global_ctrl(0);
     pal_gnss_rx_callback();
+
+    return ISR_ADAPTER_EVT_NONE;
 }
 
 /**
@@ -473,13 +504,15 @@ void IsrAdapter_Uart3Rx(void)
  *  1. 按 TC264 机制重新打开全局中断，允许更高优先级中断响应。
  *  2. 分发到 ASCLIN 错误处理函数。
  *
- * @return void : 无返回值。
+ * @return isr_adapter_event_t : 平台中断事件。
  *
  * */
-void IsrAdapter_Uart0Error(void)
+isr_adapter_event_t IsrAdapter_Uart0Error(void)
 {
     pal_irq_global_ctrl(0);
     IfxAsclin_Asc_isrError(&uart0_handle);
+
+    return ISR_ADAPTER_EVT_NONE;
 }
 
 /**
@@ -489,13 +522,15 @@ void IsrAdapter_Uart0Error(void)
  *  1. 按 TC264 机制重新打开全局中断，允许更高优先级中断响应。
  *  2. 分发到 ASCLIN 错误处理函数。
  *
- * @return void : 无返回值。
+ * @return isr_adapter_event_t : 平台中断事件。
  *
  * */
-void IsrAdapter_Uart1Error(void)
+isr_adapter_event_t IsrAdapter_Uart1Error(void)
 {
     pal_irq_global_ctrl(0);
     IfxAsclin_Asc_isrError(&uart1_handle);
+
+    return ISR_ADAPTER_EVT_NONE;
 }
 
 /**
@@ -505,13 +540,15 @@ void IsrAdapter_Uart1Error(void)
  *  1. 按 TC264 机制重新打开全局中断，允许更高优先级中断响应。
  *  2. 分发到 ASCLIN 错误处理函数。
  *
- * @return void : 无返回值。
+ * @return isr_adapter_event_t : 平台中断事件。
  *
  * */
-void IsrAdapter_Uart2Error(void)
+isr_adapter_event_t IsrAdapter_Uart2Error(void)
 {
     pal_irq_global_ctrl(0);
     IfxAsclin_Asc_isrError(&uart2_handle);
+
+    return ISR_ADAPTER_EVT_NONE;
 }
 
 /**
@@ -521,13 +558,15 @@ void IsrAdapter_Uart2Error(void)
  *  1. 按 TC264 机制重新打开全局中断，允许更高优先级中断响应。
  *  2. 分发到 ASCLIN 错误处理函数。
  *
- * @return void : 无返回值。
+ * @return isr_adapter_event_t : 平台中断事件。
  *
  * */
-void IsrAdapter_Uart3Error(void)
+isr_adapter_event_t IsrAdapter_Uart3Error(void)
 {
     pal_irq_global_ctrl(0);
     IfxAsclin_Asc_isrError(&uart3_handle);
+
+    return ISR_ADAPTER_EVT_NONE;
 }
 
 /**

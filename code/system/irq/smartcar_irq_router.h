@@ -8,7 +8,7 @@
  *
  * @author GS_Mark
  *
- * @brief Smart car interrupt router interface.
+ * @brief Smart car system interrupt router interface.
  *
  * @version V1.0 2026-06-29
  *

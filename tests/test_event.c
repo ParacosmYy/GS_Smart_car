@@ -32,17 +32,17 @@ int main(void)
 {
     int failures = 0;
 
-    event_set_isr(EVT_CAM_FRAME);
-    event_set_isr(EVT_GYRO_10MS);
+    event_post_from_isr(EVT_CAM_FRAME);
+    event_post_from_isr(EVT_GYRO_10MS);
 
     failures += expect_equal_u32("待处理事件",
                                  event_get(),
                                  EVT_CAM_FRAME | EVT_GYRO_10MS);
     failures += expect_equal_u32("事件已清空", event_get(), EVT_NONE);
 
-    event_set_isr(EVT_GYRO_10MS);
-    event_set_isr(EVT_GYRO_10MS);
-    event_set_isr(EVT_GYRO_10MS);
+    event_post_from_isr(EVT_GYRO_10MS);
+    event_post_from_isr(EVT_GYRO_10MS);
+    event_post_from_isr(EVT_GYRO_10MS);
 
     failures += expect_equal_u32("陀螺仪节拍1", event_get(), EVT_GYRO_10MS);
     failures += expect_equal_u32("陀螺仪节拍2", event_get(), EVT_GYRO_10MS);

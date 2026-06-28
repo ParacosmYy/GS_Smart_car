@@ -7,7 +7,7 @@
  * the cooperative scheduler:
  *    SmartcarApp_TaskGyro      陀螺仪传感器服务处理（事件触发）
  *    SmartcarApp_TaskEncoder   编码器传感器服务处理（事件触发）
- *    SmartcarApp_TaskVision    视觉处理 + 元素检测 + 蜂鸣器（事件触发）
+ *    SmartcarApp_TaskVision    视觉处理 + 元素检测 + 蜂鸣器（DMA 事件触发）
  *    SmartcarApp_TaskControl   控制 PID + 执行器下发（10ms 周期）
  *    DebugDisplayService_Update TFT 调试显示（100ms 周期）
  */
@@ -113,16 +113,10 @@ void SmartcarApp_Init(void)
 
 /**
  * @brief 应用层单次循环
- *        检查摄像头帧就绪 → 置事件 → 调度器分发 → 蜂鸣器时序。
+ *        调度器分发 → 蜂鸣器时序。
  */
 void SmartcarApp_RunOnce(void)
 {
-    /* 摄像头帧就绪检查。 */
-    if (Vision_IsFrameReady() != 0U)
-    {
-        event_set_isr(EVT_CAM_FRAME);
-    }
-
     /* 调度器驱动全部任务 */
     scheduler_run();
 

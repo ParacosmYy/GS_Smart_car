@@ -8,7 +8,7 @@
 static volatile event_mask_t s_events = 0;
 static volatile uint32_t s_gyro_10ms_pending = 0;
 
-void event_set_isr(event_mask_t events)
+void event_post_from_isr(event_mask_t events)
 {
     event_mask_t normal_events = EVT_NONE;
     uint32_t irq_state = 0;
@@ -25,6 +25,11 @@ void event_set_isr(event_mask_t events)
         }
     }
     pal_irq_global_restore(irq_state);
+}
+
+void event_set_isr(event_mask_t events)
+{
+    event_post_from_isr(events);
 }
 
 event_mask_t event_get(void)

@@ -24,7 +24,7 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/code}&quot;"/>
 												<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/code/app}&quot;"/>
-												<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/code/control}&quot;"/>
+												<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/code/system/irq}&quot;"/>
 												<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/code/config}&quot;"/>
 												<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/code/bsp}&quot;"/>
 												<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/code/service/vision}&quot;"/>
@@ -33,6 +33,7 @@
 												<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/code/service/diagnostics}&quot;"/>
 												<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/code/common}&quot;"/>
 												<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/code/platform}&quot;"/>
+												<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/code/impl/tc264}&quot;"/>
 												<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/code/scheduler}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/libraries}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/libraries/infineon_libraries}&quot;"/>
