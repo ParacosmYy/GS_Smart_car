@@ -6,13 +6,13 @@ static uint32_t s_disable_count = 0;
 static uint32_t s_restore_count = 0;
 static uint32_t s_last_restore_state = 0;
 
-uint32_t pal_irq_global_disable(void)
+uint32_t SystemPort_IrqGlobalDisable(void)
 {
     s_disable_count++;
     return 7U;
 }
 
-void pal_irq_global_restore(uint32_t state)
+void SystemPort_IrqGlobalRestore(uint32_t state)
 {
     s_restore_count++;
     s_last_restore_state = state;
