@@ -8,7 +8,7 @@
  * - pal_comm.h
  * - pal_encoder.h
  * - pal_pit.h
- * - pal_system.h
+ * - system_port.h
  * - zf_common_headfile.h
  *
  * @author GS_Mark
@@ -27,10 +27,11 @@
 //******************************** Includes *********************************//
 #include "isr_adapter.h"
 
-#include "platform/device/pal_comm.h"
-#include "platform/mcu/pal_encoder.h"
-#include "platform/mcu/pal_pit.h"
-#include "platform/system/pal_system.h"
+#include "platform/interface/device_if.h"
+#include "platform/interface/mcu_io_if.h"
+#include "platform/system/system_port.h"
+#include "platform/system/encoder_sample.h"
+#include "system/board/smartcar_board_resources.h"
 #include "zf_common_headfile.h"
 //******************************** Includes *********************************//
 
@@ -66,9 +67,9 @@ static isr_adapter_encoder_handler_t s_encoder_handler =
 //******************************** Variables ********************************//
 
 //******************************** Declaring ********************************//
-static void IsrAdapter_PreparePitChannel(pal_pit_id_t pit_channel);
+static void IsrAdapter_PreparePitChannel(uint16_t pit_channel);
 static void IsrAdapter_EncoderHandlerAccumulate(isr_adapter_encoder_handler_t *p_handler);
-static smartcar_irq_fact_t IsrAdapter_EncoderHandlerCheckWindow(isr_adapter_encoder_handler_t *p_handler);
+static irq_fact_t IsrAdapter_EncoderHandlerCheckWindow(isr_adapter_encoder_handler_t *p_handler);
 static void IsrAdapter_EncoderHandlerTakeSnapshot(isr_adapter_encoder_handler_t *p_handler,
                                                   isr_adapter_encoder_snapshot_t *p_snapshot);
 //******************************** Declaring ********************************//
@@ -86,10 +87,10 @@ static void IsrAdapter_EncoderHandlerTakeSnapshot(isr_adapter_encoder_handler_t 
  * @return void : 无返回值。
  *
  * */
-static void IsrAdapter_PreparePitChannel(pal_pit_id_t pit_channel)
+static void IsrAdapter_PreparePitChannel(uint16_t pit_channel)
 {
-    pal_irq_global_ctrl(0);
-    pal_pit_clear_flag(pit_channel);
+    SystemPort_IrqGlobalCtrl(0);
+    McuIo_PitClearFlag(pit_channel);
 }
 
 /**
@@ -113,15 +114,15 @@ static void IsrAdapter_EncoderHandlerAccumulate(isr_adapter_encoder_handler_t *p
         return;
     }
 
-    left_encoder_count = (int)pal_encoder_get(PAL_CH_ENCODER_L);
-    right_encoder_count = (int)pal_encoder_get(PAL_CH_ENCODER_R);
+    left_encoder_count = (int)McuIo_EncoderGet(SMARTCAR_ENCODER_LEFT);
+    right_encoder_count = (int)McuIo_EncoderGet(SMARTCAR_ENCODER_RIGHT);
 
     p_handler->left_speed_sum += left_encoder_count;
     p_handler->right_speed_sum += right_encoder_count;
     p_handler->sample_count++;
 
-    pal_encoder_clear(PAL_CH_ENCODER_L);
-    pal_encoder_clear(PAL_CH_ENCODER_R);
+    McuIo_EncoderClear(SMARTCAR_ENCODER_LEFT);
+    McuIo_EncoderClear(SMARTCAR_ENCODER_RIGHT);
 }
 
 /**
@@ -131,12 +132,12 @@ static void IsrAdapter_EncoderHandlerAccumulate(isr_adapter_encoder_handler_t *p
  *  1. 判断当前采样数是否达到测速窗口大小。
  *  2. 每个窗口只上报一次完成事件，直到主循环取走快照后重新打开。
  *
- * @return smartcar_irq_fact_t : 平台中断事件。
+ * @return irq_fact_t : 平台中断事件。
  *
  * */
-static smartcar_irq_fact_t IsrAdapter_EncoderHandlerCheckWindow(isr_adapter_encoder_handler_t *p_handler)
+static irq_fact_t IsrAdapter_EncoderHandlerCheckWindow(isr_adapter_encoder_handler_t *p_handler)
 {
-    smartcar_irq_fact_t events = SMARTCAR_IRQ_FACT_NONE;
+    irq_fact_t events = IRQ_FACT_NONE;
 
     if (p_handler == 0)
     {
@@ -147,7 +148,7 @@ static smartcar_irq_fact_t IsrAdapter_EncoderHandlerCheckWindow(isr_adapter_enco
         && (p_handler->is_window_ready == 0U))
     {
         p_handler->is_window_ready = 1U;
-        events |= SMARTCAR_IRQ_FACT_ENCODER_WINDOW;
+        events |= IRQ_FACT_ENCODER_WINDOW;
     }
 
     return events;
@@ -195,14 +196,14 @@ static void IsrAdapter_EncoderHandlerTakeSnapshot(isr_adapter_encoder_handler_t 
  *  3. 累加左右编码器计数，并清零硬件编码器计数器。
  *  4. 累计到测速窗口后返回编码器窗口完成事件。
  *
- * @return smartcar_irq_fact_t : 平台中断事件。
+ * @return irq_fact_t : 平台中断事件。
  *
  * */
-smartcar_irq_fact_t IsrAdapter_Ccu60PitCh0(void)
+irq_fact_t IsrAdapter_Ccu60PitCh0(void)
 {
-    smartcar_irq_fact_t events = SMARTCAR_IRQ_FACT_NONE;
+    irq_fact_t events = IRQ_FACT_NONE;
 
-    IsrAdapter_PreparePitChannel(PAL_CH_PIT_0);
+    IsrAdapter_PreparePitChannel(SMARTCAR_PIT_ENCODER_SAMPLE);
     IsrAdapter_EncoderHandlerAccumulate(&s_encoder_handler);
     events = IsrAdapter_EncoderHandlerCheckWindow(&s_encoder_handler);
     return events;
@@ -216,14 +217,14 @@ smartcar_irq_fact_t IsrAdapter_Ccu60PitCh0(void)
  *  2. 清除 PIT 中断标志。
  *  3. 返回陀螺仪 10ms tick 事件，由 system IRQ router 发布调度事件。
  *
- * @return smartcar_irq_fact_t : 平台中断事件。
+ * @return irq_fact_t : 平台中断事件。
  *
  * */
-smartcar_irq_fact_t IsrAdapter_Ccu60PitCh1(void)
+irq_fact_t IsrAdapter_Ccu60PitCh1(void)
 {
-    IsrAdapter_PreparePitChannel(PAL_CH_PIT_1);
+    IsrAdapter_PreparePitChannel(SMARTCAR_PIT_GYRO_TICK);
 
-    return SMARTCAR_IRQ_FACT_GYRO_TICK;
+    return IRQ_FACT_GYRO_TICK;
 }
 
 /**
@@ -234,14 +235,14 @@ smartcar_irq_fact_t IsrAdapter_Ccu60PitCh1(void)
  *  2. 清除 PIT 中断标志。
  *  3. 返回空平台事件，保持 adapter 入口签名一致。
  *
- * @return smartcar_irq_fact_t : 平台中断事件。
+ * @return irq_fact_t : 平台中断事件。
  *
  * */
-smartcar_irq_fact_t IsrAdapter_Ccu61PitCh0(void)
+irq_fact_t IsrAdapter_Ccu61PitCh0(void)
 {
-    IsrAdapter_PreparePitChannel(PAL_CH_PIT_2);
+    IsrAdapter_PreparePitChannel(SMARTCAR_PIT_SPARE_2);
 
-    return SMARTCAR_IRQ_FACT_NONE;
+    return IRQ_FACT_NONE;
 }
 
 /**
@@ -252,14 +253,14 @@ smartcar_irq_fact_t IsrAdapter_Ccu61PitCh0(void)
  *  2. 清除 PIT 中断标志。
  *  3. 返回空平台事件，保持 adapter 入口签名一致。
  *
- * @return smartcar_irq_fact_t : 平台中断事件。
+ * @return irq_fact_t : 平台中断事件。
  *
  * */
-smartcar_irq_fact_t IsrAdapter_Ccu61PitCh1(void)
+irq_fact_t IsrAdapter_Ccu61PitCh1(void)
 {
-    IsrAdapter_PreparePitChannel(PAL_CH_PIT_3);
+    IsrAdapter_PreparePitChannel(SMARTCAR_PIT_SPARE_3);
 
-    return SMARTCAR_IRQ_FACT_NONE;
+    return IRQ_FACT_NONE;
 }
 
 /**
@@ -269,12 +270,12 @@ smartcar_irq_fact_t IsrAdapter_Ccu61PitCh1(void)
  *  1. 按 TC264 机制重新打开全局中断，允许更高优先级中断响应。
  *  2. 检查并清除已触发的 ERU 源标志。
  *
- * @return smartcar_irq_fact_t : 平台中断事件。
+ * @return irq_fact_t : 平台中断事件。
  *
  * */
-smartcar_irq_fact_t IsrAdapter_ExtiCh0Ch4(void)
+irq_fact_t IsrAdapter_ExtiCh0Ch4(void)
 {
-    pal_irq_global_ctrl(0);
+    SystemPort_IrqGlobalCtrl(0);
 
     if (exti_flag_get(ERU_CH0_REQ0_P15_4))
     {
@@ -286,7 +287,7 @@ smartcar_irq_fact_t IsrAdapter_ExtiCh0Ch4(void)
         exti_flag_clear(ERU_CH4_REQ13_P15_5);
     }
 
-    return SMARTCAR_IRQ_FACT_NONE;
+    return IRQ_FACT_NONE;
 }
 
 /**
@@ -296,12 +297,12 @@ smartcar_irq_fact_t IsrAdapter_ExtiCh0Ch4(void)
  *  1. 按 TC264 机制重新打开全局中断，允许更高优先级中断响应。
  *  2. 检查并清除已触发的 ERU 源标志。
  *
- * @return smartcar_irq_fact_t : 平台中断事件。
+ * @return irq_fact_t : 平台中断事件。
  *
  * */
-smartcar_irq_fact_t IsrAdapter_ExtiCh1Ch5(void)
+irq_fact_t IsrAdapter_ExtiCh1Ch5(void)
 {
-    pal_irq_global_ctrl(0);
+    SystemPort_IrqGlobalCtrl(0);
 
     if (exti_flag_get(ERU_CH1_REQ10_P14_3))
     {
@@ -313,7 +314,7 @@ smartcar_irq_fact_t IsrAdapter_ExtiCh1Ch5(void)
         exti_flag_clear(ERU_CH5_REQ1_P15_8);
     }
 
-    return SMARTCAR_IRQ_FACT_NONE;
+    return IRQ_FACT_NONE;
 }
 
 /**
@@ -324,12 +325,12 @@ smartcar_irq_fact_t IsrAdapter_ExtiCh1Ch5(void)
  *  2. 清除摄像头场同步源标志，并调用摄像头采集回调。
  *  3. 如预留 ERU 源被触发，也同步清除。
  *
- * @return smartcar_irq_fact_t : 平台中断事件。
+ * @return irq_fact_t : 平台中断事件。
  *
  * */
-smartcar_irq_fact_t IsrAdapter_ExtiCh3Ch7(void)
+irq_fact_t IsrAdapter_ExtiCh3Ch7(void)
 {
-    pal_irq_global_ctrl(0);
+    SystemPort_IrqGlobalCtrl(0);
 
     if (exti_flag_get(ERU_CH3_REQ6_P02_0))
     {
@@ -342,7 +343,7 @@ smartcar_irq_fact_t IsrAdapter_ExtiCh3Ch7(void)
         exti_flag_clear(ERU_CH7_REQ16_P15_1);
     }
 
-    return SMARTCAR_IRQ_FACT_NONE;
+    return IRQ_FACT_NONE;
 }
 
 /**
@@ -353,15 +354,15 @@ smartcar_irq_fact_t IsrAdapter_ExtiCh3Ch7(void)
  *  2. 调用摄像头 DMA 完成回调。
  *  3. 返回摄像头帧完成事实，由 system IRQ router 发布调度事件。
  *
- * @return smartcar_irq_fact_t : 平台中断事件。
+ * @return irq_fact_t : 平台中断事件。
  *
  * */
-smartcar_irq_fact_t IsrAdapter_DmaCh5(void)
+irq_fact_t IsrAdapter_DmaCh5(void)
 {
-    pal_irq_global_ctrl(0);
+    SystemPort_IrqGlobalCtrl(0);
     camera_dma_handler();
 
-    return SMARTCAR_IRQ_FACT_CAMERA_FRAME;
+    return IRQ_FACT_CAMERA_FRAME;
 }
 
 /**
@@ -370,14 +371,14 @@ smartcar_irq_fact_t IsrAdapter_DmaCh5(void)
  * 处理步骤：
  *  1. 按 TC264 机制重新打开全局中断，允许更高优先级中断响应。
  *
- * @return smartcar_irq_fact_t : 平台中断事件。
+ * @return irq_fact_t : 平台中断事件。
  *
  * */
-smartcar_irq_fact_t IsrAdapter_Uart0Tx(void)
+irq_fact_t IsrAdapter_Uart0Tx(void)
 {
-    pal_irq_global_ctrl(0);
+    SystemPort_IrqGlobalCtrl(0);
 
-    return SMARTCAR_IRQ_FACT_NONE;
+    return IRQ_FACT_NONE;
 }
 
 /**
@@ -387,18 +388,18 @@ smartcar_irq_fact_t IsrAdapter_Uart0Tx(void)
  *  1. 按 TC264 机制重新打开全局中断，允许更高优先级中断响应。
  *  2. 若启用调试串口中断，则分发到调试串口接收处理函数。
  *
- * @return smartcar_irq_fact_t : 平台中断事件。
+ * @return irq_fact_t : 平台中断事件。
  *
  * */
-smartcar_irq_fact_t IsrAdapter_Uart0Rx(void)
+irq_fact_t IsrAdapter_Uart0Rx(void)
 {
-    pal_irq_global_ctrl(0);
+    SystemPort_IrqGlobalCtrl(0);
 
 #if DEBUG_UART_USE_INTERRUPT
     debug_interrupr_handler();
 #endif
 
-    return SMARTCAR_IRQ_FACT_NONE;
+    return IRQ_FACT_NONE;
 }
 
 /**
@@ -407,14 +408,14 @@ smartcar_irq_fact_t IsrAdapter_Uart0Rx(void)
  * 处理步骤：
  *  1. 按 TC264 机制重新打开全局中断，允许更高优先级中断响应。
  *
- * @return smartcar_irq_fact_t : 平台中断事件。
+ * @return irq_fact_t : 平台中断事件。
  *
  * */
-smartcar_irq_fact_t IsrAdapter_Uart1Tx(void)
+irq_fact_t IsrAdapter_Uart1Tx(void)
 {
-    pal_irq_global_ctrl(0);
+    SystemPort_IrqGlobalCtrl(0);
 
-    return SMARTCAR_IRQ_FACT_NONE;
+    return IRQ_FACT_NONE;
 }
 
 /**
@@ -424,15 +425,15 @@ smartcar_irq_fact_t IsrAdapter_Uart1Tx(void)
  *  1. 按 TC264 机制重新打开全局中断，允许更高优先级中断响应。
  *  2. 分发到摄像头配置串口回调。
  *
- * @return smartcar_irq_fact_t : 平台中断事件。
+ * @return irq_fact_t : 平台中断事件。
  *
  * */
-smartcar_irq_fact_t IsrAdapter_Uart1Rx(void)
+irq_fact_t IsrAdapter_Uart1Rx(void)
 {
-    pal_irq_global_ctrl(0);
+    SystemPort_IrqGlobalCtrl(0);
     camera_uart_handler();
 
-    return SMARTCAR_IRQ_FACT_NONE;
+    return IRQ_FACT_NONE;
 }
 
 /**
@@ -441,14 +442,14 @@ smartcar_irq_fact_t IsrAdapter_Uart1Rx(void)
  * 处理步骤：
  *  1. 按 TC264 机制重新打开全局中断，允许更高优先级中断响应。
  *
- * @return smartcar_irq_fact_t : 平台中断事件。
+ * @return irq_fact_t : 平台中断事件。
  *
  * */
-smartcar_irq_fact_t IsrAdapter_Uart2Tx(void)
+irq_fact_t IsrAdapter_Uart2Tx(void)
 {
-    pal_irq_global_ctrl(0);
+    SystemPort_IrqGlobalCtrl(0);
 
-    return SMARTCAR_IRQ_FACT_NONE;
+    return IRQ_FACT_NONE;
 }
 
 /**
@@ -458,15 +459,15 @@ smartcar_irq_fact_t IsrAdapter_Uart2Tx(void)
  *  1. 按 TC264 机制重新打开全局中断，允许更高优先级中断响应。
  *  2. 分发到无线串口接收处理函数。
  *
- * @return smartcar_irq_fact_t : 平台中断事件。
+ * @return irq_fact_t : 平台中断事件。
  *
  * */
-smartcar_irq_fact_t IsrAdapter_Uart2Rx(void)
+irq_fact_t IsrAdapter_Uart2Rx(void)
 {
-    pal_irq_global_ctrl(0);
-    pal_wireless_rx_handler();
+    SystemPort_IrqGlobalCtrl(0);
+    Device_WirelessRxHandler();
 
-    return SMARTCAR_IRQ_FACT_NONE;
+    return IRQ_FACT_NONE;
 }
 
 /**
@@ -475,14 +476,14 @@ smartcar_irq_fact_t IsrAdapter_Uart2Rx(void)
  * 处理步骤：
  *  1. 按 TC264 机制重新打开全局中断，允许更高优先级中断响应。
  *
- * @return smartcar_irq_fact_t : 平台中断事件。
+ * @return irq_fact_t : 平台中断事件。
  *
  * */
-smartcar_irq_fact_t IsrAdapter_Uart3Tx(void)
+irq_fact_t IsrAdapter_Uart3Tx(void)
 {
-    pal_irq_global_ctrl(0);
+    SystemPort_IrqGlobalCtrl(0);
 
-    return SMARTCAR_IRQ_FACT_NONE;
+    return IRQ_FACT_NONE;
 }
 
 /**
@@ -492,15 +493,15 @@ smartcar_irq_fact_t IsrAdapter_Uart3Tx(void)
  *  1. 按 TC264 机制重新打开全局中断，允许更高优先级中断响应。
  *  2. 分发到 GNSS 串口接收回调。
  *
- * @return smartcar_irq_fact_t : 平台中断事件。
+ * @return irq_fact_t : 平台中断事件。
  *
  * */
-smartcar_irq_fact_t IsrAdapter_Uart3Rx(void)
+irq_fact_t IsrAdapter_Uart3Rx(void)
 {
-    pal_irq_global_ctrl(0);
-    pal_gnss_rx_callback();
+    SystemPort_IrqGlobalCtrl(0);
+    Device_GnssRxCallback();
 
-    return SMARTCAR_IRQ_FACT_NONE;
+    return IRQ_FACT_NONE;
 }
 
 /**
@@ -510,15 +511,15 @@ smartcar_irq_fact_t IsrAdapter_Uart3Rx(void)
  *  1. 按 TC264 机制重新打开全局中断，允许更高优先级中断响应。
  *  2. 分发到 ASCLIN 错误处理函数。
  *
- * @return smartcar_irq_fact_t : 平台中断事件。
+ * @return irq_fact_t : 平台中断事件。
  *
  * */
-smartcar_irq_fact_t IsrAdapter_Uart0Error(void)
+irq_fact_t IsrAdapter_Uart0Error(void)
 {
-    pal_irq_global_ctrl(0);
+    SystemPort_IrqGlobalCtrl(0);
     IfxAsclin_Asc_isrError(&uart0_handle);
 
-    return SMARTCAR_IRQ_FACT_NONE;
+    return IRQ_FACT_NONE;
 }
 
 /**
@@ -528,15 +529,15 @@ smartcar_irq_fact_t IsrAdapter_Uart0Error(void)
  *  1. 按 TC264 机制重新打开全局中断，允许更高优先级中断响应。
  *  2. 分发到 ASCLIN 错误处理函数。
  *
- * @return smartcar_irq_fact_t : 平台中断事件。
+ * @return irq_fact_t : 平台中断事件。
  *
  * */
-smartcar_irq_fact_t IsrAdapter_Uart1Error(void)
+irq_fact_t IsrAdapter_Uart1Error(void)
 {
-    pal_irq_global_ctrl(0);
+    SystemPort_IrqGlobalCtrl(0);
     IfxAsclin_Asc_isrError(&uart1_handle);
 
-    return SMARTCAR_IRQ_FACT_NONE;
+    return IRQ_FACT_NONE;
 }
 
 /**
@@ -546,15 +547,15 @@ smartcar_irq_fact_t IsrAdapter_Uart1Error(void)
  *  1. 按 TC264 机制重新打开全局中断，允许更高优先级中断响应。
  *  2. 分发到 ASCLIN 错误处理函数。
  *
- * @return smartcar_irq_fact_t : 平台中断事件。
+ * @return irq_fact_t : 平台中断事件。
  *
  * */
-smartcar_irq_fact_t IsrAdapter_Uart2Error(void)
+irq_fact_t IsrAdapter_Uart2Error(void)
 {
-    pal_irq_global_ctrl(0);
+    SystemPort_IrqGlobalCtrl(0);
     IfxAsclin_Asc_isrError(&uart2_handle);
 
-    return SMARTCAR_IRQ_FACT_NONE;
+    return IRQ_FACT_NONE;
 }
 
 /**
@@ -564,15 +565,15 @@ smartcar_irq_fact_t IsrAdapter_Uart2Error(void)
  *  1. 按 TC264 机制重新打开全局中断，允许更高优先级中断响应。
  *  2. 分发到 ASCLIN 错误处理函数。
  *
- * @return smartcar_irq_fact_t : 平台中断事件。
+ * @return irq_fact_t : 平台中断事件。
  *
  * */
-smartcar_irq_fact_t IsrAdapter_Uart3Error(void)
+irq_fact_t IsrAdapter_Uart3Error(void)
 {
-    pal_irq_global_ctrl(0);
+    SystemPort_IrqGlobalCtrl(0);
     IfxAsclin_Asc_isrError(&uart3_handle);
 
-    return SMARTCAR_IRQ_FACT_NONE;
+    return IRQ_FACT_NONE;
 }
 
 /**
@@ -590,7 +591,7 @@ smartcar_irq_fact_t IsrAdapter_Uart3Error(void)
  * @return void : 无返回值。
  *
  * */
-void pal_encoder_take_snapshot(int *p_left_sum, int *p_right_sum, int *p_sample_count)
+void EncoderSample_TakeSnapshot(int *p_left_sum, int *p_right_sum, int *p_sample_count)
 {
     isr_adapter_encoder_snapshot_t snapshot = {0, 0, 0};
     uint32_t irq_state = 0;
@@ -600,9 +601,9 @@ void pal_encoder_take_snapshot(int *p_left_sum, int *p_right_sum, int *p_sample_
         return;
     }
 
-    irq_state = pal_irq_global_disable();
+    irq_state = SystemPort_IrqGlobalDisable();
     IsrAdapter_EncoderHandlerTakeSnapshot(&s_encoder_handler, &snapshot);
-    pal_irq_global_restore(irq_state);
+    SystemPort_IrqGlobalRestore(irq_state);
 
     if (snapshot.sample_count <= 0)
     {
