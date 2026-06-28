@@ -18,11 +18,11 @@
 
 ## 系统架构
 
-本项目采用单向依赖的 MCU 固件分层：上层表达车辆业务和控制策略，下层隔离芯片、板级资源和 Vendor SDK。移植 MCU、替换摄像头或调整板级资源时，改动应优先收敛在 `code/impl/<target>`、`code/platform` 契约实现和板级配置，不影响 App 与核心 Service。
+本项目采用单向依赖的 MCU 固件分层。上层聚焦车辆任务、传感器算法和控制策略，下层隔离 TC264、板级资源与 Vendor SDK。后续换 MCU、换摄像头或调整板级资源时，改动应收敛在目标适配层、Platform 契约实现和板级配置中。
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables': {'fontFamily':'Segoe UI,Arial,sans-serif','fontSize':'13px','primaryColor':'#ffffff','primaryTextColor':'#172033','lineColor':'#8a96a8','clusterBkg':'#f8fafc','clusterBorder':'#d8dee9'}}}%%
-flowchart TB
+%%{init: {'theme':'base','themeVariables': {'fontFamily':'Segoe UI,Arial,sans-serif','fontSize':'13px','primaryColor':'#ffffff','primaryTextColor':'#172033','lineColor':'#8792a2','clusterBkg':'#f8fafc','clusterBorder':'#d8dee9'}}}%%
+flowchart LR
     classDef entry fill:#f8fafc,stroke:#64748b,stroke-width:1.2px,color:#0f172a
     classDef system fill:#eef6ff,stroke:#2563eb,stroke-width:1.6px,color:#1e3a8a
     classDef app fill:#ecfdf5,stroke:#059669,stroke-width:1.6px,color:#065f46
@@ -31,39 +31,69 @@ flowchart TB
     classDef impl fill:#fff1f2,stroke:#e11d48,stroke-width:1.6px,color:#9f1239
     classDef vendor fill:#f1f5f9,stroke:#475569,stroke-width:1.2px,color:#334155
 
-    ENTRY["SDK Entry<br/>user/cpu0_main.c<br/>user/isr.c"]:::entry
-    SYSTEM["System<br/>runtime · board · irq router"]:::system
-    APP["Application<br/>SmartcarApp task orchestration"]:::app
-    SCHED["Scheduler<br/>event queue · cooperative dispatch"]:::system
-    SERVICE["Service / Handler<br/>vision · sensor · control · diagnostics"]:::service
-    BSP["BSP / Driver<br/>motor · servo · display · input · buzzer"]:::service
-
-    subgraph PLATFORM["Platform Contract"]
-        COMMON["common<br/>resource ids"]:::platform
-        MCU["mcu<br/>gpio · pwm · pit · uart · encoder"]:::platform
-        DEVICE["device<br/>camera · display · imu · key · comm"]:::platform
-        SYS["system<br/>clock · irq · core sync"]:::platform
+    subgraph ENTRY["入口层 · SDK Entry"]
+        direction TB
+        BOOT["启动入口<br/>cpu0_main.c"]:::entry
+        ISR["中断入口<br/>user/isr.c"]:::entry
     end
 
-    IMPL["TC264 Impl<br/>platform_tc264 · irq_port · isr_adapter"]:::impl
-    VENDOR["Vendor SDK<br/>SEEKFREE · Infineon iLLD"]:::vendor
+    subgraph SYS_LAYER["系统层 · System"]
+        direction TB
+        RUNTIME["启动编排<br/>runtime"]:::system
+        BOARD["板级装配<br/>board"]:::system
+        IRQ["中断路由<br/>irq router"]:::system
+    end
 
-    ENTRY --> SYSTEM
-    SYSTEM --> APP
-    SYSTEM --> SCHED
+    subgraph APP_LAYER["应用层 · App"]
+        direction TB
+        APP["任务注册<br/>SmartcarApp"]:::app
+        SCHED["协作调度<br/>scheduler"]:::app
+    end
+
+    subgraph SVC_LAYER["服务层 · Service / Handler"]
+        direction TB
+        SENSOR["传感器<br/>sensor"]:::service
+        VISION["视觉处理<br/>vision"]:::service
+        CONTROL["控制闭环<br/>control"]:::service
+        DIAG["诊断反馈<br/>diagnostics"]:::service
+    end
+
+    subgraph BSP_LAYER["设备层 · BSP / Driver"]
+        direction TB
+        DRIVER["电机 / 舵机 / 显示<br/>按键 / 蜂鸣器"]:::service
+    end
+
+    subgraph PAL_LAYER["平台契约 · Platform"]
+        direction TB
+        PAL_MCU["MCU 能力<br/>gpio · pwm · pit · uart"]:::platform
+        PAL_DEVICE["设备能力<br/>camera · display · imu"]:::platform
+        PAL_SYSTEM["系统能力<br/>clock · irq · core sync"]:::platform
+    end
+
+    IMPL["目标适配 · TC264 Impl<br/>platform_tc264 · irq_port · isr_adapter"]:::impl
+    VENDOR["厂家底座 · Vendor SDK<br/>SEEKFREE · Infineon iLLD"]:::vendor
+
+    BOOT --> RUNTIME
+    ISR --> IRQ
+    RUNTIME --> BOARD
+    RUNTIME --> APP
     APP --> SCHED
-    SCHED --> SERVICE
-    SERVICE --> BSP
-    SERVICE --> MCU
-    SERVICE --> DEVICE
-    BSP --> MCU
-    BSP --> DEVICE
-    SYSTEM --> SYS
-    COMMON --> MCU
-    COMMON --> DEVICE
-    MCU --> IMPL
-    DEVICE --> IMPL
-    SYS --> IMPL
+    SCHED --> SENSOR
+    SCHED --> VISION
+    SCHED --> CONTROL
+    SCHED --> DIAG
+    CONTROL --> DRIVER
+    DIAG --> DRIVER
+    SENSOR --> PAL_MCU
+    SENSOR --> PAL_DEVICE
+    VISION --> PAL_DEVICE
+    DRIVER --> PAL_MCU
+    DRIVER --> PAL_DEVICE
+    BOARD --> PAL_SYSTEM
+    IRQ --> IMPL
+    PAL_MCU --> IMPL
+    PAL_DEVICE --> IMPL
+    PAL_SYSTEM --> IMPL
     IMPL --> VENDOR
 ```
 
@@ -91,17 +121,17 @@ flowchart LR
     classDef event fill:#ecfdf5,stroke:#059669,stroke-width:1.5px,color:#065f46
     classDef service fill:#fff7ed,stroke:#ea580c,stroke-width:1.5px,color:#9a3412
 
-    HW["TC264 IRQ<br/>PIT · DMA · ERU · UART"]:::hw
-    ENTRY["user/isr.c<br/>IFX_INTERRUPT"]:::hw
-    PORT["tc264_irq_port<br/>source binding"]:::port
-    ROUTER["SmartcarIrqRouter<br/>fact validation"]:::router
-    ADAPTER["isr_adapter<br/>clear flag · sample · callback"]:::port
-    EVENT["event.c<br/>post / tick policy"]:::event
-    SCHED["scheduler.c<br/>cooperative dispatch"]:::event
-    TASK["Service tasks<br/>Vision · Sensor · Control"]:::service
+    HW["硬件中断<br/>PIT · DMA · ERU · UART"]:::hw
+    ENTRY["SDK 入口<br/>IFX_INTERRUPT"]:::hw
+    PORT["TC264 端口<br/>tc264_irq_port"]:::port
+    ROUTER["系统路由<br/>SmartcarIrqRouter"]:::router
+    ADAPTER["硬件适配<br/>isr_adapter"]:::port
+    EVENT["事件入口<br/>event.c"]:::event
+    SCHED["任务调度<br/>scheduler.c"]:::event
+    TASK["服务任务<br/>视觉 · 传感器 · 控制"]:::service
 
     HW --> ENTRY --> PORT --> ROUTER
-    ROUTER -->|call bound handler| ADAPTER
+    ROUTER -->|调用 Handler| ADAPTER
     ADAPTER -->|SMARTCAR_IRQ_FACT_*| ROUTER
     ROUTER -->|EVT_* / tick| EVENT --> SCHED --> TASK
 ```
