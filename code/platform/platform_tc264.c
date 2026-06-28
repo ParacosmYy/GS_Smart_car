@@ -2,8 +2,9 @@
  * @file platform_tc264.c
  * @brief TC264 平台实现层（包装逐飞 SEEKFREE TC264 库）
  *
- *        本文件是整个项目中 **唯一** 包含 zf_common_headfile.h 的源文件。
- *        所有自研代码通过 platform.h 的 pal_* 接口访问硬件，
+ *        本文件集中包装逐飞头文件依赖。少量启动/ISR 入口仍因
+ *        TC264 中断宏限制保留 Vendor 头文件。
+ *        业务自研代码通过 platform.h 的 pal_* 接口访问硬件，
  *        本文件负责将 pal_* 调用转发到逐飞库 API。
  *
  *        换 MCU 时：编写新的 platform_<mcu>.c 替换本文件即可。
@@ -197,6 +198,21 @@ void pal_disp_init(void)
     tft180_init();
 }
 
+void pal_disp_point(int16_t x, int16_t y, uint16_t color)
+{
+    tft180_draw_point(x, y, color);
+}
+
+uint16_t pal_disp_width(void)
+{
+    return (uint16_t)tft180_width_max;
+}
+
+uint16_t pal_disp_height(void)
+{
+    return (uint16_t)tft180_height_max;
+}
+
 void pal_disp_gray(int16_t x, int16_t y, const uint8_t *img,
                    uint16_t w, uint16_t h,
                    uint16_t dis_w, uint16_t dis_h, uint8_t threshold)
@@ -220,6 +236,16 @@ void pal_disp_int(int16_t x, int16_t y, int32_t v, uint8_t digits)
 void pal_wireless_init(void)
 {
     wireless_uart_init();
+}
+
+void pal_wireless_rx_handler(void)
+{
+    wireless_module_uart_handler();
+}
+
+void pal_gnss_rx_callback(void)
+{
+    gnss_uart_callback();
 }
 
 /*===========================================================================
@@ -246,6 +272,16 @@ void pal_sys_debug_init(void)
 void pal_sys_core_sync(void)
 {
     cpu_wait_event_ready();
+}
+
+uint32_t pal_irq_global_disable(void)
+{
+    return interrupt_global_disable();
+}
+
+void pal_irq_global_restore(uint32_t state)
+{
+    interrupt_global_enable(state);
 }
 
 void pal_irq_global_ctrl(uint8_t enable)

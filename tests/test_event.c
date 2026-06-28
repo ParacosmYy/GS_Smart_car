@@ -1,0 +1,57 @@
+#include <stdint.h>
+#include <stdio.h>
+#include "event.h"
+
+static uint32_t s_disable_count = 0;
+static uint32_t s_restore_count = 0;
+static uint32_t s_last_restore_state = 0;
+
+uint32_t pal_irq_global_disable(void)
+{
+    s_disable_count++;
+    return 7U;
+}
+
+void pal_irq_global_restore(uint32_t state)
+{
+    s_restore_count++;
+    s_last_restore_state = state;
+}
+
+static int expect_equal_u32(const char *name, uint32_t actual, uint32_t expected)
+{
+    if (actual != expected)
+    {
+        (void)printf("%s: expected %u, got %u\n", name, expected, actual);
+        return 1;
+    }
+    return 0;
+}
+
+int main(void)
+{
+    int failures = 0;
+
+    event_set_isr(EVT_CAM_FRAME);
+    event_set_isr(EVT_GYRO_10MS);
+
+    failures += expect_equal_u32("pending events",
+                                 event_get(),
+                                 EVT_CAM_FRAME | EVT_GYRO_10MS);
+    failures += expect_equal_u32("events cleared", event_get(), EVT_NONE);
+
+    event_set_isr(EVT_GYRO_10MS);
+    event_set_isr(EVT_GYRO_10MS);
+    event_set_isr(EVT_GYRO_10MS);
+
+    failures += expect_equal_u32("gyro tick 1", event_get(), EVT_GYRO_10MS);
+    failures += expect_equal_u32("gyro tick 2", event_get(), EVT_GYRO_10MS);
+    failures += expect_equal_u32("gyro tick 3", event_get(), EVT_GYRO_10MS);
+    failures += expect_equal_u32("gyro ticks drained", event_get(), EVT_NONE);
+
+    failures += expect_equal_u32("disable count", s_disable_count, 11U);
+    failures += expect_equal_u32("restore count", s_restore_count, 11U);
+    failures += expect_equal_u32("restore state", s_last_restore_state, 7U);
+
+    return failures;
+}

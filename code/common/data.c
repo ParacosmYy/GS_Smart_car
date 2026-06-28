@@ -14,12 +14,9 @@
 #include "data.h"
 //-----------define------------------------
 
-
-#define GYRO_OFFSET_BUF_SIZE 32   // 陀螺仪零漂校准缓冲区大小（采样点数）
-
 //-----------pit中断变量---------------------
-int pit_ch0_count  = 0 ;          // CCU60 通道 0 中断计数（用于主控周期任务）
-int pit_ch1_count  = 0 ;          // CCU60 通道 1 中断计数（用于辅助周期任务）
+volatile int pit_ch0_count  = 0 ;          // CCU60 通道 0 中断计数（用于主控周期任务）
+volatile int pit_ch1_count  = 0 ;          // CCU60 通道 1 中断计数（用于辅助周期任务）
 
 //------------测试变量-----------------------
 

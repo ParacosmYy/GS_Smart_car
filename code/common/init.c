@@ -10,8 +10,14 @@
  *  pit_init_all() 配置两个周期中断定时器（CCU60 通道 0/1），
  *  周期由 config.h 中的 PIT_PERIOD_MS 决定（默认 10ms）。
  */
+#include "init.h"
 #include "platform.h"
 #include "config.h"
+#include "motor.h"
+#include "servo.h"
+#include "input.h"
+#include "buzzer.h"
+#include "pid.h"
 
 /**
  * @brief 初始化全部外设与 PID 控制器
@@ -24,8 +30,6 @@
  */
 void init_all(void)
 {
-    uint8_t i = 0;
-
     // ---- 步骤 1：串口初始化 ----
     pal_uart_init(PAL_CH_UART_CAM, 115200);//摄像头串口，波特率 115200
     pal_uart_init(PAL_CH_UART_BT, 115200);//蓝牙串口，波特率 115200
@@ -35,15 +39,15 @@ void init_all(void)
     pal_encoder_init(PAL_CH_ENCODER_R);   // 右轮编码器，TIM4 定时器
 
     //  ---- 步骤 3：执行机构 ----
-    motor_init();       // 直流电机驱动初始化（PWM 频率见 config.h MOTOR_PWM_HZ）
-    servo_init();       // 舵机初始化（PWM 频率 50Hz，见 config.h SERVO_PWM_HZ）
+    Motor_Init();       // 直流电机驱动初始化（PWM 频率见 config.h MOTOR_PWM_HZ）
+    Servo_Init();       // 舵机初始化（PWM 频率 50Hz，见 config.h SERVO_PWM_HZ）
 
     //  ---- 步骤 4：显示与图像采集 ----
     pal_disp_init();    // TFT180 LCD 显示屏初始化，用于实时调试画面
     pal_cam_init();     // MT9V03X 灰度摄像头初始化，逐帧采集赛道图像
 
     //  ---- 步骤 5：人机交互外设 ----
-    key_init_all();     // 全部按键初始化，用于启停与模式切换
+    Input_Init();       // 全部按键初始化，用于启停与模式切换
     buzzer_init();      // 蜂鸣器初始化，用于报警与提示
 
     //  ---- 步骤 6：传感器与无线通信 ----

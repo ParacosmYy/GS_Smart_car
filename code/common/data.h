@@ -12,12 +12,12 @@
 #ifndef CODE_DATA_H_
 #define CODE_DATA_H_
 
-#include "platform.h"
+#include <stdint.h>
 
 #define GYRO_OFFSET_BUF_SIZE 32   // 陀螺仪零漂校准缓冲区大小（采样点数）
 
-extern int pit_ch0_count  ;       // CCU60 通道 0 中断计数
-extern int pit_ch1_count   ;       // CCU60 通道 1 中断计数
+extern volatile int pit_ch0_count  ;       // CCU60 通道 0 中断计数
+extern volatile int pit_ch1_count   ;       // CCU60 通道 1 中断计数
 
 
 //extern uint16_t count  ;

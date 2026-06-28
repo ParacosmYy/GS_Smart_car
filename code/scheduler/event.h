@@ -4,6 +4,7 @@
  *
  *        ISR 调用 event_set_isr() 设置事件位
  *        主循环调用 event_get() 获取并清除全部待处理事件
+ *        EVT_GYRO_10MS 使用计数语义，避免主循环阻塞时丢 tick
  *
  *        单生产者（ISR）→ 单消费者（主循环），无需 RTOS
  */
@@ -30,6 +31,7 @@ void event_set_isr(event_mask_t events);
 
 /**
  * @brief 主循环调用：获取并清除全部待处理事件
+ *        计数事件每次调用只消费一个待处理 tick
  * @return 当前待处理的事件掩码（调用后全部清零）
  */
 event_mask_t event_get(void);

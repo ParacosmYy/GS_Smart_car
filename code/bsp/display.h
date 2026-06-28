@@ -24,6 +24,13 @@ void draw_piont(uint8_t x , uint8_t y ,const uint16_t color);
 
 /**
  * @brief 在TFT上绘制赛道左/右/中线（调试显示）
+ * @param p_left_line  左边线数组
+ * @param p_right_line 右边线数组
+ * @param p_mid_line   中线数组
+ * @param line_count   数组长度
  */
-void draw_all_lines_test(void);
+void Display_DrawTrackLines(const uint8_t *p_left_line,
+                            const uint8_t *p_right_line,
+                            const uint8_t *p_mid_line,
+                            uint8_t line_count);
 #endif /* CODE_DRAW_H_ */

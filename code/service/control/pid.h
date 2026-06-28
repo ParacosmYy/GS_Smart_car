@@ -45,9 +45,6 @@ extern PosPID_t servo_pid ;            ///< 舵机PID实例（位置式）
 extern IncPID_t left_motor_pid ;       ///< 左电机PID实例（增量式）
 extern IncPID_t right_motor_pid ;      ///< 右电机PID实例（增量式）
 
-extern int left_encoder_speed;         ///< 左编码器实测速度
-extern int right_encoder_speed;        ///< 右编码器实测速度
-
 extern float left_motor_pid_output ;   ///< 左电机PID输出
 extern float right_motor_pid_output ;  ///< 右电机PID输出
 

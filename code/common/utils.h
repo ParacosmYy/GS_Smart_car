@@ -10,7 +10,7 @@
 #ifndef CODE_UTILS_H_
 #define CODE_UTILS_H_
 
-#include "platform.h"
+#include <stdint.h>
 
 /**
  * @brief 求 16 位有符号整数的绝对值

@@ -121,6 +121,9 @@ float pal_gyro_z    (void);          /* 返回 Z 轴角速度（已转换为 deg
  *  显示（TFT180）抽象
  *=========================================================================*/
 void pal_disp_init(void);
+void pal_disp_point(int16_t x, int16_t y, uint16_t color);
+uint16_t pal_disp_width(void);
+uint16_t pal_disp_height(void);
 void pal_disp_gray(int16_t x, int16_t y, const uint8_t *img,
                    uint16_t w, uint16_t h,
                    uint16_t dis_w, uint16_t dis_h, uint8_t threshold);
@@ -145,7 +148,9 @@ void pal_key_init(uint32_t period_ms);
 void pal_sys_clock_init (void);      /* 系统时钟初始化             */
 void pal_sys_debug_init (void);      /* 调试串口初始化             */
 void pal_sys_core_sync  (void);      /* 多核同步等待               */
-void pal_irq_global_ctrl(uint8_t enable); /* 全局中断控制（0=关/1=开）*/
+uint32_t pal_irq_global_disable(void);       /* 关闭全局中断并返回原状态 */
+void     pal_irq_global_restore(uint32_t state); /* 按原状态恢复全局中断 */
+void     pal_irq_global_ctrl(uint8_t state); /* 兼容旧接口：state=0 时使能中断 */
 
 /*===========================================================================
  *  兼容性定义（供历史代码平滑迁移）

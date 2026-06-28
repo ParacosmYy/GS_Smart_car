@@ -35,59 +35,29 @@
 
 #include "isr_config.h"
 #include "isr.h"
-#include "platform.h"
-#include "event.h"
-#include "scheduler.h"   /* g_system_ms */
+#include "isr_adapter.h"
 
-// 对于TC系列默认是不支持中断嵌套的，希望支持中断嵌套需要在中断内使用 pal_irq_global_ctrl(0); 来开启中断嵌套
-// 简单点说实际上进入中断后TC系列的硬件自动调用了 interrupt_global_disable(); 来拒绝响应任何的中断，因此需要我们自己手动调用 pal_irq_global_ctrl(0); 来开启中断的响应。
+// TC264 中断入口受 IFX_INTERRUPT 宏约束保留在本文件，具体处理统一转发到 isr_adapter。
 //----------------------------------------------------------------------
-/* 编码器测速累加器：ISR 每 10ms 累加原始计数，累计 MAX_SAMPLES 次后置
-   EVT_ENCODER_50MS 事件，由主循环 task_encoder 折算平均速度并清零。*/
-int  left_speed_sum  = 0;
-int  right_speed_sum = 0;
-int  sample_count    = 0;
-const int MAX_SAMPLES = 5;   /* 采样窗口（3-5 次），50ms 折算周期 */
-
 // **************************** PIT中断函数 ****************************
 
 /**
  * @brief 编码器测速中断（CCU60 通道0，10ms 周期）。
- *        每 tick 累加左右编码器计数，累计 MAX_SAMPLES（5）次后置
- *        EVT_ENCODER_50MS 事件，由主循环 task_encoder 折算平均速度。
+ *        入口层只转发到 ISR adapter。
  */
 IFX_INTERRUPT(cc60_pit_ch0_isr, 0, CCU6_0_CH0_ISR_PRIORITY)
 {
-    pal_irq_global_ctrl(0);                     // 开启中断嵌套
-    pal_pit_clear_flag(PAL_CH_PIT_0);
-
-    /* Accumulate raw encoder counts for this 10 ms tick. */
-    left_speed_sum += pal_encoder_get(PAL_CH_ENCODER_L);
-    right_speed_sum += pal_encoder_get(PAL_CH_ENCODER_R);
-    sample_count++;
-
-    /* Every MAX_SAMPLES ticks, signal main loop to compute averaged speed. */
-    if (sample_count >= MAX_SAMPLES)
-    {
-        event_set_isr(EVT_ENCODER_50MS);
-    }
+    IsrAdapter_Ccu60PitCh0();
 }
 
 
 /**
  * @brief 系统时间基 + 陀螺仪触发中断（CCU60 通道1，10ms 周期）。
- *        递增 g_system_ms（调度器周期判断依赖），并置 EVT_GYRO_10MS
- *        事件通知主循环执行陀螺仪采样、零漂补偿与角度积分。
+ *        入口层只转发到 ISR adapter。
  */
 IFX_INTERRUPT(cc60_pit_ch1_isr, 0, CCU6_0_CH1_ISR_PRIORITY)
 {
-    pal_irq_global_ctrl(0);                     // 开启中断嵌套
-    pal_pit_clear_flag(PAL_CH_PIT_1);
-
-    g_system_ms  += 10;                         // 系统时间基（调度器周期判断依赖）
-    pit_ch1_count++;
-
-    event_set_isr(EVT_GYRO_10MS);               // 通知主循环执行陀螺仪处理
+    IsrAdapter_Ccu60PitCh1();
 }
 
 /**
@@ -95,12 +65,7 @@ IFX_INTERRUPT(cc60_pit_ch1_isr, 0, CCU6_0_CH1_ISR_PRIORITY)
  */
 IFX_INTERRUPT(cc61_pit_ch0_isr, 0, CCU6_1_CH0_ISR_PRIORITY)
 {
-    pal_irq_global_ctrl(0);                     // 开启中断嵌套
-    pal_pit_clear_flag(PAL_CH_PIT_2);
-
-
-
-
+    IsrAdapter_Ccu61PitCh0();
 }
 
 /**
@@ -108,12 +73,7 @@ IFX_INTERRUPT(cc61_pit_ch0_isr, 0, CCU6_1_CH0_ISR_PRIORITY)
  */
 IFX_INTERRUPT(cc61_pit_ch1_isr, 0, CCU6_1_CH1_ISR_PRIORITY)
 {
-    pal_irq_global_ctrl(0);                     // 开启中断嵌套
-    pal_pit_clear_flag(PAL_CH_PIT_3);
-
-
-
-
+    IsrAdapter_Ccu61PitCh1();
 }
 // **************************** PIT中断函数 ****************************
 
@@ -125,21 +85,7 @@ IFX_INTERRUPT(cc61_pit_ch1_isr, 0, CCU6_1_CH1_ISR_PRIORITY)
  */
 IFX_INTERRUPT(exti_ch0_ch4_isr, 0, EXTI_CH0_CH4_INT_PRIO)
 {
-    pal_irq_global_ctrl(0);                     // 开启中断嵌套
-    if(exti_flag_get(ERU_CH0_REQ0_P15_4))           // 通道0中断
-    {
-        exti_flag_clear(ERU_CH0_REQ0_P15_4);
-
-    }
-
-    if(exti_flag_get(ERU_CH4_REQ13_P15_5))          // 通道4中断
-    {
-        exti_flag_clear(ERU_CH4_REQ13_P15_5);
-
-
-
-
-    }
+    IsrAdapter_ExtiCh0Ch4();
 }
 
 /**
@@ -148,59 +94,17 @@ IFX_INTERRUPT(exti_ch0_ch4_isr, 0, EXTI_CH0_CH4_INT_PRIO)
  */
 IFX_INTERRUPT(exti_ch1_ch5_isr, 0, EXTI_CH1_CH5_INT_PRIO)
 {
-    pal_irq_global_ctrl(0);                     // 开启中断嵌套
-
-    if(exti_flag_get(ERU_CH1_REQ10_P14_3))          // 通道1中断
-    {
-        exti_flag_clear(ERU_CH1_REQ10_P14_3);
-
-        // ToF handler removed - no ToF sensor configured
-        // tof_module_exti_handler();                  // ToF 模块 INT 更新中断
-
-    }
-
-    if(exti_flag_get(ERU_CH5_REQ1_P15_8))           // 通道5中断
-    {
-        exti_flag_clear(ERU_CH5_REQ1_P15_8);
-
-
-    }
+    IsrAdapter_ExtiCh1Ch5();
 }
 
-// 由于摄像头pclk引脚默认占用了 2通道，用于触发DMA，因此这里不再定义中断函数
-// IFX_INTERRUPT(exti_ch2_ch6_isr, 0, EXTI_CH2_CH6_INT_PRIO)
-// {
-//  pal_irq_global_ctrl(0);                     // 开启中断嵌套
-//  if(exti_flag_get(ERU_CH2_REQ7_P00_4))           // 通道2中断
-//  {
-//      exti_flag_clear(ERU_CH2_REQ7_P00_4);
-//  }
-//  if(exti_flag_get(ERU_CH6_REQ9_P20_0))           // 通道6中断
-//  {
-//      exti_flag_clear(ERU_CH6_REQ9_P20_0);
-//  }
-// }
+// 摄像头 PCLK 默认占用通道 2 触发 DMA，因此这里不定义 ch2/ch6 CPU ISR。
 /**
  * @brief 外部中断 ERU 通道3 与通道7 共用入口。
- *        通道3（P02_0）接摄像头场同步信号，触发 camera_vsync_handler()
- *        启动一帧 DMA 采集。通道7（P15_1）当前空置。
+ *        入口层只转发到 ISR adapter。
  */
 IFX_INTERRUPT(exti_ch3_ch7_isr, 0, EXTI_CH3_CH7_INT_PRIO)
 {
-    pal_irq_global_ctrl(0);                     // 开启中断嵌套
-    if(exti_flag_get(ERU_CH3_REQ6_P02_0))           // 通道3中断
-    {
-        exti_flag_clear(ERU_CH3_REQ6_P02_0);
-        camera_vsync_handler();                     // 摄像头触发采集统一回调函数
-    }
-    if(exti_flag_get(ERU_CH7_REQ16_P15_1))          // 通道7中断
-    {
-        exti_flag_clear(ERU_CH7_REQ16_P15_1);
-
-
-
-
-    }
+    IsrAdapter_ExtiCh3Ch7();
 }
 // **************************** 外部中断函数 ****************************
 
@@ -208,13 +112,11 @@ IFX_INTERRUPT(exti_ch3_ch7_isr, 0, EXTI_CH3_CH7_INT_PRIO)
 // **************************** DMA中断函数 ****************************
 /**
  * @brief 摄像头 DMA 采集完成中断（DMA 通道5）。
- *        一帧图像搬移结束后调用 camera_dma_handler()，置位帧完成标志，
- *        通知主循环开始视觉处理。
+ *        入口层只转发到 ISR adapter。
  */
 IFX_INTERRUPT(dma_ch5_isr, 0, DMA_INT_PRIO)
 {
-    pal_irq_global_ctrl(0);                     // 开启中断嵌套
-    camera_dma_handler();                           // 摄像头采集完成统一回调函数
+    IsrAdapter_DmaCh5();
 }
 // **************************** DMA中断函数 ****************************
 
@@ -226,23 +128,15 @@ IFX_INTERRUPT(dma_ch5_isr, 0, DMA_INT_PRIO)
  */
 IFX_INTERRUPT(uart0_tx_isr, 0, UART0_TX_INT_PRIO)
 {
-    pal_irq_global_ctrl(0);                     // 开启中断嵌套
-
-
-
+    IsrAdapter_Uart0Tx();
 }
 /**
  * @brief 串口0 接收中断（调试串口）。
- *        若开启 DEBUG_UART_USE_INTERRUPT，调用 debug_interrupr_handler()
- *        把数据读入 debug 环形缓冲区。
+ *        入口层只转发到 ISR adapter。
  */
 IFX_INTERRUPT(uart0_rx_isr, 0, UART0_RX_INT_PRIO)
 {
-    pal_irq_global_ctrl(0);                     // 开启中断嵌套
-
-#if DEBUG_UART_USE_INTERRUPT                        // 如果开启 debug 串口中断
-        debug_interrupr_handler();                  // 调用 debug 串口接收处理函数 数据会被 debug 环形缓冲区读取
-#endif                                              // 如果修改了 DEBUG_UART_INDEX 那这段代码需要放到对应的串口中断去
+    IsrAdapter_Uart0Rx();
 }
 
 
@@ -252,20 +146,15 @@ IFX_INTERRUPT(uart0_rx_isr, 0, UART0_RX_INT_PRIO)
  */
 IFX_INTERRUPT(uart1_tx_isr, 0, UART1_TX_INT_PRIO)
 {
-    pal_irq_global_ctrl(0);                     // 开启中断嵌套
-
-
-
-
+    IsrAdapter_Uart1Tx();
 }
 /**
  * @brief 串口1 接收中断（摄像头配置串口）。
- *        调用 camera_uart_handler() 处理摄像头参数配置应答。
+ *        入口层只转发到 ISR adapter。
  */
 IFX_INTERRUPT(uart1_rx_isr, 0, UART1_RX_INT_PRIO)
 {
-    pal_irq_global_ctrl(0);                     // 开启中断嵌套
-    camera_uart_handler();                          // 摄像头参数配置统一回调函数
+    IsrAdapter_Uart1Rx();
 }
 
 // 串口2默认连接到无线转串口模块
@@ -274,23 +163,16 @@ IFX_INTERRUPT(uart1_rx_isr, 0, UART1_RX_INT_PRIO)
  */
 IFX_INTERRUPT(uart2_tx_isr, 0, UART2_TX_INT_PRIO)
 {
-    pal_irq_global_ctrl(0);                     // 开启中断嵌套
-
-
-
+    IsrAdapter_Uart2Tx();
 }
 
 /**
  * @brief 串口2 接收中断（无线转串口模块）。
- *        调用 wireless_module_uart_handler() 处理上位机/遥控指令。
+ *        入口层只转发到 ISR adapter。
  */
 IFX_INTERRUPT(uart2_rx_isr, 0, UART2_RX_INT_PRIO)
 {
-    pal_irq_global_ctrl(0);                     // 开启中断嵌套
-    pal_wireless_rx_handler();                 // 无线模块统一回调函数
-
-
-
+    IsrAdapter_Uart2Rx();
 }
 // 串口3默认连接到GPS定位模块
 /**
@@ -298,48 +180,36 @@ IFX_INTERRUPT(uart2_rx_isr, 0, UART2_RX_INT_PRIO)
  */
 IFX_INTERRUPT(uart3_tx_isr, 0, UART3_TX_INT_PRIO)
 {
-    pal_irq_global_ctrl(0);                     // 开启中断嵌套
-
-
-
+    IsrAdapter_Uart3Tx();
 }
 
 /**
  * @brief 串口3 接收中断（GNSS 定位模块）。
- *        调用 wireless_uart_callback() 解析 NMEA 报文。
+ *        入口层只转发到 ISR adapter。
  */
 IFX_INTERRUPT(uart3_rx_isr, 0, UART3_RX_INT_PRIO)
 {
-    pal_irq_global_ctrl(0);                     // 开启中断嵌套
-    pal_gnss_rx_callback();                           // GNSS串口回调函数
-
-
-
+    IsrAdapter_Uart3Rx();
 }
 
 /**
  * @brief 串口通讯错误中断集合。
- *        串口0~3 发生帧错/溢出错时，调用 SDK 的 IfxAsclin_Asc_isrError()
- *        统一处理，避免错误状态阻塞后续通讯。
+ *        入口层只转发到 ISR adapter。
  */
 // 串口通讯错误中断
 IFX_INTERRUPT(uart0_er_isr, 0, UART0_ER_INT_PRIO)
 {
-    pal_irq_global_ctrl(0);                     // 开启中断嵌套
-    IfxAsclin_Asc_isrError(&uart0_handle);
+    IsrAdapter_Uart0Error();
 }
 IFX_INTERRUPT(uart1_er_isr, 0, UART1_ER_INT_PRIO)
 {
-    pal_irq_global_ctrl(0);                     // 开启中断嵌套
-    IfxAsclin_Asc_isrError(&uart1_handle);
+    IsrAdapter_Uart1Error();
 }
 IFX_INTERRUPT(uart2_er_isr, 0, UART2_ER_INT_PRIO)
 {
-    pal_irq_global_ctrl(0);                     // 开启中断嵌套
-    IfxAsclin_Asc_isrError(&uart2_handle);
+    IsrAdapter_Uart2Error();
 }
 IFX_INTERRUPT(uart3_er_isr, 0, UART3_ER_INT_PRIO)
 {
-    pal_irq_global_ctrl(0);                     // 开启中断嵌套
-    IfxAsclin_Asc_isrError(&uart3_handle);
+    IsrAdapter_Uart3Error();
 }
