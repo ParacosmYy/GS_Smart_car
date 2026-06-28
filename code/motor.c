@@ -8,10 +8,7 @@
 
 
 uint32 motor_speed = 0;
-uint8_t car_run_flag = 0;
 
-int count1 = 0;
-int count2 = 0;
 
 
 void motor_init(void)

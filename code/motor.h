@@ -11,10 +11,7 @@
 #include "zf_common_headfile.h"
 
 extern uint32 motor_speed;
-extern uint8_t car_run_flag;
 
-extern int count1 ;
-extern int count2 ;
 
 void motor_init(void);
 void motor_setspeed_left(int speed);//0--100

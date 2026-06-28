@@ -7,13 +7,11 @@
 #include "pid.h"
 #include "zf_common_headfile.h"
 
-
 float servo_pid_output = 0.0;
 float left_motor_pid_output = 0;
 float right_motor_pid_output = 0;
 
 PosPID_t servo_pid  ;
-PosPID_t gyro_pid ;
 IncPID_t left_motor_pid ;
 IncPID_t right_motor_pid ;
 
@@ -59,19 +57,6 @@ float IncPID_Calc(IncPID_t *pid, float target, float feedback) {
     return pid->output;
 }
 
-// 串级PID控制调用
-// steer_target: 期望转向角度
-// steer_feedback: 实际转向角度
-// gyro_feedback: 实际角速度（陀螺仪）
-// speed_feedback: 实际速度
-float cascade_pid_control(PosPID_t *steer_pid, PosPID_t *gyro_pid, IncPID_t *speed_pid,
-                          float steer_target, float steer_feedback,
-                          float gyro_feedback, float speed_feedback) {
-    float gyro_target = PosPID_Calc(steer_pid, steer_target, steer_feedback);
-    float speed_target = PosPID_Calc(gyro_pid, gyro_target, gyro_feedback);
-    float control_output = IncPID_Calc(speed_pid, speed_target, speed_feedback);
-    return control_output;
-}
 //单独转向环控制
 float servo_pid_contorl(PosPID_t *steer_pid , float steer_target , float steer_feedback)
 {

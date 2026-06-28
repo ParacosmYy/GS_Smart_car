@@ -125,8 +125,6 @@ IFX_INTERRUPT(cc60_pit_ch1_isr, 0, CCU6_0_CH1_ISR_PRIORITY) //zÖá½Ç¶È¼ÆËã£¨È¥³ýÁ
     {
         //encoder_clear_count(TIM2_ENCODER);
         //encoder_clear_count(TIM4_ENCODER);
-        //count1 = 0;
-        //count2 = 0;
     }
 
 }
@@ -181,7 +179,8 @@ IFX_INTERRUPT(exti_ch1_ch5_isr, 0, EXTI_CH1_CH5_INT_PRIO)
     {
         exti_flag_clear(ERU_CH1_REQ10_P14_3);
 
-        tof_module_exti_handler();                  // ToF Ä£¿é INT ¸üÐÂÖÐ¶Ï
+        // ToF handler removed - no ToF sensor configured
+        // tof_module_exti_handler();                  // ToF Ä£¿é INT ¸üÐÂÖÐ¶Ï
 
     }
 

@@ -17,35 +17,6 @@
 #define FILTER_LEN 20
 #define WHITE_COL 93
 
-//-----------------动态前瞻参数----------------------//
-//int DW_Ave_Speed_last[FILTER_LEN] = {0};
-//float DW_Ave_Speed = 0;
-//float float_speed_min = 0, float_speed_max = 1000;
-//int Y_encoder_left, Y_encoder_right;
-//int DW_Ave_Speed_temp = 0;
-//float float_point_S = 0; // 当前速度归一化
-//int white_num_93col = 0, white_num_93col_max = 0, white_num_93col_min = 0;
-//float float_point_W = 0;
-//float float_point = 0;
-//int float_point_z = 0;
-//float quan_speed_float[11] = {  0/* 你的权重数组 */ };
-//float quan_speed_base[70] = {0};
-//float quan_mid[70] = {0};
-//int center[70] = {0}; // 中心线偏差数组
-//int sousuojieshuhang = 0; // 搜索结束行
-//float Sum = 0, Weight_Count = 0;
-//int Point = 0;
-//int zhongzhi = 0; // PID目标值
-//
-//// PID结构体和函数
-//typedef struct {
-//    // PID参数
-//} PID_Type;
-//PID_Type S_D5_PID;
-//int S_D5_Duty;
-//int PlacePID_Control(PID_Type* pid, int target, int measure);
-
-
 ////////////////////大津法二值化//////////////////////
 uint8_t image_threshold = 120;  //图像阈值
 
@@ -61,13 +32,11 @@ uint8_t mid_line = 0; //最后的加权平均中值
 uint8_t image_mid = 47;//图像中点
 int16_t calculate_error = 0; //加权平均中线 与 图像中线差值
 
-uint8_t otsu_run_flag = 1;//是否启用otsu
 
 int8_t left_line_lost_flag = 0; //0 表示未丢线 ；1 表示丢线
 int8_t right_line_lost_flag = 0;
 uint8_t lost_count = 0; // 丢线计数
 
-uint8_t draw_line[MT9V03X_H][MT9V03X_W] = {{0}};
 
 // mid_weight_list 数组用于循迹或图像处理时的加权计算
 // 根据你的要求，从59行到0行权重配比为：低、中、高、低、低
@@ -325,154 +294,44 @@ void find_mid_line_weight(void)//图像中值 与 补线中值差 然后 计算平均偏差数
 
     calculate_error = (int16_t)mid_line - image_mid;
 }
-uint8_t lost_line_left(void) //返回丢线行数 若没有丢线 则返回0
+
+static void vision_process(void)
 {
-    uint8_t i = 0;
-    for(i = 30 ; i > 10 ; i--)
+    image_threshold = otsu(mt9v03x_image[0], 188, 120);
+    set_image_grayscale_to_binary(image_threshold);
+    zip_image();
+    Bin_Image_Filter();
+    find_mid_line();
+    find_mid_line_weight();
+    draw_all_lines_test();
+}
+
+static void control_update(void)
+{
+    if(lost_count > 10)
     {
-        if(left_line_list[i] == 93) //如果是第93列
-        {
-            left_line_lost_flag = 1;
-            return i;
-        }
+        return;
     }
-    left_line_lost_flag = 0;
-    return 0;
+    servo_pid_output = servo_pid_contorl(&servo_pid, 0, calculate_error);
+    left_motor_pid_output = motor_pid_control(&left_motor_pid, 0, left_encoder_speed);
+    right_motor_pid_output = motor_pid_control(&right_motor_pid, 0, right_encoder_speed);
 }
 
-uint8_t lost_line_right(void) //返回丢线行数 若没有丢线 则返回0
+static void actuator_apply(void)
 {
-    uint8_t i = 0;
-    for(i = 30 ; i > 10 ; i--)
+    if(lost_count > 10)
     {
-        if(right_line_list[i] == 93)
-        {
-            right_line_lost_flag = 1;
-            return i;
-        }
+        pwm_set_duty(ATOM1_CH1_P33_9, 678);
+        return;
     }
-    right_line_lost_flag = 0;
-    return 0;
-}
-
-uint8_t Straight_line_judgment(void) //判断是否为直线  如果是直线 返回1  否则返回0
-{
-  short i,sum=0;
-  float kk;
-  kk=((float)mid_line_list[45]-(float)mid_line_list[10])/35.0;//从45
-  sum = 0;
-  for(i=10;i<=45;i++)
-    if(((mid_line_list[10]+(float)(i-10)*kk)-mid_line_list[i])<=28) sum++;
-    else break;
-  if(sum>27&&kk>-1.1&&kk<1.1) return 1;
-  else return 0;
-}
-
-void connect_line(uint8 x1,uint8 y1,uint8 x2,uint8 y2) //连线-》存入数组中 （x1，y1  ---- x2, y2）
-{
-    int dx = x2 - x1;
-    int dy = y2 - y1;
-    int steps = abs(dx) > abs(dy) ? abs(dx) : abs(dy);
-    float x_inc = dx / (float)steps;
-    float y_inc = dy / (float)steps;
-    float x = x1, y = y1;
-    for(int i=0; i<=steps; i++) {
-        mt9v03x_image_bandw_zip[(int)(y+0.5)][(int)(x+0.5)] = 0;//0为黑线
-        x += x_inc;
-        y += y_inc;
-    }
+    motor_setspeed_left((int32)left_motor_pid_output);
+    motor_setspeed_right((int32)right_motor_pid_output);
 }
 
 void task_calculte(void)
 {
-    image_threshold = otsu(mt9v03x_image[0] ,188 , 120 );//使用大津法转二值化
-    set_image_grayscale_to_binary(image_threshold);//设置阈值
-    zip_image();//压缩图像
-    Bin_Image_Filter();//过滤噪声
-    find_mid_line();//找边界
-    find_mid_line_weight();//权重中线
-    draw_all_lines_test();//画线
-
-
-
-
-    if(lost_count > 10) // 如果丢线太多，停止调控
-    {
-        pwm_set_duty( ATOM1_CH1_P33_9 , 678); // 设置舵机到中间位置
-
-    }
-    else
-    {
-        servo_pid_output = servo_pid_contorl(&servo_pid , 0 ,calculate_error );
-
-        left_motor_pid_output  = motor_pid_control(&left_motor_pid, 0, left_encoder_speed);
-        right_motor_pid_output = motor_pid_control(&right_motor_pid, 0, right_encoder_speed);
-
-
-
-       // motor_setspeed_left(0);
-       // motor_setspeed_right(0);
-        motor_setspeed_left((int32)left_motor_pid_output);
-        motor_setspeed_right((int32)right_motor_pid_output);
-
-
-       // motor_setspeed_right(4);
-        //motor_setspeed_left(4);
-       // pwm_set_duty( ATOM1_CH1_P33_9 , 678+(int)servo_pid_output);
-       // motor_setspeed_right(10);
-       // motor_setspeed_left(10);
-    }
+    vision_process();
+    control_update();
+    actuator_apply();
     mt9v03x_finish_flag = 0;
 }
-//image_threshold = otsuThreshold(image[0],COL,ROW);  //大津法计算阈值
-
-//void Dynamic_Preview(void) //动态前瞻
-//{
-//        int i;
-//        // 1. 速度滑动均值滤波
-//        DW_Ave_Speed_temp = (int)(Y_encoder_left + Y_encoder_right) / 2; //左右电机的平均速度
-//        for(i = FILTER_LEN - 1; i > 0; i--) // 滑动窗口滤波
-//            DW_Ave_Speed_last[i] = DW_Ave_Speed_last[i-1];
-//        DW_Ave_Speed_last[0] = DW_Ave_Speed_temp;
-//
-//        int DW_Ave_Speed_sum = 0;
-//        for(i = FILTER_LEN - 1; i >= 0; i--)
-//            DW_Ave_Speed_sum += DW_Ave_Speed_last[i];
-//        DW_Ave_Speed = (float)DW_Ave_Speed_sum / FILTER_LEN;
-//
-//        if(DW_Ave_Speed < float_speed_min) DW_Ave_Speed = float_speed_min;
-//        if(DW_Ave_Speed > float_speed_max) DW_Ave_Speed = float_speed_max;
-//
-//        // 2. 统计白点数并限幅
-//        int white_num = white_num_93col;
-//        if(white_num > white_num_93col_max) white_num = white_num_93col_max;
-//        if(white_num < white_num_93col_min) white_num = white_num_93col_min;
-//
-//        // 3. 白点归一化与动态加权
-//        float_point_S = DW_Ave_Speed / float_speed_max; // 速度归一化
-//        float_point_W = (float)(white_num - white_num_93col_min) / (white_num_93col_max - white_num_93col_min);
-//        float_point = 0.7 * float_point_S + 0.3 * float_point_W;
-//        float_point_z = (int)float_point;
-//
-//        // 4. 权重赋值
-//        for(i = 0; i < 11; i++)
-//            quan_speed_base[float_point_z - 4 + i] = quan_speed_float[i];
-//
-//        for(i = 0; i < 70; i++)
-//            quan_mid[i] = quan_speed_base[i];
-//
-//        // 5. 加权偏差计算
-//        Sum = 0;
-//        Weight_Count = 0;
-//        for(i = 69; i >= sousuojieshuhang; i--)
-//        {
-//            Sum += center[i] * quan_mid[i];
-//            Weight_Count += quan_mid[i];
-//        }
-//        Point = (int)(Sum / Weight_Count);
-//        if(Point > 186) Point = 186;
-//        if(Point < 2) Point = 2;
-//
-//        // 6. PID控制
-//        S_D5_Duty = PlacePID_Control(&S_D5_PID, zhongzhi, Point);
-//}

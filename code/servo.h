@@ -13,5 +13,4 @@
 extern uint32 servo_duty ;
 
 void servo_init(void);
-void set_servo_angle(uint32 duty);
 #endif /* CODE_SERVO_H_ */

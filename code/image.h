@@ -4,18 +4,17 @@
  *  Created on: 2025年10月20日
  *      Author: Paracosm
  */
-#include "zf_common_headfile.h"
-#include "draw.h"
-
 #ifndef CODE_IMAGE_H_
 #define CODE_IMAGE_H_
+
+#include "zf_common_headfile.h"
+#include "draw.h"
 
 #define zip_MT9V03X_H 60
 #define zip_MT9V03X_W 94
 
 extern uint8_t mt9v03x_image_bandw[MT9V03X_H][MT9V03X_W];
 extern uint8_t mt9v03x_image_bandw_zip[60][94];
-extern uint8_t otsu_run_flag ;
 extern uint8_t image_threshold ;
 
 extern uint8_t image_mid ;//图像中点
@@ -34,11 +33,6 @@ void Bin_Image_Filter (void) ;//过滤噪点 （黑四周有2白 -》 白 ）
 uint8_t otsu(uint8_t *image, uint16_t col, uint16_t row); //大津法动态获取图像黑白分割阈值
 void find_mid_line(void);//寻找左右边界点
 void find_mid_line_weight(void);//图像中值 与 补线中值差 然后 计算平均偏差数
-uint8_t lost_line_left(void); //返回丢线行数 若没有丢线 则返回0
-uint8_t lost_line_right(void); //返回丢线行数 若没有丢线 则返回0
-uint8_t Straight_line_judgment(void); //判断是否为直线
 void task_calculte(void);//找边界 计算权重中值 画线 显示 集合体
-void connect_line(uint8 x1,uint8 y1,uint8 x2,uint8 y2); //连线-》存入数组中 （x1，y1  ---- x2, y2）
-//void Dynamic_Preview(void)； //动态前瞻
 
 #endif /* CODE_IMAGE_H_ */

@@ -27,19 +27,6 @@ void draw_piont(uint8_t x, uint8_t y, uint16_t color) //八邻域画点(防止超出屏幕)
 
 
 
-void draw_all_lines(void)
-{
-    for(uint8_t i = 0; i < zip_MT9V03X_H; i++)
-    {
-        // 左边界线：红色
-        draw_piont(left_line_list[i], i, RGB565_RED);
-        // 右边界线：蓝色
-        draw_piont(right_line_list[i], i, RGB565_BLUE);
-        // 中线：黄色
-        draw_piont(mid_line_list[i], i, RGB565_YELLOW);
-    }
-}
-
 void draw_all_lines_test(void)
 {
     for(uint8_t i = zip_MT9V03X_H - 1; i > 10 ; i--)
@@ -52,26 +39,4 @@ void draw_all_lines_test(void)
         draw_piont(mid_line_list[i], i, RGB565_RED);
         //tft180_draw_point(mid_line_list[i], i, RGB565_YELLOW);
         }
-}
-
-void tft_show(void)
-{
-    switch(state)
-    {
-        case image_value :
-
-            break;
-        case servo_value :
-
-            break;
-        case motor_value :
-
-            break;
-        case car_run_value :
-
-            break;
-        default :
-
-            break;
-    }
 }

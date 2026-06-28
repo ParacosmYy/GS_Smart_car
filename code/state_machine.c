@@ -15,31 +15,6 @@ uint8_t key_gpio[4] = {KEY1, KEY2, KEY3, KEY4};
 
 uint8_t dip_switch_flag[4] = {0,0,0,0};
 
-void jump_state_add(void)
-{
-    if(state == car_run_value)
-    {
-        state = image_value ;
-    }
-    else
-    {
-        state ++ ;
-    }
-}
-
-void jump_state_reverse(void)
-{
-    if(state == image_value)
-    {
-        state = car_run_value ;
-    }
-    else
-    {
-        state -- ;
-    }
-}
-
-
 void key_check(uint16_t key_index)
 {
     key_last_status[key_index] = key_status[key_index];
@@ -87,86 +62,6 @@ void key_check_all(void)
     key_check(2);
     key_check(3);
 }
-
-void key1_control(void)
-{
-    uint8_t key1_flag = key_flag[0] ;
-    if(key1_flag)
-       {
-           switch(state)
-           {
-               case image_value:
-                   image_threshold++;
-                   break;
-               case servo_value :
-                   servo_duty = servo_duty + 5;
-                   pwm_set_duty(ATOM1_CH1_P33_9 , servo_duty);
-                   break;
-               case motor_value :
-                   motor_speed = motor_speed + 1;
-                   motor_setspeed_left(motor_speed);
-                   motor_setspeed_right(motor_speed);
-                   break;
-               case car_run_value :
-                   car_run_flag = 1 ;
-                   gpio_high(MOTOR_L_FORWARD);
-                   gpio_high(MOTOR_R_FORWARD);
-                   break;
-               default :
-                   break;
-           }
-       }
-}
-
-void key2_control(void)
-{
-    uint8_t key2_flag = key_flag[1] ;
-    if(key2_flag)
-       {
-           switch(state)
-           {
-               case image_value:
-                   image_threshold--;
-                   break;
-               case servo_value :
-                   servo_duty = servo_duty - 5;
-                   pwm_set_duty(ATOM1_CH1_P33_9 , servo_duty);
-                   break;
-               case motor_value :
-                   motor_speed = motor_speed - 1;
-                   motor_setspeed_left(motor_speed);
-                   motor_setspeed_right(motor_speed);
-                   break;
-               case car_run_value :
-                   car_run_flag = 0 ;
-                   gpio_set_level(MOTOR_L_FORWARD,0);
-                   gpio_set_level(MOTOR_R_FORWARD,0);
-                   break;
-               default :
-                   break;
-           }
-       }
-}
-
-void key3_control(void)
-{
-    uint8_t key3_flag = key_flag[2] ;
-    if(key3_flag)
-    {
-        jump_state_add();
-    }
-}
-
-void key4_control(void)
-{
-    uint8_t key4_flag = key_flag[3] ;
-    if(key4_flag)
-    {
-        jump_state_reverse();
-    }
-}
-
-
 
 //--------------------------------------------²¦Âë¿ª¹Ø----------------------------------------
 
@@ -216,6 +111,5 @@ void dip_switch_check_all()
     {
         dip_switch_flag[3] = 0;
     }
-
 
 }
