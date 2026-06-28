@@ -3,20 +3,17 @@
 
 /**
  * @file smartcar_irq_fact.h
- * @brief Smart car interrupt fact definitions.
+ * @brief LEGACY smart car interrupt fact aliases.
+ *
+ * 新代码应直接包含 platform/system/irq_fact.h。
+ * 此文件仅用于兼容尚未迁移的代码路径。
  */
 
-//******************************* Includes **********************************//
-#include <stdint.h>
-//******************************* Includes **********************************//
+#include "platform/system/irq_fact.h"
 
-//******************************* Defines ***********************************//
-typedef uint32_t smartcar_irq_fact_t;
-
-#define SMARTCAR_IRQ_FACT_NONE            (0U)
-#define SMARTCAR_IRQ_FACT_ENCODER_WINDOW  (1U << 0)
-#define SMARTCAR_IRQ_FACT_GYRO_TICK       (1U << 1)
-#define SMARTCAR_IRQ_FACT_CAMERA_FRAME    (1U << 2)
-//******************************* Defines ***********************************//
+#define SMARTCAR_IRQ_FACT_NONE           IRQ_FACT_NONE
+#define SMARTCAR_IRQ_FACT_ENCODER_WINDOW IRQ_FACT_ENCODER_WINDOW
+#define SMARTCAR_IRQ_FACT_GYRO_TICK      IRQ_FACT_GYRO_TICK
+#define SMARTCAR_IRQ_FACT_CAMERA_FRAME   IRQ_FACT_CAMERA_FRAME
 
 #endif /* SMARTCAR_IRQ_FACT_H_ */
