@@ -39,9 +39,9 @@ typedef struct
 //******************************** Types ************************************//
 
 //******************************** Declaring ********************************//
-static const smartcar_irq_route_t *SmartcarIrqRouter_FindRoute(smartcar_irq_source_t source);
+static const smartcar_irq_route_t *SmartcarIrqRouter_FindRoute(irq_source_t source);
 static void SmartcarIrqRouter_PublishRoute(const smartcar_irq_route_t *p_route,
-                                           smartcar_irq_fact_t facts);
+                                           irq_fact_t facts);
 //******************************** Declaring ********************************//
 
 //******************************** Variables ********************************//
@@ -88,7 +88,7 @@ void SmartcarIrqRouter_Init(const smartcar_irq_route_t *p_routes, uint16_t route
  * @return const smartcar_irq_route_t* : 命中的路由项，未命中返回空指针。
  *
  * */
-static const smartcar_irq_route_t *SmartcarIrqRouter_FindRoute(smartcar_irq_source_t source)
+static const smartcar_irq_route_t *SmartcarIrqRouter_FindRoute(irq_source_t source)
 {
     uint16_t i = 0U;
 
@@ -122,7 +122,7 @@ static const smartcar_irq_route_t *SmartcarIrqRouter_FindRoute(smartcar_irq_sour
  *
  * */
 static void SmartcarIrqRouter_PublishRoute(const smartcar_irq_route_t *p_route,
-                                           smartcar_irq_fact_t facts)
+                                           irq_fact_t facts)
 {
     uint8_t has_fact = 0U;
 
@@ -131,7 +131,7 @@ static void SmartcarIrqRouter_PublishRoute(const smartcar_irq_route_t *p_route,
         return;
     }
 
-    if (p_route->fact_mask == SMARTCAR_IRQ_FACT_NONE)
+    if (p_route->fact_mask == IRQ_FACT_NONE)
     {
         has_fact = 1U;
     }
@@ -169,10 +169,10 @@ static void SmartcarIrqRouter_PublishRoute(const smartcar_irq_route_t *p_route,
  * @return void : 无返回值。
  *
  * */
-void SmartcarIrqRouter_Dispatch(smartcar_irq_source_t source)
+void SmartcarIrqRouter_Dispatch(irq_source_t source)
 {
     const smartcar_irq_route_t *p_route = 0;
-    smartcar_irq_fact_t facts = SMARTCAR_IRQ_FACT_NONE;
+    irq_fact_t facts = IRQ_FACT_NONE;
 
     p_route = SmartcarIrqRouter_FindRoute(source);
     if ((p_route == 0) || (p_route->handler == 0))

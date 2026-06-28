@@ -2,17 +2,16 @@
  * @file tc264_irq_port.c
  * @brief TC264 中断端口实现。
  *
- * 本文件是 SDK 中断入口与 system IRQ router 之间的目标适配端口。
- * TC264 source 编号和 adapter 绑定只在本文件内部可见，避免 SDK entry
- * 或 System Runtime 直接依赖目标芯片枚举。
+ * 本文件是 SDK 中断入口与 System IRQ router 之间的目标适配端口。
+ * 通过 irq_port.h 暴露硬件路由表，通过 irq_port_dispatch()
+ * 将中断事实路由到 System 层 —— Impl 不直接依赖 System 头文件。
  */
 
 #include "tc264_irq_port.h"
 
 #include "config.h"
-#include "event.h"
 #include "isr_adapter.h"
-#include "system/irq/smartcar_irq_router.h"
+#include "platform/system/irq_port.h"
 
 //******************************** Types ************************************//
 typedef enum
@@ -46,83 +45,88 @@ static void Tc264IrqPort_Dispatch(tc264_irq_port_source_t source);
 //******************************** Declaring ********************************//
 
 //******************************** Variables ********************************//
-static const smartcar_irq_route_t s_tc264_irq_routes[] =
+/**
+ * @brief TC264 端口路由表（Platform contract 格式）。
+ *
+ * 只包含硬件层信息：source / handler / fact_mask。
+ * 调度事件和时间基的映射由 System 层 IrqPortAdapter 在启动时完成。
+ */
+static const irq_port_route_t s_tc264_port_routes[] =
 {
     {TC264_IRQ_PORT_SOURCE_CCU60_PIT_CH0, IsrAdapter_Ccu60PitCh0,
-     SMARTCAR_IRQ_FACT_ENCODER_WINDOW, EVT_ENCODER_50MS, 0U},
+     IRQ_FACT_ENCODER_WINDOW},
     {TC264_IRQ_PORT_SOURCE_CCU60_PIT_CH1, IsrAdapter_Ccu60PitCh1,
-     SMARTCAR_IRQ_FACT_GYRO_TICK, EVT_GYRO_10MS, PIT_PERIOD_MS},
+     IRQ_FACT_GYRO_TICK},
     {TC264_IRQ_PORT_SOURCE_CCU61_PIT_CH0, IsrAdapter_Ccu61PitCh0,
-     SMARTCAR_IRQ_FACT_NONE, EVT_NONE, 0U},
+     IRQ_FACT_NONE},
     {TC264_IRQ_PORT_SOURCE_CCU61_PIT_CH1, IsrAdapter_Ccu61PitCh1,
-     SMARTCAR_IRQ_FACT_NONE, EVT_NONE, 0U},
+     IRQ_FACT_NONE},
     {TC264_IRQ_PORT_SOURCE_EXTI_CH0_CH4, IsrAdapter_ExtiCh0Ch4,
-     SMARTCAR_IRQ_FACT_NONE, EVT_NONE, 0U},
+     IRQ_FACT_NONE},
     {TC264_IRQ_PORT_SOURCE_EXTI_CH1_CH5, IsrAdapter_ExtiCh1Ch5,
-     SMARTCAR_IRQ_FACT_NONE, EVT_NONE, 0U},
+     IRQ_FACT_NONE},
     {TC264_IRQ_PORT_SOURCE_EXTI_CH3_CH7, IsrAdapter_ExtiCh3Ch7,
-     SMARTCAR_IRQ_FACT_NONE, EVT_NONE, 0U},
+     IRQ_FACT_NONE},
     {TC264_IRQ_PORT_SOURCE_DMA_CH5, IsrAdapter_DmaCh5,
-     SMARTCAR_IRQ_FACT_CAMERA_FRAME, EVT_CAM_FRAME, 0U},
+     IRQ_FACT_CAMERA_FRAME},
     {TC264_IRQ_PORT_SOURCE_UART0_TX, IsrAdapter_Uart0Tx,
-     SMARTCAR_IRQ_FACT_NONE, EVT_NONE, 0U},
+     IRQ_FACT_NONE},
     {TC264_IRQ_PORT_SOURCE_UART0_RX, IsrAdapter_Uart0Rx,
-     SMARTCAR_IRQ_FACT_NONE, EVT_NONE, 0U},
+     IRQ_FACT_NONE},
     {TC264_IRQ_PORT_SOURCE_UART1_TX, IsrAdapter_Uart1Tx,
-     SMARTCAR_IRQ_FACT_NONE, EVT_NONE, 0U},
+     IRQ_FACT_NONE},
     {TC264_IRQ_PORT_SOURCE_UART1_RX, IsrAdapter_Uart1Rx,
-     SMARTCAR_IRQ_FACT_NONE, EVT_NONE, 0U},
+     IRQ_FACT_NONE},
     {TC264_IRQ_PORT_SOURCE_UART2_TX, IsrAdapter_Uart2Tx,
-     SMARTCAR_IRQ_FACT_NONE, EVT_NONE, 0U},
+     IRQ_FACT_NONE},
     {TC264_IRQ_PORT_SOURCE_UART2_RX, IsrAdapter_Uart2Rx,
-     SMARTCAR_IRQ_FACT_NONE, EVT_NONE, 0U},
+     IRQ_FACT_NONE},
     {TC264_IRQ_PORT_SOURCE_UART3_TX, IsrAdapter_Uart3Tx,
-     SMARTCAR_IRQ_FACT_NONE, EVT_NONE, 0U},
+     IRQ_FACT_NONE},
     {TC264_IRQ_PORT_SOURCE_UART3_RX, IsrAdapter_Uart3Rx,
-     SMARTCAR_IRQ_FACT_NONE, EVT_NONE, 0U},
+     IRQ_FACT_NONE},
     {TC264_IRQ_PORT_SOURCE_UART0_ERROR, IsrAdapter_Uart0Error,
-     SMARTCAR_IRQ_FACT_NONE, EVT_NONE, 0U},
+     IRQ_FACT_NONE},
     {TC264_IRQ_PORT_SOURCE_UART1_ERROR, IsrAdapter_Uart1Error,
-     SMARTCAR_IRQ_FACT_NONE, EVT_NONE, 0U},
+     IRQ_FACT_NONE},
     {TC264_IRQ_PORT_SOURCE_UART2_ERROR, IsrAdapter_Uart2Error,
-     SMARTCAR_IRQ_FACT_NONE, EVT_NONE, 0U},
+     IRQ_FACT_NONE},
     {TC264_IRQ_PORT_SOURCE_UART3_ERROR, IsrAdapter_Uart3Error,
-     SMARTCAR_IRQ_FACT_NONE, EVT_NONE, 0U}
+     IRQ_FACT_NONE}
 };
 //******************************** Variables ********************************//
 
 //******************************** Implement ********************************//
+
 /**
- * @brief 初始化 TC264 中断端口路由。
+ * @brief 获取 TC264 端口路由表（Platform contract 实现）。
  *
- * 处理步骤：
- *  1. 计算 TC264 静态路由表项数量。
- *  2. 将路由表注册到 system IRQ router。
+ * 由 System 层 IrqPortAdapter_Init() 在启动时调用。
  *
- * @return void : 无返回值。
- *
- * */
-void Tc264IrqPort_Init(void)
+ * @param[out] p_count 路由表项个数。
+ * @return const irq_port_route_t* 路由表指针。
+ */
+const irq_port_route_t *irq_port_get_routes(uint16_t *p_count)
 {
-    SmartcarIrqRouter_Init(s_tc264_irq_routes,
-                           (uint16_t)(sizeof(s_tc264_irq_routes) / sizeof(s_tc264_irq_routes[0])));
+    if (p_count != 0)
+    {
+        *p_count = (uint16_t)(sizeof(s_tc264_port_routes)
+                              / sizeof(s_tc264_port_routes[0]));
+    }
+    return s_tc264_port_routes;
 }
 
 /**
  * @brief 分发 TC264 目标中断源。
  *
- * 处理步骤：
- *  1. 将目标端口内部 source 转换为通用 router source。
- *  2. 委托 system IRQ router 完成 fact/event 发布。
+ * 通过 irq_port_dispatch() 将 source 传递给 System IRQ router。
+ * 避免了直接依赖 system/irq/smartcar_irq_router.h 或暴露全局变量。
  *
  * @param[in] source : TC264 端口内部中断源。
- *
- * @return void : 无返回值。
- *
- * */
+ */
 static void Tc264IrqPort_Dispatch(tc264_irq_port_source_t source)
 {
-    SmartcarIrqRouter_Dispatch((smartcar_irq_source_t)source);
+    irq_port_dispatch((irq_source_t)source);
 }
 
 void Tc264IrqPort_OnCcu60PitCh0(void)

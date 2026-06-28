@@ -4,10 +4,10 @@
 /**
  * @file tc264_irq_port.h
  * @brief TC264 中断入口端口。
+ *
+ * 路由表暴露通过 irq_port_get_routes()（Platform contract），
+ * 由 System 层 IrqPortAdapter 在启动时读取。
  */
-
-/** @brief 初始化 TC264 中断端口路由 */
-void Tc264IrqPort_Init(void);
 
 /** @brief CCU60 PIT CH0 中断入口 */
 void Tc264IrqPort_OnCcu60PitCh0(void);
