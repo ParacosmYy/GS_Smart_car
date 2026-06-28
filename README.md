@@ -118,7 +118,7 @@ flowchart LR
     ENC    -->|脉冲计数|         ISR
     GYRO   -->|SPI 帧|           ISR
     ISR    -->|轮速快照|         CONTROL
-    VISION -->|中线偏差<br/>calculate_error| CONTROL
+    VISION -->|中线偏差| CONTROL
     CONTROL -->|舵机 duty|       SERVO
     CONTROL -->|电机 duty|       MOTOR
 ```
