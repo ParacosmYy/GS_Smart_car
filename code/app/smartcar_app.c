@@ -1,5 +1,6 @@
 #include "smartcar_app.h"
 #include "zf_common_headfile.h"
+#include "control.h"
 
 void SmartcarApp_Init(void)
 {
@@ -11,7 +12,10 @@ void SmartcarApp_RunOnce(void)
 {
     if(mt9v03x_finish_flag == 1)
     {
-        task_calculte();
+        Vision_Process();
+        Control_Update();
+        Actuator_Apply();
+        mt9v03x_finish_flag = 0;
     }
 
     tft180_show_gray_image(0, 0, mt9v03x_image_bandw_zip[0], 94, 60, MT9V03X_W / 2, MT9V03X_H / 2, 0);

@@ -5,6 +5,7 @@
  *      Author: Paracosm
  */
 #include "zf_common_headfile.h"
+#include "config.h"
 
 void init_all(void)
 {
@@ -31,14 +32,14 @@ void init_all(void)
     icm20602_init();
     wireless_uart_init();
 
-    PosPID_Init(&servo_pid , 3 ,0 ,1.2);
+    PosPID_Init(&servo_pid, SERVO_PID_KP, SERVO_PID_KI, SERVO_PID_KD);
 
-    IncPID_Init(&left_motor_pid , 0.3 , 0 , 0);
-    IncPID_Init(&right_motor_pid , 0.3 , 0 , 0);
+    IncPID_Init(&left_motor_pid, MOTOR_PID_KP, MOTOR_PID_KI, MOTOR_PID_KD);
+    IncPID_Init(&right_motor_pid, MOTOR_PID_KP, MOTOR_PID_KI, MOTOR_PID_KD);
 }
 
 void pit_init_all(void)
 {
-    pit_ms_init(CCU60_CH0,10);
-    pit_ms_init(CCU60_CH1,10); //0.01s 执行一次
+    pit_ms_init(CCU60_CH0, PIT_PERIOD_MS);
+    pit_ms_init(CCU60_CH1, PIT_PERIOD_MS); //0.01s 执行一次
 }

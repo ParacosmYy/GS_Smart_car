@@ -57,31 +57,93 @@ static int sample_count = 0;
 const int MAX_SAMPLES = 5; // ²ÉÑù´ÎÊý£¬3-5 ´Î£¬ÕâÀïÉèÎª 5
 
 // **************************** PITÖÐ¶Ïº¯Êý ****************************
+/**
+ * @brief File-local copy of the latest raw Z-axis gyro sample (deg/s).
+ *
+ * Written by Gyro_CompensateDrift() and consumed by Gyro_Integrate() so the
+ * two helpers stay decoupled while preserving the original data flow:
+ * sample -> drift-compensate -> integrate.
+ */
+static float gyro_raw_z = 0.0f;
+
+/**
+ * @brief Collapse MAX_SAMPLES ticks of encoder counts into averaged speeds.
+ *
+ * Called every MAX_SAMPLES (5) PIT ticks. Divides the accumulated encoder
+ * counts by MAX_SAMPLES to produce left_encoder_speed and
+ * right_encoder_speed, then zeroes the accumulators and clears the
+ * hardware encoder counters so the next averaging window starts clean.
+ */
+static void Encoder_CalculateSpeed(void)
+{
+    left_encoder_speed  = left_speed_sum  / MAX_SAMPLES;
+    right_encoder_speed = right_speed_sum / MAX_SAMPLES;
+
+    /* Reset accumulators for the next averaging window. */
+    left_speed_sum  = 0;
+    right_speed_sum = 0;
+    sample_count    = 0;
+
+    encoder_clear_count(TIM2_ENCODER);
+    encoder_clear_count(TIM4_ENCODER);
+}
+
+/**
+ * @brief Sample the Z-axis gyro and refresh the drift-offset estimate.
+ *
+ * Reads the ICM20602 via SPI, converts the raw Z-axis register into a rate,
+ * and stores it in gyro_raw_z. When the magnitude is below
+ * GYRO_IDLE_THRESHOLD (i.e. the platform is effectively still) the sample
+ * is pushed into a GYRO_OFFSET_BUF_SIZE-deep ring buffer and gyro_z_offset
+ * is recomputed as the buffer mean. That offset is subtracted inside
+ * Gyro_Integrate() to cancel static bias / drift.
+ */
+static void Gyro_CompensateDrift(void)
+{
+    icm20602_get_gyro();
+    gyro_raw_z = icm20602_gyro_transition(icm20602_gyro_z);
+
+    if (fabsf(gyro_raw_z) < GYRO_IDLE_THRESHOLD)
+    {
+        gyro_z_offset_sum -= gyro_z_offset_buf[gyro_z_offset_idx];
+        gyro_z_offset_buf[gyro_z_offset_idx] = gyro_raw_z;
+        gyro_z_offset_sum += gyro_raw_z;
+
+        gyro_z_offset_idx++;
+        if (gyro_z_offset_idx >= GYRO_OFFSET_BUF_SIZE) gyro_z_offset_idx = 0;
+
+        gyro_z_offset = gyro_z_offset_sum / GYRO_OFFSET_BUF_SIZE;
+    }
+}
+
+/**
+ * @brief Integrate the bias-corrected Z-axis rate into the heading angle.
+ *
+ * Subtracts the running drift offset (refreshed by Gyro_CompensateDrift())
+ * from the latest raw sample and accumulates the result into z_angle using
+ * the fixed timestep dt. Invoked once per 10 ms PIT tick.
+ */
+static void Gyro_Integrate(void)
+{
+    float z_angle_speed = gyro_raw_z - gyro_z_offset;
+    z_angle += z_angle_speed * dt;
+}
+
 IFX_INTERRUPT(cc60_pit_ch0_isr, 0, CCU6_0_CH0_ISR_PRIORITY)   //10msÒ»´Î±àÂëÆ÷²âËÙÖÐ¶Ï
 {
     interrupt_global_enable(0);                     // ¿ªÆôÖÐ¶ÏÇ¶Ì×
     pit_clear_flag(CCU60_CH0);
     //pit_ch0_count ++ ;
 
-    // ÀÛ»ý²ÉÑù
+    /* Accumulate raw encoder counts for this 10 ms tick. */
     left_speed_sum += encoder_get_count(TIM2_ENCODER);
     right_speed_sum += encoder_get_count(TIM4_ENCODER);
     sample_count++;
 
-    // µ±´ïµ½×î´ó²ÉÑù´ÎÊýÊ±£¬¼ÆËãÆ½¾ùÖµ²¢¸üÐÂËÙ¶È
-    if(sample_count >= MAX_SAMPLES)
+    /* Every MAX_SAMPLES ticks, collapse the window into averaged speeds. */
+    if (sample_count >= MAX_SAMPLES)
     {
-        left_encoder_speed = left_speed_sum / MAX_SAMPLES;
-        right_encoder_speed = right_speed_sum / MAX_SAMPLES;
-
-        // ÖØÖÃÀÛ»ý±äÁ¿
-        left_speed_sum = 0;
-        right_speed_sum = 0;
-        sample_count = 0;
-
-        // ÇåÁã±àÂëÆ÷¼ÆÊý
-        encoder_clear_count(TIM2_ENCODER);
-        encoder_clear_count(TIM4_ENCODER);
+        Encoder_CalculateSpeed();
     }
 
 //    if(pit_ch0_count >= 3)
@@ -97,31 +159,12 @@ IFX_INTERRUPT(cc60_pit_ch1_isr, 0, CCU6_0_CH1_ISR_PRIORITY) //zÖá½Ç¶È¼ÆËã£¨È¥³ýÁ
     interrupt_global_enable(0);                     // ¿ªÆôÖÐ¶ÏÇ¶Ì×
     pit_clear_flag(CCU60_CH1);
 
-
-
-
     pit_ch1_count++;
 
-    icm20602_get_gyro();
-    float raw_z = icm20602_gyro_transition(icm20602_gyro_z);
+    Gyro_CompensateDrift();
+    Gyro_Integrate();
 
-    // ¸üÐÂ»¬¶¯¾ùÖµ
-    if (fabsf(raw_z) < GYRO_IDLE_THRESHOLD)  //Èç¹û×ª¶¯½Ç¶È Ð¡ÓÚ1¡ã ÔòËãÁãÆ®Çé¿ö ÏûÈ¥ÁãÆ®
-    {
-        gyro_z_offset_sum -= gyro_z_offset_buf[gyro_z_offset_idx];
-        gyro_z_offset_buf[gyro_z_offset_idx] = raw_z;
-        gyro_z_offset_sum += raw_z;
-
-        gyro_z_offset_idx++;
-        if (gyro_z_offset_idx >= GYRO_OFFSET_BUF_SIZE) gyro_z_offset_idx = 0;
-
-        gyro_z_offset = gyro_z_offset_sum / GYRO_OFFSET_BUF_SIZE;
-    }
-    // »ý·ÖÊ±Ïû³ýÁãÆ®
-    float z_angle_speed = raw_z - gyro_z_offset;
-    z_angle += z_angle_speed * dt;
-
-    if(pit_ch1_count == 5)
+    if (pit_ch1_count == 5)
     {
         //encoder_clear_count(TIM2_ENCODER);
         //encoder_clear_count(TIM4_ENCODER);

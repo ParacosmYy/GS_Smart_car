@@ -295,7 +295,7 @@ void find_mid_line_weight(void)//图像中值 与 补线中值差 然后 计算平均偏差数
     calculate_error = (int16_t)mid_line - image_mid;
 }
 
-static void vision_process(void)
+void Vision_Process(void)
 {
     image_threshold = otsu(mt9v03x_image[0], 188, 120);
     set_image_grayscale_to_binary(image_threshold);
@@ -304,34 +304,4 @@ static void vision_process(void)
     find_mid_line();
     find_mid_line_weight();
     draw_all_lines_test();
-}
-
-static void control_update(void)
-{
-    if(lost_count > 10)
-    {
-        return;
-    }
-    servo_pid_output = servo_pid_contorl(&servo_pid, 0, calculate_error);
-    left_motor_pid_output = motor_pid_control(&left_motor_pid, 0, left_encoder_speed);
-    right_motor_pid_output = motor_pid_control(&right_motor_pid, 0, right_encoder_speed);
-}
-
-static void actuator_apply(void)
-{
-    if(lost_count > 10)
-    {
-        pwm_set_duty(ATOM1_CH1_P33_9, 678);
-        return;
-    }
-    motor_setspeed_left((int32)left_motor_pid_output);
-    motor_setspeed_right((int32)right_motor_pid_output);
-}
-
-void task_calculte(void)
-{
-    vision_process();
-    control_update();
-    actuator_apply();
-    mt9v03x_finish_flag = 0;
 }

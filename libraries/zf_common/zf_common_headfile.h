@@ -122,6 +122,8 @@
 #include "pid.h"
 #include "init.h"
 #include "image.h"
+#include "control.h"
+#include "config.h"
 #include "draw.h"
 #include "service.h"
 #include "servo.h"

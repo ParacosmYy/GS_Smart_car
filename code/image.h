@@ -33,6 +33,6 @@ void Bin_Image_Filter (void) ;//过滤噪点 （黑四周有2白 -》 白 ）
 uint8_t otsu(uint8_t *image, uint16_t col, uint16_t row); //大津法动态获取图像黑白分割阈值
 void find_mid_line(void);//寻找左右边界点
 void find_mid_line_weight(void);//图像中值 与 补线中值差 然后 计算平均偏差数
-void task_calculte(void);//找边界 计算权重中值 画线 显示 集合体
+void Vision_Process(void);//找边界 计算权重中值 画线 显示 集合体
 
 #endif /* CODE_IMAGE_H_ */

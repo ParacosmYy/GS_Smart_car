@@ -5,6 +5,7 @@
  *      Author: Paracosm
  */
 #include "motor.h"
+#include "config.h"
 
 
 uint32 motor_speed = 0;
@@ -17,21 +18,21 @@ void motor_init(void)
    gpio_init(P21_3,GPO,0,GPO_PUSH_PULL);
    gpio_init(P21_4,GPO,0,GPO_PUSH_PULL);
    gpio_init(P21_5,GPO,0,GPO_PUSH_PULL);
-   pwm_init(ATOM0_CH0_P21_2,20000,0);
-   pwm_init(ATOM0_CH1_P21_3,20000,0);
-   pwm_init(ATOM0_CH2_P21_4,20000,0);
-   pwm_init(ATOM0_CH3_P21_5,20000,0);
+   pwm_init(ATOM0_CH0_P21_2,MOTOR_PWM_HZ,0);
+   pwm_init(ATOM0_CH1_P21_3,MOTOR_PWM_HZ,0);
+   pwm_init(ATOM0_CH2_P21_4,MOTOR_PWM_HZ,0);
+   pwm_init(ATOM0_CH3_P21_5,MOTOR_PWM_HZ,0);
 }
 
 void motor_setspeed_right(int speed)//-100--100
 {
-    if(speed > 100)
+    if(speed > MOTOR_CLAMP_RIGHT)
     {
-        speed = 100;
+        speed = MOTOR_CLAMP_RIGHT;
     }
-    else if(speed < -100)
+    else if(speed < -MOTOR_CLAMP_RIGHT)
     {
-        speed = -100;
+        speed = -MOTOR_CLAMP_RIGHT;
     }
     if(speed > 0)
     {
@@ -47,13 +48,13 @@ void motor_setspeed_right(int speed)//-100--100
 
 void motor_setspeed_left(int speed)
 {
-    if(speed > 15)
+    if(speed > MOTOR_CLAMP_LEFT)
     {
-       speed = 15;
+       speed = MOTOR_CLAMP_LEFT;
     }
-    else if(speed < -15)
+    else if(speed < -MOTOR_CLAMP_LEFT)
     {
-       speed = -15;
+       speed = -MOTOR_CLAMP_LEFT;
     }
     if(speed > 0)
     {
