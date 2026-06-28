@@ -33,7 +33,7 @@ flowchart TD
 
     subgraph APP[" 🚀 App · 应用编排 "]
         APP1["SmartcarApp<br/>主循环编排"]:::appLayer
-        APP2["SmartcarIsrBridge<br/>中断事件桥接"]:::appLayer
+        APP2["SmartcarIrqRouter<br/>中断源路由"]:::appLayer
     end
 
     subgraph SVC[" 🧠 Service · 算法服务 "]
@@ -91,7 +91,7 @@ flowchart TD
 
 > **维护分支：** 当前工程主维护分支为 `tc264-four-wheel-servo-camera-car`，对应 TC264 四轮舵机镜头车固件。
 
-> **中断边界：** `user/isr.c` 只保留 `IFX_INTERRUPT` 入口；`code/platform/isr_adapter.c` 只做清标志与有界整数采样；`code/app/smartcar_isr_bridge.c` 将平台中断事实翻译为 `EVT_*` 调度事件。`EVT_GYRO_10MS` 使用计数语义，避免主循环阻塞时丢失 10ms 节拍。
+> **中断边界：** `user/isr.c` 只保留 `IFX_INTERRUPT` 入口并声明中断源；`code/app/smartcar_irq_router.c` 用静态路由表统一分发；`code/platform/isr_adapter.c` 只做清标志与有界整数采样。`EVT_GYRO_10MS` 使用计数语义，避免主循环阻塞时丢失 10ms 节拍。
 
 > **状态边界：** 运行态状态不再优先放入 `data.c`。`SensorService` 拥有陀螺仪/编码器 context，`Control` 拥有 PID handler 与输出快照，`Vision` 通过 control/debug snapshot 向外提供只读结果，`Scheduler` 自己维护系统时间基。
 
@@ -118,7 +118,7 @@ flowchart LR
 
     subgraph PROC[" ⚙️ 实时处理 "]
         ISR["ISR Adapter<br/>PIT 10ms<br/>清标志 + 计数"]:::isr
-        BRIDGE["SmartcarIsrBridge<br/>EVT_* 发布"]:::isr
+        BRIDGE["SmartcarIrqRouter<br/>source → adapter → event"]:::isr
         SENSOR["SensorService<br/>轮速平均<br/>陀螺仪积分"]:::vision
         VISION["Vision_Process<br/>OTSU · 滤波<br/>边线 · 中线"]:::vision
         CONTROL["Control_Update<br/>舵机 PID<br/>电机 PID"]:::control
@@ -204,7 +204,7 @@ GS_Smart_car/
 ├── code/                          # ★ 自研代码（五层架构）
 │   ├── app/                       #   应用层 — 主循环编排
 │   │   ├── smartcar_app.c/h
-│   │   └── smartcar_isr_bridge.c/h #     ISR 事实到调度事件的桥接
+│   │   └── smartcar_irq_router.c/h #     ISR source 到调度事件的表驱动路由
 │   ├── service/                   #   算法层 — 纯逻辑
 │   │   ├── vision/vision.c/h      #     视觉: OTSU/二值化/边线/中线
 │   │   ├── sensor/sensor.c/h      #     SensorService: 陀螺仪积分 + 编码器速度快照
@@ -319,8 +319,8 @@ gcc -Itests/stubs -Icode/platform -Icode/scheduler tests/test_event.c code/sched
 
 | 层级 | 模块 | 文件 | 输入 | 输出 |
 |:---:|:---:|:---|:---|:---|
-| App | 主循环 | `app/smartcar_app.c` | 摄像头帧标志 + ISR bridge 事件 | 编排 Sensor/Vision/Control/DebugDisplay 任务 |
-| App | 中断桥接 | `app/smartcar_isr_bridge.c` | 平台中断事实 | `EVT_*` 调度事件 + 系统时间基 |
+| App | 主循环 | `app/smartcar_app.c` | 摄像头帧标志 + IRQ router 事件 | 编排 Sensor/Vision/Control/DebugDisplay 任务 |
+| App | 中断路由 | `app/smartcar_irq_router.c` | ISR source + 平台中断事实 | `EVT_*` 调度事件 + 系统时间基 |
 | Service | 视觉 | `service/vision/vision.c` | 灰度图像 | 控制快照 + 调试快照 |
 | Service | 传感器 | `service/sensor/sensor.c` | 陀螺仪节拍 + 编码器快照 | 航向角 + 轮速 context |
 | Service | 控制 | `service/control/control.c` | 视觉快照 + 轮速 | PID handler 输出 → PWM |
