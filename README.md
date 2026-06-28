@@ -40,68 +40,185 @@
 ## 📐 系统架构
 
 ```mermaid
-graph TD
-    subgraph APP ["🚀 App 层"]
-        A1["SmartcarApp<br/>主循环编排"]
-        A2["SmartcarIsrBridge<br/>中断事件桥接"]
-    end
-    subgraph SVC ["🧠 Service / Handler 层"]
-        V["Vision Handler<br/>图像状态 + 中线输出"]
-        SE["Sensor Handler<br/>编码器/陀螺仪状态"]
-        C["Control Service<br/>PID 决策"]
-        P["PID Context<br/>控制器实例"]
-    end
-    subgraph BSP ["⚙️ Driver 层"]
-        M["Motor Driver<br/>H 桥 PWM"]
-        S["Servo Driver<br/>50Hz PWM"]
-        D["Display Driver<br/>TFT180"]
-        I["Input Driver<br/>按键输入"]
-    end
-    subgraph SUP ["📦 支撑层"]
-        CF["config.h · 参数集中"]
-        DA["Context · 状态收敛"]
-        IN["init.c · 系统初始化"]
-    end
-    subgraph VEN ["📚 Vendor"]
-        L["libraries/ · 逐飞库 + iLLD"]
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Segoe UI, Arial, sans-serif","fontSize":"14px","primaryTextColor":"#172033","lineColor":"#607086","clusterBkg":"#ffffff","clusterBorder":"#c9d3df"}}}%%
+flowchart LR
+    classDef entry fill:#eef2f6,stroke:#73839a,stroke-width:1px,color:#172033
+    classDef app fill:#e6f1ff,stroke:#2b6cb0,stroke-width:1.5px,color:#173b67
+    classDef service fill:#eef8f1,stroke:#2f855a,stroke-width:1.5px,color:#1f5137
+    classDef driver fill:#fff6df,stroke:#b7791f,stroke-width:1.5px,color:#6b4a13
+    classDef vendor fill:#f8e9ea,stroke:#b64242,stroke-width:1.5px,color:#6d2424
+    classDef support fill:#f3efff,stroke:#6b46c1,stroke-width:1px,color:#3d2b74
+
+    subgraph ENTRY["TC264 Entry"]
+        ISR["user/isr.c<br/>IFX_INTERRUPT entry only"]:::entry
+        CPU0["cpu0_main.c<br/>boot and main loop"]:::entry
     end
 
-    A2 --> A1
-    A1 --> V --> C
-    A1 --> SE --> C
-    A1 --> C
-    C --> M & S
-    A1 --> D
-    M & S --> L
+    subgraph APP["App Layer"]
+        ROUTER["SmartcarIrqRouter<br/>source table dispatch"]:::app
+        APP_MAIN["SmartcarApp<br/>task orchestration"]:::app
+        SCHED["Scheduler + Event<br/>cooperative runtime"]:::app
+    end
 
-    style APP fill:#e1f5fe,stroke:#0288d1,stroke-width:2px
-    style SVC fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
-    style BSP fill:#e8f5e9,stroke:#388e3c,stroke-width:2px
-    style SUP fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    style VEN fill:#fce4ec,stroke:#c62828,stroke-width:2px
+    subgraph SERVICE["Service / Handler Layer"]
+        VISION["Vision<br/>frame context + snapshots"]:::service
+        SENSOR["SensorService<br/>gyro + encoder context"]:::service
+        CONTROL["Control<br/>PID handler + output snapshot"]:::service
+        DEBUG["DebugDisplayService<br/>debug view composition"]:::service
+    end
+
+    subgraph DRIVER["Driver / Platform Layer"]
+        BSP["BSP Drivers<br/>motor / servo / display / input"]:::driver
+        PAL["PAL + IsrAdapter<br/>TC264 hardware adaptation"]:::driver
+    end
+
+    subgraph VENDOR["Vendor Layer"]
+        SEEKFREE["SEEKFREE TC264"]:::vendor
+        ILLD["Infineon iLLD"]:::vendor
+    end
+
+    subgraph SUPPORT["Config / Common"]
+        CONFIG["config.h<br/>tuning parameters"]:::support
+        INIT["init.c<br/>boot sequence"]:::support
+        LEGACY["data.c<br/>legacy compatibility only"]:::support
+    end
+
+    CPU0 --> APP_MAIN
+    ISR --> ROUTER --> PAL
+    ROUTER --> SCHED
+    APP_MAIN --> SCHED
+    SCHED --> VISION
+    SCHED --> SENSOR
+    SCHED --> CONTROL
+    SCHED --> DEBUG
+    VISION --> CONTROL
+    SENSOR --> CONTROL
+    CONTROL --> BSP
+    DEBUG --> BSP
+    BSP --> PAL --> SEEKFREE
+    PAL --> ILLD
+
+    CONFIG -.-> VISION
+    CONFIG -.-> CONTROL
+    CONFIG -.-> BSP
+    INIT -.-> APP_MAIN
+    LEGACY -.-> APP_MAIN
 ```
 
 > **依赖铁律：** `App → Service/Handler → Driver/Platform → Vendor`，单向向下，严禁反向调用。
 
-> **下一阶段工程目标：** 将零散 `static` 状态逐步收敛进 `xxx_context_t` / `xxx_handle_t`，公开 API 只接收 handle 或返回快照；Driver 只负责硬件动作，Handler 负责状态机与数据整理，Service 负责业务策略。
+> **中断边界：** `user/isr.c` 只声明中断源；`SmartcarIrqRouter` 用静态表统一分发；`IsrAdapter` 清硬件标志并产出平台事件；调度事件统一进入 `Scheduler + Event`。
+
+> **状态边界：** 新状态优先进入明确 owner 的 `context/handler`，对外只暴露 snapshot/getter/control API；`data.c` 仅保留历史兼容变量。
 
 ---
 
 ## 🔄 数据流水线
 
 ```mermaid
-flowchart LR
-    CAM["📷 摄像头"] -->|灰度图像| VIS
-    ENC["⚙️ 编码器"] --> ISR
-    GYRO["🧭 陀螺仪"] --> ISR
-    ISR["⏱️ ISR 10ms"] -->|轮速快照| CTL
-    VIS["👁️ 视觉处理"] -->|中线偏差| CTL
-    CTL["🎯 PID 控制"] --> ACT
-    ACT["⚡ 执行输出"] --> SRV["🔧 舵机"]
-    ACT --> MTR["🛞 电机"]
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Segoe UI, Arial, sans-serif","fontSize":"13px","primaryTextColor":"#172033","lineColor":"#607086","clusterBkg":"#ffffff","clusterBorder":"#c9d3df"}}}%%
+flowchart TB
+    classDef hw fill:#eef2f6,stroke:#73839a,color:#172033
+    classDef isr fill:#fff6df,stroke:#b7791f,color:#6b4a13
+    classDef bus fill:#e6f1ff,stroke:#2b6cb0,color:#173b67
+    classDef svc fill:#eef8f1,stroke:#2f855a,color:#1f5137
+    classDef out fill:#f8e9ea,stroke:#b64242,color:#6d2424
+
+    subgraph HW["Hardware Signals"]
+        CAM["MT9V03X frame ready"]:::hw
+        ENC["Encoder pulse count"]:::hw
+        GYRO["ICM20602 gyro tick"]:::hw
+    end
+
+    subgraph IRQ["Interrupt Boundary"]
+        ISR_ENTRY["IFX_INTERRUPT source"]:::isr
+        ROUTE["SmartcarIrqRouter route table"]:::isr
+        ADAPTER["IsrAdapter bounded work"]:::isr
+    end
+
+    subgraph RUNTIME["Runtime Dispatch"]
+        EVENT["event.c<br/>flags + gyro pending counter"]:::bus
+        SCHED["scheduler.c<br/>priority ordered tasks"]:::bus
+    end
+
+    subgraph TASK["Main Loop Services"]
+        VIS["Vision_Process<br/>control/debug snapshot"]:::svc
+        SEN["SensorService<br/>wheel speed + heading"]:::svc
+        CTL["Control_Update<br/>PID handler"]:::svc
+        DBG["DebugDisplayService<br/>screen snapshot"]:::svc
+    end
+
+    subgraph ACT["Actuator Output"]
+        SERVO["Servo PWM"]:::out
+        MOTOR["Motor PWM"]:::out
+        TFT["TFT180"]:::out
+    end
+
+    CAM --> VIS
+    ENC --> ISR_ENTRY
+    GYRO --> ISR_ENTRY
+    ISR_ENTRY --> ROUTE --> ADAPTER
+    ADAPTER -->|adapter facts| ROUTE
+    ROUTE -->|EVT_* + tick| EVENT --> SCHED
+    SCHED --> SEN
+    SCHED --> VIS
+    SCHED --> CTL
+    SCHED --> DBG
+    VIS -->|vision_control_snapshot_t| CTL
+    SEN -->|speed / heading getters| CTL
+    CTL --> SERVO
+    CTL --> MOTOR
+    DBG --> TFT
 ```
 
-每帧执行流程：`Vision_Process() → SensorService_*() → Control_Update() → Actuator_Apply()`
+每帧执行流程：`Vision_Process()` 产出视觉快照，`SensorService_*()` 更新传感器 context，`Control_Update()` 读取快照并更新 PID handler，`Actuator_Apply()` 下发执行器输出。
+
+---
+
+## 🧭 状态 Owner
+
+```mermaid
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"Segoe UI, Arial, sans-serif","fontSize":"13px","primaryTextColor":"#172033","lineColor":"#607086","clusterBkg":"#ffffff","clusterBorder":"#c9d3df"}}}%%
+flowchart LR
+    classDef owner fill:#eef8f1,stroke:#2f855a,color:#1f5137
+    classDef api fill:#e6f1ff,stroke:#2b6cb0,color:#173b67
+    classDef consumer fill:#fff6df,stroke:#b7791f,color:#6b4a13
+    classDef legacy fill:#f8e9ea,stroke:#b64242,color:#6d2424
+
+    subgraph OWNER["Private owner"]
+        V_CTX["Vision internal buffers<br/>binary image / lines / threshold"]:::owner
+        S_CTX["SensorService context<br/>encoder / gyro / heading"]:::owner
+        C_CTX["Control handler<br/>PID instances / outputs"]:::owner
+        I_CTX["IRQ router context<br/>dispatch counters"]:::owner
+    end
+
+    subgraph API["Public access"]
+        V_API["Vision_Get*Snapshot()"]:::api
+        S_API["SensorService_Get*()"]:::api
+        C_API["Control_GetOutputSnapshot()"]:::api
+        I_API["SmartcarIrqRouter_Dispatch(source)"]:::api
+    end
+
+    subgraph USE["Consumers"]
+        APP_USE["SmartcarApp"]:::consumer
+        CTL_USE["Control"]:::consumer
+        DBG_USE["DebugDisplay"]:::consumer
+        ISR_USE["user/isr.c"]:::consumer
+    end
+
+    LEGACY["data.c<br/>legacy only"]:::legacy
+
+    V_CTX --> V_API --> CTL_USE
+    V_API --> DBG_USE
+    S_CTX --> S_API --> CTL_USE
+    C_CTX --> C_API --> DBG_USE
+    I_CTX --> I_API --> ISR_USE
+    APP_USE --> V_API
+    APP_USE --> S_API
+    LEGACY -.-> APP_USE
+```
+
+这张图的判断标准很直接：谁拥有状态，谁负责生命周期；其他模块只能通过 API 或 snapshot 读取，不跨文件直接摸变量。
 
 ---
 
@@ -112,7 +229,7 @@ flowchart LR
 ```
 GS_Smart_car/                       (tc264-four-wheel-servo-camera-car 分支)
 ├── code/                           ★ 自研代码 — 五层架构
-│   ├── app/                        │  应用层：主循环编排
+│   ├── app/                        │  应用层：主循环编排 + IRQ source 路由
 │   ├── service/                    │  服务/Handler：视觉 + 传感器 + 控制 + PID
 │   │   ├── vision/                 │    ├ OTSU 二值化 / 边线检测 / 加权中线
 │   │   ├── sensor/                 │    ├ 编码器快照 / 陀螺仪积分
@@ -134,13 +251,13 @@ GS_Smart_car/                       (tc264-four-wheel-servo-camera-car 分支)
 
 ## 🧱 Driver + Handler 演进方向
 
-当前固件已经完成中断边界、调度器、SensorService、DebugDisplayService 等基础分层。下一轮重构重点不是继续堆文件夹，而是把状态所有权变清楚：
+当前固件已经完成中断边界、调度器、SensorService、DebugDisplayService，以及第一阶段 Driver + Handler + Context 收敛。后续重点不是继续堆文件夹，而是把状态所有权持续压清楚：
 
 | 层级 | 职责 | 推荐形态 |
 |:---:|:---|:---|
 | Driver | 直接控制硬件，不保存业务状态 | `motor_driver_t` + `MotorDriver_SetDuty()` |
-| Handler | 持有设备状态、采样窗口、状态机 | `encoder_handler_t` + `EncoderHandler_ProcessSample()` |
-| Service | 编排多个 Handler，输出业务结果 | `SensorService_GetSnapshot()` |
+| Handler | 持有设备状态、采样窗口、状态机 | `control_handler_t` / `sensor_service_context_t` |
+| Service | 编排多个 Handler，输出业务结果 | `Vision_GetControlSnapshot()` |
 | App | 只描述调度与业务流程 | `SmartcarApp_RunOnce()` |
 
 推荐迁移原则：
@@ -203,7 +320,9 @@ gcc -Itests/stubs -Icode/common tests/test_my_abs.c code/common/utils.c -o test.
 | 模块 | 位置 | 输入 | 输出 | 可独立测试 |
 |:---:|:---|:---|:---|:---:|
 | **视觉** | `service/vision/` | 灰度图像 | 中线偏差 `calculate_error` | ✅ |
-| **控制** | `service/control/` | 偏差 + 轮速 | PID 输出 → PWM | ✅ |
+| **传感器** | `service/sensor/` | 编码器窗口 + 陀螺仪 tick | 轮速 / 航向角 | ✅ |
+| **控制** | `service/control/` | 视觉快照 + 轮速 | PID 输出 → PWM | ✅ |
+| **中断路由** | `app/smartcar_irq_router.c` | ISR source | `EVT_*` + 调度 tick | ✅ |
 | **电机** | `bsp/motor.c` | 速度指令 | H 桥 PWM | ❌ 需硬件 |
 | **舵机** | `bsp/servo.c` | PWM 占空比 | 50Hz 舵机信号 | ❌ 需硬件 |
 | **显示** | `bsp/display.c` | 边线/中线数据 | TFT180 画面 | ❌ 需硬件 |
@@ -268,7 +387,8 @@ scope: app | vision | control | bsp | config | common | isr | core
 - [x] 企业级 README
 - [ ] ADS 编译验证
 - [x] ISR 算法迁移到主循环
-- [ ] Driver + Handler + Context 对象化重构
+- [x] Driver + Handler + Context 第一阶段对象化重构
+- [x] SmartcarIrqRouter 表驱动中断源路由
 - [ ] CPU1 视觉处理 offload（双核并行）
 
 ---
