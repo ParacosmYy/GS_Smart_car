@@ -12,7 +12,7 @@
 #ifndef CODE_MOTOR_H_
 #define CODE_MOTOR_H_
 
-#include "pal_pwm.h"
+#include "platform/mcu/pal_pwm.h"
 
 /**
  * @brief 电机驱动对象（封装左右轮当前速度与限幅值）

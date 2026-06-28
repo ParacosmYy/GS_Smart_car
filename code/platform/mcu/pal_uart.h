@@ -7,7 +7,7 @@
  */
 
 #include <stdint.h>
-#include "pal_resources.h"
+#include "platform/common/pal_resources.h"
 
 void pal_uart_init(pal_uart_id_t ch, uint32_t baud);
 

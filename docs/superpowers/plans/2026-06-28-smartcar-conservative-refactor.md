@@ -339,7 +339,7 @@ Keep existing commented debug blocks out of the loop body only if they do not ob
 Run:
 
 ```bash
-rg -n "SmartcarSystem_|SmartcarApp_|SmartcarBoard_|Tc264IrqBinding_" code user
+rg -n "SmartcarSystem_|SmartcarApp_|SmartcarBoard_|Tc264IrqPort_" code user
 ```
 
 Expected: `SmartcarSystem_Boot()` appears in `user/cpu0_main.c`; `SmartcarApp_Init()`

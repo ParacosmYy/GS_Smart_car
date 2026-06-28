@@ -24,8 +24,8 @@
 #include <stdint.h>
 #include "sensor.h"
 #include "config.h"
-#include "pal_encoder.h"
-#include "pal_imu.h"
+#include "platform/device/pal_imu.h"
+#include "platform/mcu/pal_encoder.h"
 //******************************** Includes *********************************//
 
 //******************************** Defines **********************************//

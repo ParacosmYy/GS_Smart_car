@@ -9,7 +9,7 @@
 #include "smartcar_system.h"
 
 #include "control.h"
-#include "pal_system.h"
+#include "platform/system/pal_system.h"
 #include "scheduler.h"
 #include "smartcar_app.h"
 #include "smartcar_board.h"

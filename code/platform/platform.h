@@ -9,17 +9,17 @@
  * pal_camera.h。保留本文件仅用于兼容历史 include。
  */
 
-#include "pal_camera.h"
-#include "pal_comm.h"
-#include "pal_display.h"
-#include "pal_encoder.h"
-#include "pal_gpio.h"
-#include "pal_imu.h"
-#include "pal_key.h"
-#include "pal_pit.h"
-#include "pal_pwm.h"
-#include "pal_system.h"
-#include "pal_uart.h"
+#include "platform/device/pal_camera.h"
+#include "platform/device/pal_comm.h"
+#include "platform/device/pal_display.h"
+#include "platform/device/pal_imu.h"
+#include "platform/device/pal_key.h"
+#include "platform/mcu/pal_encoder.h"
+#include "platform/mcu/pal_gpio.h"
+#include "platform/mcu/pal_pit.h"
+#include "platform/mcu/pal_pwm.h"
+#include "platform/mcu/pal_uart.h"
+#include "platform/system/pal_system.h"
 
 #ifndef TRUE
 #define TRUE  1

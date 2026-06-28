@@ -35,9 +35,9 @@
 
 #include "isr_config.h"
 #include "isr.h"
-#include "impl/tc264/tc264_irq_binding.h"
+#include "impl/tc264/tc264_irq_port.h"
 
-// TC264 中断入口受 IFX_INTERRUPT 宏约束保留在本文件，具体处理统一交给 system IRQ router。
+// TC264 中断入口受 IFX_INTERRUPT 宏约束保留在本文件，具体处理统一交给目标 IRQ Port。
 //----------------------------------------------------------------------
 // **************************** PIT Interrupt Handlers ****************************
 
@@ -47,7 +47,7 @@
  */
 IFX_INTERRUPT(cc60_pit_ch0_isr, 0, CCU6_0_CH0_ISR_PRIORITY)
 {
-    SmartcarIrqRouter_Dispatch(TC264_IRQ_SOURCE_CCU60_PIT_CH0);
+    Tc264IrqPort_OnCcu60PitCh0();
 }
 
 
@@ -57,7 +57,7 @@ IFX_INTERRUPT(cc60_pit_ch0_isr, 0, CCU6_0_CH0_ISR_PRIORITY)
  */
 IFX_INTERRUPT(cc60_pit_ch1_isr, 0, CCU6_0_CH1_ISR_PRIORITY)
 {
-    SmartcarIrqRouter_Dispatch(TC264_IRQ_SOURCE_CCU60_PIT_CH1);
+    Tc264IrqPort_OnCcu60PitCh1();
 }
 
 /**
@@ -65,7 +65,7 @@ IFX_INTERRUPT(cc60_pit_ch1_isr, 0, CCU6_0_CH1_ISR_PRIORITY)
  */
 IFX_INTERRUPT(cc61_pit_ch0_isr, 0, CCU6_1_CH0_ISR_PRIORITY)
 {
-    SmartcarIrqRouter_Dispatch(TC264_IRQ_SOURCE_CCU61_PIT_CH0);
+    Tc264IrqPort_OnCcu61PitCh0();
 }
 
 /**
@@ -73,7 +73,7 @@ IFX_INTERRUPT(cc61_pit_ch0_isr, 0, CCU6_1_CH0_ISR_PRIORITY)
  */
 IFX_INTERRUPT(cc61_pit_ch1_isr, 0, CCU6_1_CH1_ISR_PRIORITY)
 {
-    SmartcarIrqRouter_Dispatch(TC264_IRQ_SOURCE_CCU61_PIT_CH1);
+    Tc264IrqPort_OnCcu61PitCh1();
 }
 // **************************** PIT Interrupt Handlers ****************************
 
@@ -85,7 +85,7 @@ IFX_INTERRUPT(cc61_pit_ch1_isr, 0, CCU6_1_CH1_ISR_PRIORITY)
  */
 IFX_INTERRUPT(exti_ch0_ch4_isr, 0, EXTI_CH0_CH4_INT_PRIO)
 {
-    SmartcarIrqRouter_Dispatch(TC264_IRQ_SOURCE_EXTI_CH0_CH4);
+    Tc264IrqPort_OnExtiCh0Ch4();
 }
 
 /**
@@ -94,7 +94,7 @@ IFX_INTERRUPT(exti_ch0_ch4_isr, 0, EXTI_CH0_CH4_INT_PRIO)
  */
 IFX_INTERRUPT(exti_ch1_ch5_isr, 0, EXTI_CH1_CH5_INT_PRIO)
 {
-    SmartcarIrqRouter_Dispatch(TC264_IRQ_SOURCE_EXTI_CH1_CH5);
+    Tc264IrqPort_OnExtiCh1Ch5();
 }
 
 // 摄像头 PCLK 默认占用通道 2 触发 DMA，因此这里不定义 ch2/ch6 CPU ISR。
@@ -104,7 +104,7 @@ IFX_INTERRUPT(exti_ch1_ch5_isr, 0, EXTI_CH1_CH5_INT_PRIO)
  */
 IFX_INTERRUPT(exti_ch3_ch7_isr, 0, EXTI_CH3_CH7_INT_PRIO)
 {
-    SmartcarIrqRouter_Dispatch(TC264_IRQ_SOURCE_EXTI_CH3_CH7);
+    Tc264IrqPort_OnExtiCh3Ch7();
 }
 // **************************** External Interrupt Handlers ****************************
 
@@ -116,7 +116,7 @@ IFX_INTERRUPT(exti_ch3_ch7_isr, 0, EXTI_CH3_CH7_INT_PRIO)
  */
 IFX_INTERRUPT(dma_ch5_isr, 0, DMA_INT_PRIO)
 {
-    SmartcarIrqRouter_Dispatch(TC264_IRQ_SOURCE_DMA_CH5);
+    Tc264IrqPort_OnDmaCh5();
 }
 // **************************** DMA Interrupt Handlers ****************************
 
@@ -128,7 +128,7 @@ IFX_INTERRUPT(dma_ch5_isr, 0, DMA_INT_PRIO)
  */
 IFX_INTERRUPT(uart0_tx_isr, 0, UART0_TX_INT_PRIO)
 {
-    SmartcarIrqRouter_Dispatch(TC264_IRQ_SOURCE_UART0_TX);
+    Tc264IrqPort_OnUart0Tx();
 }
 /**
  * @brief 串口0 接收中断（调试串口）。
@@ -136,7 +136,7 @@ IFX_INTERRUPT(uart0_tx_isr, 0, UART0_TX_INT_PRIO)
  */
 IFX_INTERRUPT(uart0_rx_isr, 0, UART0_RX_INT_PRIO)
 {
-    SmartcarIrqRouter_Dispatch(TC264_IRQ_SOURCE_UART0_RX);
+    Tc264IrqPort_OnUart0Rx();
 }
 
 
@@ -146,7 +146,7 @@ IFX_INTERRUPT(uart0_rx_isr, 0, UART0_RX_INT_PRIO)
  */
 IFX_INTERRUPT(uart1_tx_isr, 0, UART1_TX_INT_PRIO)
 {
-    SmartcarIrqRouter_Dispatch(TC264_IRQ_SOURCE_UART1_TX);
+    Tc264IrqPort_OnUart1Tx();
 }
 /**
  * @brief 串口1 接收中断（摄像头配置串口）。
@@ -154,7 +154,7 @@ IFX_INTERRUPT(uart1_tx_isr, 0, UART1_TX_INT_PRIO)
  */
 IFX_INTERRUPT(uart1_rx_isr, 0, UART1_RX_INT_PRIO)
 {
-    SmartcarIrqRouter_Dispatch(TC264_IRQ_SOURCE_UART1_RX);
+    Tc264IrqPort_OnUart1Rx();
 }
 
 // 串口2默认连接到无线转串口模块
@@ -163,7 +163,7 @@ IFX_INTERRUPT(uart1_rx_isr, 0, UART1_RX_INT_PRIO)
  */
 IFX_INTERRUPT(uart2_tx_isr, 0, UART2_TX_INT_PRIO)
 {
-    SmartcarIrqRouter_Dispatch(TC264_IRQ_SOURCE_UART2_TX);
+    Tc264IrqPort_OnUart2Tx();
 }
 
 /**
@@ -172,7 +172,7 @@ IFX_INTERRUPT(uart2_tx_isr, 0, UART2_TX_INT_PRIO)
  */
 IFX_INTERRUPT(uart2_rx_isr, 0, UART2_RX_INT_PRIO)
 {
-    SmartcarIrqRouter_Dispatch(TC264_IRQ_SOURCE_UART2_RX);
+    Tc264IrqPort_OnUart2Rx();
 }
 // 串口3默认连接到GPS定位模块
 /**
@@ -180,7 +180,7 @@ IFX_INTERRUPT(uart2_rx_isr, 0, UART2_RX_INT_PRIO)
  */
 IFX_INTERRUPT(uart3_tx_isr, 0, UART3_TX_INT_PRIO)
 {
-    SmartcarIrqRouter_Dispatch(TC264_IRQ_SOURCE_UART3_TX);
+    Tc264IrqPort_OnUart3Tx();
 }
 
 /**
@@ -189,7 +189,7 @@ IFX_INTERRUPT(uart3_tx_isr, 0, UART3_TX_INT_PRIO)
  */
 IFX_INTERRUPT(uart3_rx_isr, 0, UART3_RX_INT_PRIO)
 {
-    SmartcarIrqRouter_Dispatch(TC264_IRQ_SOURCE_UART3_RX);
+    Tc264IrqPort_OnUart3Rx();
 }
 
 /**
@@ -199,17 +199,17 @@ IFX_INTERRUPT(uart3_rx_isr, 0, UART3_RX_INT_PRIO)
 // 串口通讯错误中断
 IFX_INTERRUPT(uart0_er_isr, 0, UART0_ER_INT_PRIO)
 {
-    SmartcarIrqRouter_Dispatch(TC264_IRQ_SOURCE_UART0_ERROR);
+    Tc264IrqPort_OnUart0Error();
 }
 IFX_INTERRUPT(uart1_er_isr, 0, UART1_ER_INT_PRIO)
 {
-    SmartcarIrqRouter_Dispatch(TC264_IRQ_SOURCE_UART1_ERROR);
+    Tc264IrqPort_OnUart1Error();
 }
 IFX_INTERRUPT(uart2_er_isr, 0, UART2_ER_INT_PRIO)
 {
-    SmartcarIrqRouter_Dispatch(TC264_IRQ_SOURCE_UART2_ERROR);
+    Tc264IrqPort_OnUart2Error();
 }
 IFX_INTERRUPT(uart3_er_isr, 0, UART3_ER_INT_PRIO)
 {
-    SmartcarIrqRouter_Dispatch(TC264_IRQ_SOURCE_UART3_ERROR);
+    Tc264IrqPort_OnUart3Error();
 }

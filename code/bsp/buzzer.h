@@ -8,7 +8,7 @@
 #ifndef CODE_BUZZER_H_
 #define CODE_BUZZER_H_
 
-#include "pal_gpio.h"
+#include "platform/mcu/pal_gpio.h"
 
 /**
  * @brief 打开蜂鸣器

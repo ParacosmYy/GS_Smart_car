@@ -8,7 +8,7 @@
 #define CODE_DRAW_H_
 
 #include <stdint.h>
-#include "pal_display.h"
+#include "platform/device/pal_display.h"
 
 /* RGB565 颜色常量（显示驱动专有参数，原逐飞库提供，此处本地定义） */
 #define RGB565_RED     0xF800

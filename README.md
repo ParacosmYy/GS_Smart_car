@@ -64,12 +64,15 @@ flowchart TB
     end
 
     subgraph PLATFORM["code/platform · Platform Contract"]
-        PAL["pal_*.h<br/>stable capability API"]:::platform
+        PAL_COMMON["common<br/>resource / base types"]:::platform
+        PAL_MCU["mcu<br/>gpio / pwm / pit / uart"]:::platform
+        PAL_DEVICE["device<br/>camera / display / imu"]:::platform
+        PAL_SYSTEM["system<br/>clock / irq / core sync"]:::platform
         PAL_AGG["platform.h<br/>compat aggregator only"]:::platform
     end
 
     subgraph IMPL["code/impl/tc264 · Target Implementation"]
-        BINDING["tc264_irq_binding<br/>target route table"]:::impl
+        IRQPORT["tc264_irq_port<br/>SDK ISR entry port"]:::impl
         ADAPTER["isr_adapter<br/>ack / sample / facts"]:::impl
         PAL_IMPL["platform_tc264.c<br/>PAL -> Vendor SDK"]:::impl
     end
@@ -80,8 +83,8 @@ flowchart TB
     end
 
     CPU0 --> RUNTIME
-    CPU0 --> BINDING
-    ISR --> IRQ
+    CPU0 --> IRQPORT
+    ISR --> IRQPORT
     RUNTIME --> BOARD
     RUNTIME --> CONTROL
     RUNTIME --> APP_MAIN
@@ -94,27 +97,37 @@ flowchart TB
     SCHED --> DEBUG
     CONTROL --> DRIVERS
     DEBUG --> DRIVERS
-    SENSOR --> PAL
-    VISION --> PAL
-    DRIVERS --> PAL
-    PAL_AGG -. includes .-> PAL
+    SENSOR --> PAL_MCU
+    SENSOR --> PAL_DEVICE
+    VISION --> PAL_DEVICE
+    DRIVERS --> PAL_MCU
+    DRIVERS --> PAL_DEVICE
+    BOARD --> PAL_SYSTEM
+    PAL_AGG -. includes .-> PAL_COMMON
+    PAL_AGG -. includes .-> PAL_MCU
+    PAL_AGG -. includes .-> PAL_DEVICE
+    PAL_AGG -. includes .-> PAL_SYSTEM
     IRQ --> ADAPTER
     IRQ --> SCHED
-    BINDING --> IRQ
-    BINDING --> ADAPTER
-    ADAPTER --> PAL
-    PAL -. implemented by .-> PAL_IMPL
+    IRQPORT --> IRQ
+    IRQPORT --> ADAPTER
+    ADAPTER --> PAL_MCU
+    ADAPTER --> PAL_DEVICE
+    ADAPTER --> PAL_SYSTEM
+    PAL_MCU -. implemented by .-> PAL_IMPL
+    PAL_DEVICE -. implemented by .-> PAL_IMPL
+    PAL_SYSTEM -. implemented by .-> PAL_IMPL
     PAL_IMPL --> SEEKFREE
     PAL_IMPL --> ILLD
     ADAPTER --> SEEKFREE
     ADAPTER --> ILLD
 ```
 
-**依赖铁律：** App/Service/BSP 只能向下依赖本层稳定接口、BSP 或具体 `pal_*.h` 能力头，不能 include `zf_common_headfile.h`、`Ifx*` 或 Vendor 类型。`code/platform/platform.h` 仅作为历史兼容聚合头，新代码必须 include `pal_gpio.h`、`pal_pwm.h`、`pal_camera.h` 等具体能力头。`code/platform` 不放 TC264 实现，`libraries/` 是 Vendor SDK，默认只读。
+**依赖铁律：** App/Service/BSP 只能向下依赖本层稳定接口、BSP 或具体 Platform 能力头，不能 include `zf_common_headfile.h`、`Ifx*` 或 Vendor 类型。`code/platform/platform.h` 仅作为历史兼容聚合头，新代码必须 include `platform/mcu/pal_gpio.h`、`platform/device/pal_camera.h`、`platform/system/pal_system.h` 等具体能力头。`code/platform` 不放 TC264 实现，`libraries/` 是 Vendor SDK，默认只读。
 
 ## 中断与调度
 
-中断路径不是 App 职责。`user/isr.c` 是 TC264 SDK entry，只保留 `IFX_INTERRUPT` 入口和目标 source id；`code/system/irq` 只认识通用 source/fact/event；`code/impl/tc264/tc264_irq_binding.c` 提供 TC264 路由表；`code/impl/tc264/isr_adapter.c` 处理 TC264 硬件事实。
+中断路径不是 App 职责。`user/isr.c` 是 TC264 SDK entry，只保留 `IFX_INTERRUPT` 薄入口；`code/impl/tc264/tc264_irq_port.c` 隐藏 TC264 source id 和端口路由；`code/system/irq` 只认识通用 source/fact/event；`code/impl/tc264/isr_adapter.c` 处理 TC264 硬件事实。
 
 ```mermaid
 flowchart LR
@@ -126,7 +139,7 @@ flowchart LR
 
     HW["TC264 IRQ source<br/>PIT / DMA / ERU / UART"]:::sdk
     SDK["user/isr.c<br/>IFX_INTERRUPT thin entry"]:::sdk
-    BINDING["code/impl/tc264<br/>TC264 source binding"]:::impl
+    PORT["code/impl/tc264<br/>TC264 IRQ port"]:::impl
     ROUTER["code/system/irq<br/>SmartcarIrqRouter"]:::system
     ADAPTER["code/impl/tc264<br/>IsrAdapter returns facts"]:::impl
     EVENTS["scheduler/event.c<br/>flag + counter policy"]:::sched
@@ -134,8 +147,8 @@ flowchart LR
     TASKS["Service tasks<br/>Vision / Sensor / Control"]:::service
 
     HW --> SDK
-    SDK --> ROUTER
-    BINDING --> ROUTER
+    SDK --> PORT
+    PORT --> ROUTER
     ROUTER --> ADAPTER
     ADAPTER --> ROUTER
     ROUTER -->|EVT_CAM_FRAME / EVT_GYRO_10MS / EVT_ENCODER_50MS| EVENTS
@@ -146,7 +159,7 @@ flowchart LR
 关键约束：
 
 - `SmartcarIrqRouter` 位于 `code/system/irq/smartcar_irq_router.c/h`，负责通用 source 查表、fact 校验、事件映射和 tick 发布。
-- `Tc264IrqBinding` 位于 `code/impl/tc264/tc264_irq_binding.c/h`，集中维护 TC264 source 与 adapter handler 的绑定。
+- `Tc264IrqPort` 位于 `code/impl/tc264/tc264_irq_port.c/h`，集中维护 TC264 source、SDK ISR entry port 与 adapter handler 的绑定。
 - `IsrAdapter` 位于 `code/impl/tc264/isr_adapter.c/h`，只做清标志、有界整数采样、Vendor ISR callback，返回 `SMARTCAR_IRQ_FACT_*`。
 - DMA 摄像头帧完成由 adapter 返回 `SMARTCAR_IRQ_FACT_CAMERA_FRAME`，router 统一发布 `EVT_CAM_FRAME`；App 不再轮询后伪造 ISR 事件。
 - `EVT_GYRO_10MS` 使用计数语义，避免主循环阻塞时吞掉 10ms tick。
@@ -160,8 +173,8 @@ GS_Smart_car/
 │   │   └── smartcar_app.c/h
 │   ├── service/                   # 服务/算法层：vision、sensor、control、diagnostics
 │   ├── bsp/                       # BSP/Driver：motor、servo、display、input、buzzer
-│   ├── platform/                  # PAL 契约：pal_*.h；platform.h 仅兼容聚合
-│   ├── impl/tc264/                # TC264 Impl：platform_tc264、isr_adapter、tc264_irq_binding
+│   ├── platform/                  # PAL 契约：common/mcu/device/system；platform.h 仅兼容聚合
+│   ├── impl/tc264/                # TC264 Impl：platform_tc264、isr_adapter、tc264_irq_port
 │   ├── system/board/              # 本车板级启动序列：设备初始化、周期中断启动
 │   ├── system/runtime/            # 系统启动编排：SDK entry 与 App 解耦
 │   ├── system/irq/                # 系统中断路由：source/fact/event/tick
@@ -207,7 +220,7 @@ gcc -std=c99 -Werror=implicit-function-declaration -fsyntax-only \
   -Icode/system/runtime -Icode/impl/tc264 \
   code/app/smartcar_app.c code/system/runtime/smartcar_system.c \
   code/system/board/smartcar_board.c code/system/irq/smartcar_irq_router.c \
-  code/impl/tc264/tc264_irq_binding.c \
+  code/impl/tc264/tc264_irq_port.c \
   code/service/control/control.c code/service/control/pid.c code/service/vision/vision.c \
   code/service/sensor/sensor.c code/service/diagnostics/debug_display.c \
   code/service/diagnostics/feedback_service.c \
@@ -229,8 +242,8 @@ gcc -std=c99 -Werror=implicit-function-declaration -fsyntax-only \
 | Service | 传感器 | `code/service/sensor/sensor.c` | 陀螺仪积分、编码器速度 context |
 | Service | 控制 | `code/service/control/control.c` | PID handler、执行器指令 |
 | BSP | 板级设备 | `code/bsp/*.c` | 电机、舵机、显示、输入、蜂鸣器 |
-| Platform API | PAL | `code/platform/pal_*.h` | 平台无关硬件能力接口 |
-| TC264 Impl | 目标绑定 | `code/impl/tc264/tc264_irq_binding.c` | TC264 source -> adapter handler route table |
+| Platform API | PAL | `code/platform/{common,mcu,device,system}/pal_*.h` | 平台无关硬件能力接口 |
+| TC264 Impl | IRQ Port | `code/impl/tc264/tc264_irq_port.c` | TC264 SDK ISR entry -> system router port |
 | TC264 Impl | PAL/ISR 实现 | `code/impl/tc264/*.c` | PAL 转 Vendor SDK、ISR 硬件事实 |
 | SDK Entry | TC264 入口 | `user/isr.c` | `IFX_INTERRUPT` 薄入口 |
 | Vendor SDK | 原厂库 | `libraries/` | Infineon iLLD + SEEKFREE |
@@ -241,14 +254,14 @@ gcc -std=c99 -Werror=implicit-function-declaration -fsyntax-only \
 
 1. 应用流程放 `code/app`，不能包含硬件宏。
 2. 算法和状态放 `code/service/<module>`，用 context/handler 管理运行态。
-3. 板级设备能力放 `code/bsp`，只依赖具体 `pal_*.h`。
-4. 新硬件抽象先扩展或新增 `code/platform/pal_*.h` 能力头，再在 `code/impl/tc264` 实现；不要把新业务代码挂到 `platform.h` 聚合头上。
-5. 中断源新增时同步 `user/isr.c` source、`Tc264IrqBinding` 路由表、`IsrAdapter` fact。
+3. 板级设备能力放 `code/bsp`，只依赖具体 Platform 能力头。
+4. 新硬件抽象先扩展或新增 `code/platform/<domain>/pal_*.h` 能力头，再在 `code/impl/tc264` 实现；不要把新业务代码挂到 `platform.h` 聚合头上。
+5. 中断源新增时同步 `user/isr.c` 薄入口、`Tc264IrqPort` 端口路由、`IsrAdapter` fact。
 6. Vendor SDK 只读；确需修改时单独提交并说明原因。
 
 ## MCU 可移植性现状
 
-本轮后，App、Service、BSP 与 TC264 source 枚举解耦，SDK entry 通过 `SmartcarSystem_Boot()` 和 `Tc264IrqBinding_Init()` 接入系统。`platform.h` 已降级为兼容聚合头，生产代码改为 include 具体 `pal_*.h` 能力接口。移植到新 MCU 时，优先新增 `code/impl/<target>/platform_<target>.c`、`<target>_irq_binding.c/h` 和 SDK entry，不应修改 App/Service 业务逻辑。
+本轮后，App、Service、BSP 与 TC264 source 枚举解耦，SDK entry 通过 `SmartcarSystem_Boot()` 和 `Tc264IrqPort_Init()` 接入系统。`platform.h` 已降级为兼容聚合头，生产代码改为 include 具体 Platform 能力接口。移植到新 MCU 时，优先新增 `code/impl/<target>/platform_<target>.c`、`<target>_irq_port.c/h` 和 SDK entry，不应修改 App/Service 业务逻辑。
 
 仍需继续收敛的边界：
 

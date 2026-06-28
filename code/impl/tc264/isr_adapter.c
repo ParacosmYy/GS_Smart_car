@@ -27,10 +27,10 @@
 //******************************** Includes *********************************//
 #include "isr_adapter.h"
 
-#include "pal_comm.h"
-#include "pal_encoder.h"
-#include "pal_pit.h"
-#include "pal_system.h"
+#include "platform/device/pal_comm.h"
+#include "platform/mcu/pal_encoder.h"
+#include "platform/mcu/pal_pit.h"
+#include "platform/system/pal_system.h"
 #include "zf_common_headfile.h"
 //******************************** Includes *********************************//
 

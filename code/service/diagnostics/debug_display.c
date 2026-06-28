@@ -19,7 +19,7 @@
 #include "debug_display.h"
 #include "control.h"
 #include "display.h"
-#include "pal_display.h"
+#include "platform/device/pal_display.h"
 #include "sensor.h"
 #include "vision.h"
 //******************************** Includes *********************************//

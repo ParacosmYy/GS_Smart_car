@@ -7,7 +7,7 @@
  */
 
 #include <stdint.h>
-#include "pal_resources.h"
+#include "platform/common/pal_resources.h"
 
 void pal_pit_init(pal_pit_id_t ch, uint32_t period_ms);
 void pal_pit_clear_flag(pal_pit_id_t ch);

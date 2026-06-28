@@ -32,7 +32,7 @@
 * 日期              作者                备注
 * 2022-09-15       pudding            first version
 ********************************************************************************************************************/
-#include "impl/tc264/tc264_irq_binding.h"
+#include "impl/tc264/tc264_irq_port.h"
 #include "system/runtime/smartcar_system.h"
 #pragma section all "cpu0_dsram"
 // 将本语句与#pragma section all restore语句之间的全局变量都放在CPU0的RAM中
@@ -47,11 +47,11 @@
 /**
  * @brief CPU0 主函数入口。
  *
- * SDK entry 只装配目标中断绑定并进入 system runtime。
+ * SDK entry 只装配目标中断端口并进入 system runtime。
  */
 int core0_main(void)
 {
-    Tc264IrqBinding_Init();
+    Tc264IrqPort_Init();
     SmartcarSystem_Boot();
 
     while (1)

@@ -7,7 +7,7 @@
  */
 
 #include <stdint.h>
-#include "pal_resources.h"
+#include "platform/common/pal_resources.h"
 
 void    pal_encoder_init(pal_encoder_id_t ch);
 int32_t pal_encoder_get(pal_encoder_id_t ch);

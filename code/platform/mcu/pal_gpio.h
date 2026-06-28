@@ -7,7 +7,7 @@
  */
 
 #include <stdint.h>
-#include "pal_resources.h"
+#include "platform/common/pal_resources.h"
 
 typedef enum
 {
