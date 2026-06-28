@@ -8,17 +8,17 @@
 #ifndef CODE_BUZZER_H_
 #define CODE_BUZZER_H_
 
-#include "zf_common_headfile.h"
+#include "platform.h"
 
 /**
  * @brief 打开蜂鸣器（P11_11 拉高）
  */
-static inline void buzzer_on(void)  { gpio_high(P11_11); }
+static inline void buzzer_on(void)  { pal_gpio_high(PAL_PIN_BUZZER); }
 
 /**
  * @brief 关闭蜂鸣器（P11_11 拉低）
  */
-static inline void buzzer_off(void) { gpio_low(P11_11);  }
+static inline void buzzer_off(void) { pal_gpio_low(PAL_PIN_BUZZER);  }
 
 /* ===== 非阻塞蜂鸣器模式 API ===== */
 /* 在主循环中调用，不阻塞控制流程                          */

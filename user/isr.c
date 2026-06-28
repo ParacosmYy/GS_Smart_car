@@ -35,9 +35,10 @@
 
 #include "isr_config.h"
 #include "isr.h"
+#include "platform.h"
 
-// 对于TC系列默认是不支持中断嵌套的，希望支持中断嵌套需要在中断内使用 interrupt_global_enable(0); 来开启中断嵌套
-// 简单点说实际上进入中断后TC系列的硬件自动调用了 interrupt_global_disable(); 来拒绝响应任何的中断，因此需要我们自己手动调用 interrupt_global_enable(0); 来开启中断的响应。
+// 对于TC系列默认是不支持中断嵌套的，希望支持中断嵌套需要在中断内使用 pal_irq_global_ctrl(0); 来开启中断嵌套
+// 简单点说实际上进入中断后TC系列的硬件自动调用了 interrupt_global_disable(); 来拒绝响应任何的中断，因此需要我们自己手动调用 pal_irq_global_ctrl(0); 来开启中断的响应。
 //----------------------------------------------------------------------
 #define GYRO_OFFSET_BUF_SIZE 32
 
@@ -82,8 +83,8 @@ static void Encoder_CalculateSpeed(void)
     right_speed_sum = 0;
     sample_count    = 0;
 
-    encoder_clear_count(TIM2_ENCODER);
-    encoder_clear_count(TIM4_ENCODER);
+    pal_encoder_clear(PAL_CH_ENCODER_L);
+    pal_encoder_clear(PAL_CH_ENCODER_R);
 }
 
 /**
@@ -96,8 +97,8 @@ static void Encoder_CalculateSpeed(void)
  */
 static void Gyro_CompensateDrift(void)
 {
-    icm20602_get_gyro();
-    gyro_raw_z = icm20602_gyro_transition(icm20602_gyro_z);
+    pal_gyro_read();
+    gyro_raw_z = pal_gyro_z();
 
     if (fabsf(gyro_raw_z) < GYRO_IDLE_THRESHOLD)
     {
@@ -132,13 +133,13 @@ static void Gyro_Integrate(void)
  */
 IFX_INTERRUPT(cc60_pit_ch0_isr, 0, CCU6_0_CH0_ISR_PRIORITY)
 {
-    interrupt_global_enable(0);                     // 开启中断嵌套
-    pit_clear_flag(CCU60_CH0);
+    pal_irq_global_ctrl(0);                     // 开启中断嵌套
+    pal_pit_clear_flag(PAL_CH_PIT_0);
     //pit_ch0_count ++ ;
 
     /* Accumulate raw encoder counts for this 10 ms tick. */
-    left_speed_sum += encoder_get_count(TIM2_ENCODER);
-    right_speed_sum += encoder_get_count(TIM4_ENCODER);
+    left_speed_sum += pal_encoder_get(PAL_CH_ENCODER_L);
+    right_speed_sum += pal_encoder_get(PAL_CH_ENCODER_R);
     sample_count++;
 
     /* Every MAX_SAMPLES ticks, collapse the window into averaged speeds. */
@@ -162,8 +163,8 @@ IFX_INTERRUPT(cc60_pit_ch0_isr, 0, CCU6_0_CH0_ISR_PRIORITY)
  */
 IFX_INTERRUPT(cc60_pit_ch1_isr, 0, CCU6_0_CH1_ISR_PRIORITY)
 {
-    interrupt_global_enable(0);                     // 开启中断嵌套
-    pit_clear_flag(CCU60_CH1);
+    pal_irq_global_ctrl(0);                     // 开启中断嵌套
+    pal_pit_clear_flag(PAL_CH_PIT_1);
 
     pit_ch1_count++;
 
@@ -172,8 +173,8 @@ IFX_INTERRUPT(cc60_pit_ch1_isr, 0, CCU6_0_CH1_ISR_PRIORITY)
 
     if (pit_ch1_count == 5)
     {
-        //encoder_clear_count(TIM2_ENCODER);
-        //encoder_clear_count(TIM4_ENCODER);
+        //pal_encoder_clear(PAL_CH_ENCODER_L);
+        //pal_encoder_clear(PAL_CH_ENCODER_R);
     }
 
 }
@@ -183,7 +184,7 @@ IFX_INTERRUPT(cc60_pit_ch1_isr, 0, CCU6_0_CH1_ISR_PRIORITY)
  */
 IFX_INTERRUPT(cc61_pit_ch0_isr, 0, CCU6_1_CH0_ISR_PRIORITY)
 {
-    interrupt_global_enable(0);                     // 开启中断嵌套
+    pal_irq_global_ctrl(0);                     // 开启中断嵌套
     pit_clear_flag(CCU61_CH0);
 
 
@@ -196,7 +197,7 @@ IFX_INTERRUPT(cc61_pit_ch0_isr, 0, CCU6_1_CH0_ISR_PRIORITY)
  */
 IFX_INTERRUPT(cc61_pit_ch1_isr, 0, CCU6_1_CH1_ISR_PRIORITY)
 {
-    interrupt_global_enable(0);                     // 开启中断嵌套
+    pal_irq_global_ctrl(0);                     // 开启中断嵌套
     pit_clear_flag(CCU61_CH1);
 
 
@@ -213,7 +214,7 @@ IFX_INTERRUPT(cc61_pit_ch1_isr, 0, CCU6_1_CH1_ISR_PRIORITY)
  */
 IFX_INTERRUPT(exti_ch0_ch4_isr, 0, EXTI_CH0_CH4_INT_PRIO)
 {
-    interrupt_global_enable(0);                     // 开启中断嵌套
+    pal_irq_global_ctrl(0);                     // 开启中断嵌套
     if(exti_flag_get(ERU_CH0_REQ0_P15_4))           // 通道0中断
     {
         exti_flag_clear(ERU_CH0_REQ0_P15_4);
@@ -236,7 +237,7 @@ IFX_INTERRUPT(exti_ch0_ch4_isr, 0, EXTI_CH0_CH4_INT_PRIO)
  */
 IFX_INTERRUPT(exti_ch1_ch5_isr, 0, EXTI_CH1_CH5_INT_PRIO)
 {
-    interrupt_global_enable(0);                     // 开启中断嵌套
+    pal_irq_global_ctrl(0);                     // 开启中断嵌套
 
     if(exti_flag_get(ERU_CH1_REQ10_P14_3))          // 通道1中断
     {
@@ -258,7 +259,7 @@ IFX_INTERRUPT(exti_ch1_ch5_isr, 0, EXTI_CH1_CH5_INT_PRIO)
 // 由于摄像头pclk引脚默认占用了 2通道，用于触发DMA，因此这里不再定义中断函数
 // IFX_INTERRUPT(exti_ch2_ch6_isr, 0, EXTI_CH2_CH6_INT_PRIO)
 // {
-//  interrupt_global_enable(0);                     // 开启中断嵌套
+//  pal_irq_global_ctrl(0);                     // 开启中断嵌套
 //  if(exti_flag_get(ERU_CH2_REQ7_P00_4))           // 通道2中断
 //  {
 //      exti_flag_clear(ERU_CH2_REQ7_P00_4);
@@ -275,7 +276,7 @@ IFX_INTERRUPT(exti_ch1_ch5_isr, 0, EXTI_CH1_CH5_INT_PRIO)
  */
 IFX_INTERRUPT(exti_ch3_ch7_isr, 0, EXTI_CH3_CH7_INT_PRIO)
 {
-    interrupt_global_enable(0);                     // 开启中断嵌套
+    pal_irq_global_ctrl(0);                     // 开启中断嵌套
     if(exti_flag_get(ERU_CH3_REQ6_P02_0))           // 通道3中断
     {
         exti_flag_clear(ERU_CH3_REQ6_P02_0);
@@ -301,7 +302,7 @@ IFX_INTERRUPT(exti_ch3_ch7_isr, 0, EXTI_CH3_CH7_INT_PRIO)
  */
 IFX_INTERRUPT(dma_ch5_isr, 0, DMA_INT_PRIO)
 {
-    interrupt_global_enable(0);                     // 开启中断嵌套
+    pal_irq_global_ctrl(0);                     // 开启中断嵌套
     camera_dma_handler();                           // 摄像头采集完成统一回调函数
 }
 // **************************** DMA中断函数 ****************************
@@ -314,7 +315,7 @@ IFX_INTERRUPT(dma_ch5_isr, 0, DMA_INT_PRIO)
  */
 IFX_INTERRUPT(uart0_tx_isr, 0, UART0_TX_INT_PRIO)
 {
-    interrupt_global_enable(0);                     // 开启中断嵌套
+    pal_irq_global_ctrl(0);                     // 开启中断嵌套
 
 
 
@@ -326,7 +327,7 @@ IFX_INTERRUPT(uart0_tx_isr, 0, UART0_TX_INT_PRIO)
  */
 IFX_INTERRUPT(uart0_rx_isr, 0, UART0_RX_INT_PRIO)
 {
-    interrupt_global_enable(0);                     // 开启中断嵌套
+    pal_irq_global_ctrl(0);                     // 开启中断嵌套
 
 #if DEBUG_UART_USE_INTERRUPT                        // 如果开启 debug 串口中断
         debug_interrupr_handler();                  // 调用 debug 串口接收处理函数 数据会被 debug 环形缓冲区读取
@@ -340,7 +341,7 @@ IFX_INTERRUPT(uart0_rx_isr, 0, UART0_RX_INT_PRIO)
  */
 IFX_INTERRUPT(uart1_tx_isr, 0, UART1_TX_INT_PRIO)
 {
-    interrupt_global_enable(0);                     // 开启中断嵌套
+    pal_irq_global_ctrl(0);                     // 开启中断嵌套
 
 
 
@@ -352,7 +353,7 @@ IFX_INTERRUPT(uart1_tx_isr, 0, UART1_TX_INT_PRIO)
  */
 IFX_INTERRUPT(uart1_rx_isr, 0, UART1_RX_INT_PRIO)
 {
-    interrupt_global_enable(0);                     // 开启中断嵌套
+    pal_irq_global_ctrl(0);                     // 开启中断嵌套
     camera_uart_handler();                          // 摄像头参数配置统一回调函数
 }
 
@@ -362,7 +363,7 @@ IFX_INTERRUPT(uart1_rx_isr, 0, UART1_RX_INT_PRIO)
  */
 IFX_INTERRUPT(uart2_tx_isr, 0, UART2_TX_INT_PRIO)
 {
-    interrupt_global_enable(0);                     // 开启中断嵌套
+    pal_irq_global_ctrl(0);                     // 开启中断嵌套
 
 
 
@@ -374,7 +375,7 @@ IFX_INTERRUPT(uart2_tx_isr, 0, UART2_TX_INT_PRIO)
  */
 IFX_INTERRUPT(uart2_rx_isr, 0, UART2_RX_INT_PRIO)
 {
-    interrupt_global_enable(0);                     // 开启中断嵌套
+    pal_irq_global_ctrl(0);                     // 开启中断嵌套
     wireless_module_uart_handler();                 // 无线模块统一回调函数
 
 
@@ -386,7 +387,7 @@ IFX_INTERRUPT(uart2_rx_isr, 0, UART2_RX_INT_PRIO)
  */
 IFX_INTERRUPT(uart3_tx_isr, 0, UART3_TX_INT_PRIO)
 {
-    interrupt_global_enable(0);                     // 开启中断嵌套
+    pal_irq_global_ctrl(0);                     // 开启中断嵌套
 
 
 
@@ -398,7 +399,7 @@ IFX_INTERRUPT(uart3_tx_isr, 0, UART3_TX_INT_PRIO)
  */
 IFX_INTERRUPT(uart3_rx_isr, 0, UART3_RX_INT_PRIO)
 {
-    interrupt_global_enable(0);                     // 开启中断嵌套
+    pal_irq_global_ctrl(0);                     // 开启中断嵌套
     wireless_uart_callback();                           // GNSS串口回调函数
 
 
@@ -413,21 +414,21 @@ IFX_INTERRUPT(uart3_rx_isr, 0, UART3_RX_INT_PRIO)
 // 串口通讯错误中断
 IFX_INTERRUPT(uart0_er_isr, 0, UART0_ER_INT_PRIO)
 {
-    interrupt_global_enable(0);                     // 开启中断嵌套
+    pal_irq_global_ctrl(0);                     // 开启中断嵌套
     IfxAsclin_Asc_isrError(&uart0_handle);
 }
 IFX_INTERRUPT(uart1_er_isr, 0, UART1_ER_INT_PRIO)
 {
-    interrupt_global_enable(0);                     // 开启中断嵌套
+    pal_irq_global_ctrl(0);                     // 开启中断嵌套
     IfxAsclin_Asc_isrError(&uart1_handle);
 }
 IFX_INTERRUPT(uart2_er_isr, 0, UART2_ER_INT_PRIO)
 {
-    interrupt_global_enable(0);                     // 开启中断嵌套
+    pal_irq_global_ctrl(0);                     // 开启中断嵌套
     IfxAsclin_Asc_isrError(&uart2_handle);
 }
 IFX_INTERRUPT(uart3_er_isr, 0, UART3_ER_INT_PRIO)
 {
-    interrupt_global_enable(0);                     // 开启中断嵌套
+    pal_irq_global_ctrl(0);                     // 开启中断嵌套
     IfxAsclin_Asc_isrError(&uart3_handle);
 }

@@ -10,7 +10,7 @@
  *  此外在每轮循环中刷新 TFT180 屏幕，用于在线调试。
  */
 #include "smartcar_app.h"
-#include "zf_common_headfile.h"
+#include "platform.h"
 #include "control.h"
 #include "buzzer.h"
 
@@ -34,7 +34,7 @@ void SmartcarApp_RunOnce(void)
 {
     // ===== Vision → Control → Actuator 三步流水线 =====
     // 仅在新一帧图像就绪时执行，保证控制周期与帧率同步
-    if(mt9v03x_finish_flag == 1)
+    if(pal_cam_ready())
     {
         Vision_Process();    // 步骤 1：视觉处理，从图像提取赛道中线与转向误差
 
@@ -54,7 +54,7 @@ void SmartcarApp_RunOnce(void)
 
         Control_Update();    // 步骤 2：控制更新，PID 计算舵机和电机目标值
         Actuator_Apply();    // 步骤 3：执行下发，将目标值写入 PWM 寄存器
-        mt9v03x_finish_flag = 0;   // 清除帧完成标志，等待下一帧
+        pal_cam_clear();   // 清除帧完成标志，等待下一帧
     }
 
     // 蜂鸣器时序驱动（每帧调用，非阻塞）
@@ -64,23 +64,23 @@ void SmartcarApp_RunOnce(void)
     // 实时显示图像与关键状态，便于现场调参与排错
 
     // 显示半分辨率灰度图（94×60 缩放窗口）
-    tft180_show_gray_image(0, 0, mt9v03x_image_bandw_zip[0], 94, 60, MT9V03X_W / 2, MT9V03X_H / 2, 0);
+    pal_disp_gray(0, 0, mt9v03x_image_bandw_zip[0], 94, 60, MT9V03X_W / 2, MT9V03X_H / 2, 0);
 
     // 左右编码器实测速度（来自控制模块）
-    tft180_show_string(0, 80, "left:");
-    tft180_show_int(50, 80, left_encoder_speed, 4);
+    pal_disp_str(0, 80, "left:");
+    pal_disp_int(50, 80, left_encoder_speed, 4);
 
-    tft180_show_string(0, 60, "right:");
-    tft180_show_int(50, 60, right_encoder_speed, 4);
+    pal_disp_str(0, 60, "right:");
+    pal_disp_int(50, 60, right_encoder_speed, 4);
 
     // 左右电机 PID 输出（下发给驱动器的目标值）
-    tft180_show_string(0, 100, "l_spd:");
-    tft180_show_string(0, 120, "r_spd:");
+    pal_disp_str(0, 100, "l_spd:");
+    pal_disp_str(0, 120, "r_spd:");
 
-    tft180_show_int(50, 100, (int32)left_motor_pid_output, 6);
-    tft180_show_int(50, 120, (int32)right_motor_pid_output, 6);
+    pal_disp_int(50, 100, (int32_t)left_motor_pid_output, 6);
+    pal_disp_int(50, 120, (int32_t)right_motor_pid_output, 6);
 
     // 当前转向误差（视觉模块计算结果）
-    tft180_show_string(0, 140, "err:");
-    tft180_show_int(50, 140, calculate_error, 4);
+    pal_disp_str(0, 140, "err:");
+    pal_disp_int(50, 140, calculate_error, 4);
 }

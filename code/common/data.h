@@ -12,7 +12,7 @@
 #ifndef CODE_DATA_H_
 #define CODE_DATA_H_
 
-#include "zf_common_headfile.h"
+#include "platform.h"
 
 #define GYRO_OFFSET_BUF_SIZE 32   // 陀螺仪零漂校准缓冲区大小（采样点数）
 

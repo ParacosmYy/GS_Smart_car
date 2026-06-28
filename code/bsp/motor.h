@@ -8,14 +8,14 @@
 #ifndef CODE_MOTOR_H_
 #define CODE_MOTOR_H_
 
-#include "zf_common_headfile.h"
+#include "platform.h"
 
 // 电机当前目标速度（外部可见）
-extern uint32 motor_speed;
+extern uint32_t motor_speed;
 
 
 /**
- * @brief 电机初始化，配置 4 路 GPIO 与 ATOM PWM 通道
+ * @brief 电机初始化，初始化 4 路 PWM 通道（PAL 层内部配置引脚）
  */
 void motor_init(void);
 

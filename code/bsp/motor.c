@@ -9,27 +9,23 @@
 
 
 // 当前电机目标速度（占位用，外部可读取）
-uint32 motor_speed = 0;
+uint32_t motor_speed = 0;
 
 
 
 /**
  * @brief 电机初始化
- *         配置 4 路 GPIO 为推挽输出，再初始化 4 路 ATOM PWM 通道
- *         P21_2/P21_3 控制右轮正反转，P21_4/P21_5 控制左轮正反转
+ *         初始化 4 路 PWM 通道（PAL 层内部已配置引脚）
+ *         右轮：PAL_CH_MOTOR_R_FWD / PAL_CH_MOTOR_R_REV
+ *         左轮：PAL_CH_MOTOR_L_FWD / PAL_CH_MOTOR_L_REV
  */
 void motor_init(void)
 {
-   // 先将 4 个引脚配置为 GPO 推挽输出，初始电平 0
-   gpio_init(P21_2,GPO,0,GPO_PUSH_PULL);
-   gpio_init(P21_3,GPO,0,GPO_PUSH_PULL);
-   gpio_init(P21_4,GPO,0,GPO_PUSH_PULL);
-   gpio_init(P21_5,GPO,0,GPO_PUSH_PULL);
    // 4 路 PWM 初始化，频率 MOTOR_PWM_HZ，初始占空比为 0（电机停转）
-   pwm_init(ATOM0_CH0_P21_2,MOTOR_PWM_HZ,0);
-   pwm_init(ATOM0_CH1_P21_3,MOTOR_PWM_HZ,0);
-   pwm_init(ATOM0_CH2_P21_4,MOTOR_PWM_HZ,0);
-   pwm_init(ATOM0_CH3_P21_5,MOTOR_PWM_HZ,0);
+   pal_pwm_init(PAL_CH_MOTOR_R_REV, MOTOR_PWM_HZ, 0);
+   pal_pwm_init(PAL_CH_MOTOR_R_FWD, MOTOR_PWM_HZ, 0);
+   pal_pwm_init(PAL_CH_MOTOR_L_REV, MOTOR_PWM_HZ, 0);
+   pal_pwm_init(PAL_CH_MOTOR_L_FWD, MOTOR_PWM_HZ, 0);
 }
 
 /**
@@ -49,15 +45,15 @@ void motor_setspeed_right(int speed)
     }
     if(speed > 0)
     {
-        // 正转：CH1 输出 PWM，CH0 清零
-        pwm_set_duty(ATOM0_CH1_P21_3,speed * 100);
-        pwm_set_duty(ATOM0_CH0_P21_2, 0);
+        // 正转：右电机正转通道输出 PWM，反转通道清零
+        pal_pwm_set_duty(PAL_CH_MOTOR_R_FWD, speed * 100);
+        pal_pwm_set_duty(PAL_CH_MOTOR_R_REV, 0);
     }
     else
     {
-        // 反转：CH0 输出 PWM，CH1 清零（speed 取负转为正占空比）
-        pwm_set_duty(ATOM0_CH0_P21_2, -speed * 100);
-        pwm_set_duty(ATOM0_CH1_P21_3, 0);
+        // 反转：右电机反转通道输出 PWM，正转通道清零（speed 取负转为正占空比）
+        pal_pwm_set_duty(PAL_CH_MOTOR_R_REV, -speed * 100);
+        pal_pwm_set_duty(PAL_CH_MOTOR_R_FWD, 0);
     }
 }
 
@@ -78,15 +74,15 @@ void motor_setspeed_left(int speed)
     }
     if(speed > 0)
     {
-        // 正转：CH3 输出 PWM，CH2 清零
-        pwm_set_duty(ATOM0_CH3_P21_5,speed * 100);
-        pwm_set_duty(ATOM0_CH2_P21_4, 0);
+        // 正转：左电机正转通道输出 PWM，反转通道清零
+        pal_pwm_set_duty(PAL_CH_MOTOR_L_FWD, speed * 100);
+        pal_pwm_set_duty(PAL_CH_MOTOR_L_REV, 0);
     }
     else
     {
-        // 反转：CH2 输出 PWM，CH3 清零
-        pwm_set_duty(ATOM0_CH2_P21_4, -speed * 100);
-        pwm_set_duty(ATOM0_CH3_P21_5, 0);
+        // 反转：左电机反转通道输出 PWM，正转通道清零
+        pal_pwm_set_duty(PAL_CH_MOTOR_L_REV, -speed * 100);
+        pal_pwm_set_duty(PAL_CH_MOTOR_L_FWD, 0);
     }
 }
 

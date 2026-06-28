@@ -112,7 +112,7 @@ static void buzzer_step(buzzer_t *bz)
  */
 void buzzer_init(void)
 {
-    gpio_init(P11_11, GPO, GPIO_LOW, GPO_PUSH_PULL);
+    pal_gpio_init(PAL_PIN_BUZZER, PAL_GPIO_OUTPUT);
 }
 
 /* ===== 公开 API（包装单实例 s_buzzer）===== */

@@ -14,16 +14,16 @@
 #define servo_min (SERVO_CENTER_DUTY - SERVO_RANGE)
 
 // 舵机当前实际占空比（外部可见）
-uint32 servo_duty = 0;
+uint32_t servo_duty = 0;
 
 /**
  * @brief 舵机初始化
- *         在 ATOM1_CH1（P33_9）上输出 SERVO_PWM_HZ 的 PWM
+ *         在 PAL_CH_SERVO 上输出 SERVO_PWM_HZ 的 PWM
  *         初始占空比为 SERVO_INIT_DUTY，舵机居中
  */
 void servo_init(void)
 {
-    pwm_init(ATOM1_CH1_P33_9, SERVO_PWM_HZ, SERVO_INIT_DUTY);
+    pal_pwm_init(PAL_CH_SERVO, SERVO_PWM_HZ, SERVO_INIT_DUTY);
 }
 
 

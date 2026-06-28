@@ -15,11 +15,11 @@
  * @return value 的绝对值（非负）
  *
  * 使用自定义版本而非标准库 abs()，原因：
- *  - 精确控制输入类型为 int16，避免类型转换开销
+ *  - 精确控制输入类型为 int16_t，避免类型转换开销
  *  - 在 TC264 上手写实现比库调用更快
  *  - 已修复历史 bug：value == 0 时返回 0，避免返回带符号的负零
  */
-int16 my_abs(int16 value)
+int16_t my_abs(int16_t value)
 {
     if(value > 0)
     {
@@ -27,7 +27,7 @@ int16 my_abs(int16 value)
     }
     else if(value < 0)
     {
-        return (int16)(-value);
+        return (int16_t)(-value);
     }
     else
     {

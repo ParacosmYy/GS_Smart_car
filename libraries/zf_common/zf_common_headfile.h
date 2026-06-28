@@ -122,6 +122,7 @@
 #include "pid.h"
 #include "init.h"
 #include "vision.h"
+#include "platform.h"
 #include "control.h"
 #include "config.h"
 #include "display.h"

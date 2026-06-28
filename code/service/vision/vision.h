@@ -12,13 +12,13 @@
 #ifndef CODE_VISION_H_
 #define CODE_VISION_H_
 
-#include "zf_common_headfile.h"
+#include "platform.h"
 #include "display.h"
 
 #define zip_MT9V03X_H 60 // 压缩后图像高度
 #define zip_MT9V03X_W 94 // 压缩后图像宽度
 
-extern uint8_t mt9v03x_image_bandw[MT9V03X_H][MT9V03X_W]; // 原始尺寸二值图（188×120）
+extern uint8_t mt9v03x_image_bandw[PAL_CAM_H][PAL_CAM_W]; // 原始尺寸二值图（188×120）
 extern uint8_t mt9v03x_image_bandw_zip[60][94];           // 压缩后二值图（94×60）
 extern uint8_t image_threshold ;                          // 当前帧二值化阈值（OTSU 输出）
 

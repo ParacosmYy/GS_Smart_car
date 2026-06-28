@@ -6,7 +6,7 @@
  */
 
 #include "control.h"
-#include "zf_common_headfile.h"
+#include "platform.h"
 #include "config.h"
 
 void Control_Update(void)

@@ -7,7 +7,7 @@
  *      Author: Paracosm
  */
 #include "pid.h"
-#include "zf_common_headfile.h"
+#include "platform.h"
 
 // PID输出结果（供 Actuator_Apply 使用）
 float servo_pid_output = 0.0;

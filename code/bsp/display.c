@@ -3,8 +3,14 @@
  *
  *  Created on: 2025年10月20日
  *      Author: Paracosm
+ *
+ * 注：本文件例外保留逐飞头文件。PAL 未提供像素级绘制接口
+ *     （tft180_draw_point）与屏幕尺寸常量（tft180_width_max /
+ *     tft180_height_max），draw_piont / draw_all_lines_test 仍需调用
+ *     逐飞 TFT 底层接口。颜色常量已移至 display.h，不再依赖逐飞头文件。
  */
 #include "display.h"
+#include "zf_common_headfile.h"   /* 仅用于 tft180_draw_point 等像素级接口 */
 
 // 压缩后图像尺寸（用于TFT显示坐标映射）
 #define zip_MT9V03X_H 60   // 图像高度（行数）

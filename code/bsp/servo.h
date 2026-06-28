@@ -8,10 +8,10 @@
 #ifndef CODE_SERVO_H_
 #define CODE_SERVO_H_
 
-#include "zf_common_headfile.h"
+#include "platform.h"
 
 // 舵机当前 PWM 占空比（外部可见）
-extern uint32 servo_duty ;
+extern uint32_t servo_duty ;
 
 /**
  * @brief 舵机初始化，配置 ATOM1_CH1（P33_9）输出 PWM 并居中

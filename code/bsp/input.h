@@ -8,12 +8,12 @@
 #ifndef CODE_STATE_MACHINE_H_
 #define CODE_STATE_MACHINE_H_
 
-#include "zf_common_headfile.h"
+#include "platform.h"
 
 extern uint8_t key_last_status[4] ;  // 上一次按键电平
 extern uint8_t key_status[4] ;       // 当前按键电平
 extern uint8_t key_flag[4];          // 按键上升沿触发标志
-extern uint8_t key_gpio[4] ; // 假设KEY1~KEY4是宏定义
+extern pal_ch_t key_gpio[4] ;        // KEY1~KEY4 对应的 PAL 引脚通道
 
 extern uint8_t dip_switch_flag[4];   // 拨码开关状态，1=ON（低电平有效）
 
@@ -38,7 +38,7 @@ void key_check(uint16_t key_index);
  * @brief 查询当前被按下的按键编号（电平检测）
  * @return 1~4 对应 KEY1~KEY4，0 表示无按下
  */
-uint8 key_state_check(void);
+uint8_t key_state_check(void);
 
 /**
  * @brief 初始化4个按键GPIO为上拉输入

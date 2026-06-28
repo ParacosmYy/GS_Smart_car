@@ -32,7 +32,7 @@
 * 日期              作者                备注
 * 2022-09-15       pudding            first version
 ********************************************************************************************************************/
-#include "zf_common_headfile.h"
+#include "platform.h"
 #include "smartcar_app.h"
 #pragma section all "cpu0_dsram"
 // 将本语句与#pragma section all restore语句之间的全局变量都放在CPU0的RAM中
@@ -58,12 +58,12 @@
  */
 int core0_main(void)
 {
-    clock_init();                   // 步骤1：获取时钟频率，务必保留
-    debug_init();                   // 步骤2：初始化默认调试串口
+    pal_sys_clock_init();           // 步骤1：获取时钟频率，务必保留
+    pal_sys_debug_init();           // 步骤2：初始化默认调试串口
 
     SmartcarApp_Init();             // 步骤3：初始化全部外设与周期中断
     // 此处编写用户代码 例如外设初始化代码等
-    cpu_wait_event_ready();         // 步骤4：等待所有核心初始化完毕
+    pal_sys_core_sync();            // 步骤4：等待所有核心初始化完毕
 
 
 

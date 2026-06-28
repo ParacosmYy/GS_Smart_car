@@ -10,13 +10,13 @@
 #ifndef CODE_UTILS_H_
 #define CODE_UTILS_H_
 
-#include "zf_common_headfile.h"
+#include "platform.h"
 
 /**
  * @brief 求 16 位有符号整数的绝对值
  * @param value 输入值（可为正、负或零）
  * @return value 的绝对值（非负）
  */
-int16 my_abs(int16 value);
+int16_t my_abs(int16_t value);
 
 #endif /* CODE_UTILS_H_ */

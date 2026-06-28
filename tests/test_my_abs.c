@@ -1,7 +1,7 @@
 ﻿#include <stdio.h>
 #include "utils.h"
 
-static int expect_equal_int16(const char *name, int16 actual, int16 expected)
+static int expect_equal_int16(const char *name, int16_t actual, int16_t expected)
 {
     if (actual != expected)
     {
