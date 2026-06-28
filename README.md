@@ -18,82 +18,101 @@
 
 ## 系统架构
 
-工程边界按大厂嵌入式项目的可维护性要求拆分：**App 只做应用编排，BSP/Driver 只封装板级设备，Platform 只定义 PAL 契约，Impl 负责 TC264/逐飞实现，Vendor SDK 默认只读**。运行态状态逐步收敛到明确 owner 的 `context/handler`。
+工程边界按大厂嵌入式项目的可维护性要求拆分：**SDK Entry 只接平台入口，System 负责启动和中断编排，App 只注册业务任务，Service/Handler 持有算法状态，BSP/Driver 封装板级设备，Platform 定义 PAL 契约，Impl 负责 TC264/逐飞实现，Vendor SDK 默认只读**。运行态状态逐步收敛到明确 owner 的 `context/handler`。
 
 ```mermaid
-%%{init: {'theme':'base','themeVariables':{'fontFamily':'Segoe UI,Arial,sans-serif','fontSize':'14px','primaryTextColor':'#202124','lineColor':'#5f6368','clusterBkg':'#ffffff','clusterBorder':'#c9d1d9'}}}%%
+%%{init: {'theme':'base','themeVariables':{'fontFamily':'Segoe UI,Arial,sans-serif','fontSize':'13px','primaryTextColor':'#1f2328','lineColor':'#57606a','clusterBkg':'#ffffff','clusterBorder':'#d0d7de'}}}%%
 flowchart TB
-    classDef entry fill:#f1f3f4,stroke:#5f6368,stroke-width:1.5px,color:#202124
-    classDef app fill:#e8f0fe,stroke:#1a73e8,stroke-width:2px,color:#174ea6
-    classDef service fill:#f3e8fd,stroke:#9334e6,stroke-width:2px,color:#681da8
-    classDef system fill:#fef7e0,stroke:#f9ab00,stroke-width:2px,color:#7a4b00
-    classDef bsp fill:#e6f4ea,stroke:#34a853,stroke-width:2px,color:#137333
-    classDef platform fill:#e0f7fa,stroke:#00838f,stroke-width:2px,color:#006064
-    classDef impl fill:#fce8e6,stroke:#d93025,stroke-width:2px,color:#a50e0e
-    classDef vendor fill:#f8f9fa,stroke:#80868b,stroke-width:1.5px,color:#3c4043
+    classDef sdk fill:#f6f8fa,stroke:#57606a,stroke-width:1.5px,color:#24292f
+    classDef system fill:#fff8c5,stroke:#9a6700,stroke-width:2px,color:#633c01
+    classDef app fill:#ddf4ff,stroke:#0969da,stroke-width:2px,color:#0550ae
+    classDef sched fill:#f0f7ff,stroke:#0969da,stroke-width:1.5px,color:#0550ae
+    classDef service fill:#fbefff,stroke:#8250df,stroke-width:2px,color:#6639ba
+    classDef bsp fill:#dafbe1,stroke:#1a7f37,stroke-width:2px,color:#116329
+    classDef platform fill:#ddf4ff,stroke:#1b7c83,stroke-width:2px,color:#05595f
+    classDef impl fill:#ffebe9,stroke:#cf222e,stroke-width:2px,color:#a40e26
+    classDef vendor fill:#f6f8fa,stroke:#8c959f,stroke-width:1.5px,color:#57606a
 
-    subgraph APP["code/app · 应用层"]
-        APP_MAIN["SmartcarApp<br/>生命周期 / 任务注册 / 主循环"]:::app
+    subgraph SDK["user · SDK Entry"]
+        CPU0["cpu0_main.c<br/>core entry"]:::sdk
+        ISR["isr.c<br/>IFX_INTERRUPT only"]:::sdk
     end
 
-    subgraph SERVICE["code/service · 服务与算法层"]
-        SENSOR["SensorService<br/>gyro / encoder context"]:::service
-        VISION["Vision<br/>图像处理 / 控制快照"]:::service
-        CONTROL["Control<br/>PID handler / actuator cmd"]:::service
-        DEBUG["DebugDisplayService<br/>调试显示编排"]:::service
+    subgraph SYSTEM["code/system · System Runtime"]
+        RUNTIME["runtime<br/>boot order / main-loop bridge"]:::system
+        BOARD["board<br/>device init / PIT start"]:::system
+        IRQ["irq router<br/>source -> fact -> event/tick"]:::system
     end
 
-    subgraph BSP["code/bsp · 板级设备驱动"]
-        MOTOR["Motor"]:::bsp
-        SERVO["Servo"]:::bsp
-        DISPLAY["Display"]:::bsp
-        INPUT["Input"]:::bsp
-        BUZZER["Buzzer"]:::bsp
+    subgraph APP["code/app · Application"]
+        APP_MAIN["SmartcarApp<br/>task table / run once"]:::app
     end
 
-    subgraph PLATFORM["code/platform · PAL 契约"]
+    subgraph SCHEDULER["code/scheduler · Event Scheduler"]
+        SCHED["scheduler<br/>event queue / cooperative dispatch"]:::sched
+    end
+
+    subgraph SERVICE["code/service · Handler & Algorithm"]
+        SENSOR["sensor<br/>gyro / encoder context"]:::service
+        VISION["vision<br/>frame processing / snapshot"]:::service
+        CONTROL["control<br/>PID handler / actuator cmd"]:::service
+        DEBUG["diagnostics<br/>debug display service"]:::service
+    end
+
+    subgraph BSP["code/bsp · Board Driver"]
+        DRIVERS["motor / servo / display<br/>input / buzzer"]:::bsp
+    end
+
+    subgraph PLATFORM["code/platform · Platform Contract"]
         PAL["platform.h<br/>pal_* stable API"]:::platform
     end
 
-    subgraph IMPL["code/impl/tc264 · TC264 实现层"]
-        PAL_IMPL["platform_tc264.c<br/>PAL -> SEEKFREE/iLLD"]:::impl
-        ISR_ADAPTER["isr_adapter.c/h<br/>ack / bounded sample / ISR facts"]:::impl
+    subgraph IMPL["code/impl/tc264 · Target Implementation"]
+        BINDING["tc264_irq_binding<br/>target route table"]:::impl
+        ADAPTER["isr_adapter<br/>ack / sample / facts"]:::impl
+        PAL_IMPL["platform_tc264.c<br/>PAL -> Vendor SDK"]:::impl
     end
 
-    subgraph VENDOR["libraries · Vendor SDK 只读"]
-        SEEKFREE["SEEKFREE<br/>zf_common / zf_driver / zf_device"]:::vendor
+    subgraph VENDOR["libraries · Vendor SDK"]
+        SEEKFREE["SEEKFREE"]:::vendor
         ILLD["Infineon iLLD"]:::vendor
     end
 
-    APP_MAIN --> SENSOR
-    APP_MAIN --> VISION
-    APP_MAIN --> CONTROL
-    APP_MAIN --> DEBUG
-    CONTROL --> MOTOR
-    CONTROL --> SERVO
-    DEBUG --> DISPLAY
-    APP_MAIN --> INPUT
-    APP_MAIN --> BUZZER
-    MOTOR --> PAL
-    SERVO --> PAL
-    DISPLAY --> PAL
-    INPUT --> PAL
-    BUZZER --> PAL
+    CPU0 --> RUNTIME
+    CPU0 --> BINDING
+    ISR --> IRQ
+    RUNTIME --> BOARD
+    RUNTIME --> APP_MAIN
+    RUNTIME --> SCHED
+    BOARD --> DRIVERS
+    BOARD --> CONTROL
+    APP_MAIN --> SCHED
+    SCHED --> SENSOR
+    SCHED --> VISION
+    SCHED --> CONTROL
+    SCHED --> DEBUG
+    CONTROL --> DRIVERS
+    DEBUG --> DRIVERS
     SENSOR --> PAL
     VISION --> PAL
+    DRIVERS --> PAL
+    IRQ --> ADAPTER
+    IRQ --> SCHED
+    BINDING --> IRQ
+    BINDING --> ADAPTER
+    ADAPTER --> PAL
     PAL -. implemented by .-> PAL_IMPL
-    ISR_ADAPTER --> PAL
     PAL_IMPL --> SEEKFREE
     PAL_IMPL --> ILLD
-    ISR_ADAPTER --> SEEKFREE
-    ISR_ADAPTER --> ILLD
+    ADAPTER --> SEEKFREE
+    ADAPTER --> ILLD
 ```
 
 **依赖铁律：** App/Service/BSP 只能向下依赖 PAL 或本层稳定接口，不能 include `zf_common_headfile.h`、`Ifx*` 或 Vendor 类型。`code/platform` 只放 `platform.h`，不放 TC264 实现。`libraries/` 是 Vendor SDK，默认只读。
 
 ## 中断与调度
 
-中断路径不是 App 职责。`user/isr.c` 是 TC264 SDK entry，只保留 `IFX_INTERRUPT` 入口和 source id；`code/system/irq` 是系统中断桥；`code/impl/tc264` 处理 TC264 硬件事实。
+中断路径不是 App 职责。`user/isr.c` 是 TC264 SDK entry，只保留 `IFX_INTERRUPT` 入口和目标 source id；`code/system/irq` 只认识通用 source/fact/event；`code/impl/tc264/tc264_irq_binding.c` 提供 TC264 路由表；`code/impl/tc264/isr_adapter.c` 处理 TC264 硬件事实。
 
 ```mermaid
 flowchart LR
@@ -105,6 +124,7 @@ flowchart LR
 
     HW["TC264 IRQ source<br/>PIT / DMA / ERU / UART"]:::sdk
     SDK["user/isr.c<br/>IFX_INTERRUPT thin entry"]:::sdk
+    BINDING["code/impl/tc264<br/>TC264 source binding"]:::impl
     ROUTER["code/system/irq<br/>SmartcarIrqRouter"]:::system
     ADAPTER["code/impl/tc264<br/>IsrAdapter returns facts"]:::impl
     EVENTS["scheduler/event.c<br/>flag + counter policy"]:::sched
@@ -113,6 +133,7 @@ flowchart LR
 
     HW --> SDK
     SDK --> ROUTER
+    BINDING --> ROUTER
     ROUTER --> ADAPTER
     ADAPTER --> ROUTER
     ROUTER -->|EVT_CAM_FRAME / EVT_GYRO_10MS / EVT_ENCODER_50MS| EVENTS
@@ -122,9 +143,10 @@ flowchart LR
 
 关键约束：
 
-- `SmartcarIrqRouter` 位于 `code/system/irq/smartcar_irq_router.c/h`，负责 source 校验、表驱动分发、事件映射和 tick 发布。
-- `IsrAdapter` 位于 `code/impl/tc264/isr_adapter.c/h`，只做清标志、有界整数采样、Vendor ISR callback，返回 `ISR_ADAPTER_EVT_*`。
-- DMA 摄像头帧完成由 adapter 返回 `ISR_ADAPTER_EVT_CAMERA_FRAME`，router 统一发布 `EVT_CAM_FRAME`；App 不再轮询后伪造 ISR 事件。
+- `SmartcarIrqRouter` 位于 `code/system/irq/smartcar_irq_router.c/h`，负责通用 source 查表、fact 校验、事件映射和 tick 发布。
+- `Tc264IrqBinding` 位于 `code/impl/tc264/tc264_irq_binding.c/h`，集中维护 TC264 source 与 adapter handler 的绑定。
+- `IsrAdapter` 位于 `code/impl/tc264/isr_adapter.c/h`，只做清标志、有界整数采样、Vendor ISR callback，返回 `SMARTCAR_IRQ_FACT_*`。
+- DMA 摄像头帧完成由 adapter 返回 `SMARTCAR_IRQ_FACT_CAMERA_FRAME`，router 统一发布 `EVT_CAM_FRAME`；App 不再轮询后伪造 ISR 事件。
 - `EVT_GYRO_10MS` 使用计数语义，避免主循环阻塞时吞掉 10ms tick。
 
 ## 目录结构
@@ -137,11 +159,13 @@ GS_Smart_car/
 │   ├── service/                   # 服务/算法层：vision、sensor、control、diagnostics
 │   ├── bsp/                       # BSP/Driver：motor、servo、display、input、buzzer
 │   ├── platform/                  # PAL 契约：仅 platform.h
-│   ├── impl/tc264/                # TC264 Impl：platform_tc264.c、isr_adapter.c/h
-│   ├── system/irq/                # 系统中断桥：smartcar_irq_router.c/h
+│   ├── impl/tc264/                # TC264 Impl：platform_tc264、isr_adapter、tc264_irq_binding
+│   ├── system/board/              # 本车板级启动序列：设备初始化、周期中断启动
+│   ├── system/runtime/            # 系统启动编排：SDK entry 与 App 解耦
+│   ├── system/irq/                # 系统中断路由：source/fact/event/tick
 │   ├── scheduler/                 # event + cooperative scheduler
 │   ├── config/                    # config.h 集中参数
-│   └── common/                    # init/utils/legacy data，避免新增运行态全局
+│   └── common/                    # utils/legacy data；init.h 仅作 SEEKFREE 兼容头
 ├── user/                          # TC264 SDK entry：cpu0/cpu1/isr/isr_config
 ├── libraries/                     # Vendor SDK：Infineon iLLD + SEEKFREE，默认只读
 ├── tests/                         # 主机端测试与 stubs
@@ -166,6 +190,9 @@ gcc -Itests/stubs -Icode/common tests/test_my_abs.c code/common/utils.c -o test_
 
 gcc -Itests/stubs -Icode/platform -Icode/scheduler tests/test_event.c code/scheduler/event.c -o test_event.exe
 ./test_event.exe
+
+gcc -Itests/stubs -Icode/scheduler tests/test_scheduler.c code/scheduler/scheduler.c -o test_scheduler.exe
+./test_scheduler.exe
 ```
 
 ### 主机端语法检查
@@ -174,27 +201,33 @@ gcc -Itests/stubs -Icode/platform -Icode/scheduler tests/test_event.c code/sched
 gcc -std=c99 -Werror=implicit-function-declaration -fsyntax-only \
   -Icode -Icode/app -Icode/platform -Icode/config -Icode/common -Icode/bsp \
   -Icode/service/control -Icode/service/vision -Icode/service/sensor \
-  -Icode/service/diagnostics -Icode/scheduler -Icode/system/irq -Icode/impl/tc264 \
-  code/app/smartcar_app.c code/system/irq/smartcar_irq_router.c code/common/init.c \
+  -Icode/service/diagnostics -Icode/scheduler -Icode/system/irq -Icode/system/board \
+  -Icode/system/runtime -Icode/impl/tc264 \
+  code/app/smartcar_app.c code/system/runtime/smartcar_system.c \
+  code/system/board/smartcar_board.c code/system/irq/smartcar_irq_router.c \
+  code/impl/tc264/tc264_irq_binding.c \
   code/service/control/control.c code/service/control/pid.c code/service/vision/vision.c \
   code/service/sensor/sensor.c code/service/diagnostics/debug_display.c \
   code/scheduler/event.c code/scheduler/scheduler.c code/common/data.c code/common/utils.c \
   code/bsp/motor.c code/bsp/servo.c code/bsp/input.c code/bsp/buzzer.c code/bsp/display.c
 ```
 
-`code/impl/tc264/*.c` 和 `user/isr.c` 依赖 TC264/逐飞宏，主要通过 ADS 或实车环境验证。
+`code/impl/tc264/platform_tc264.c`、`code/impl/tc264/isr_adapter.c` 和 `user/isr.c` 依赖 TC264/逐飞宏，主要通过 ADS 或实车环境验证。当前 `.cproject` 的 Debug 配置已同步新增 include path；Release/External 工程配置如需使用，应按 Debug 配置补齐。
 
 ## 模块一览
 
 | 层级 | 模块 | 文件 | 职责 |
 |:---:|:---:|:---|:---|
-| App | 主循环 | `code/app/smartcar_app.c` | 初始化、任务注册、调度器驱动 |
-| System/IRQ | 中断路由 | `code/system/irq/smartcar_irq_router.c` | source -> adapter fact -> scheduler event/tick |
+| System | 启动编排 | `code/system/runtime/smartcar_system.c` | clock/debug、board init、scheduler、App、PIT 启动顺序 |
+| System | 板级启动 | `code/system/board/smartcar_board.c` | 本车设备初始化与周期中断启动 |
+| App | 主循环 | `code/app/smartcar_app.c` | 任务表注册、调度器驱动 |
+| System/IRQ | 中断路由 | `code/system/irq/smartcar_irq_router.c` | generic source -> fact -> scheduler event/tick |
 | Service | 视觉 | `code/service/vision/vision.c` | 图像处理、边线/中线、控制快照 |
 | Service | 传感器 | `code/service/sensor/sensor.c` | 陀螺仪积分、编码器速度 context |
 | Service | 控制 | `code/service/control/control.c` | PID handler、执行器指令 |
 | BSP | 板级设备 | `code/bsp/*.c` | 电机、舵机、显示、输入、蜂鸣器 |
 | Platform API | PAL | `code/platform/platform.h` | 平台无关硬件接口 |
+| TC264 Impl | 目标绑定 | `code/impl/tc264/tc264_irq_binding.c` | TC264 source -> adapter handler route table |
 | TC264 Impl | PAL/ISR 实现 | `code/impl/tc264/*.c` | PAL 转 Vendor SDK、ISR 硬件事实 |
 | SDK Entry | TC264 入口 | `user/isr.c` | `IFX_INTERRUPT` 薄入口 |
 | Vendor SDK | 原厂库 | `libraries/` | Infineon iLLD + SEEKFREE |
@@ -207,8 +240,18 @@ gcc -std=c99 -Werror=implicit-function-declaration -fsyntax-only \
 2. 算法和状态放 `code/service/<module>`，用 context/handler 管理运行态。
 3. 板级设备能力放 `code/bsp`，只依赖 `platform.h`。
 4. 新硬件抽象先扩展 `code/platform/platform.h`，再在 `code/impl/tc264` 实现。
-5. 中断源新增时同步 `user/isr.c` source、`SmartcarIrqRouter` 路由表、`IsrAdapter` fact。
+5. 中断源新增时同步 `user/isr.c` source、`Tc264IrqBinding` 路由表、`IsrAdapter` fact。
 6. Vendor SDK 只读；确需修改时单独提交并说明原因。
+
+## MCU 可移植性现状
+
+本轮后，App、Service、BSP 与 TC264 source 枚举解耦，SDK entry 通过 `SmartcarSystem_Boot()` 和 `Tc264IrqBinding_Init()` 接入系统。移植到新 MCU 时，优先新增 `code/impl/<target>/platform_<target>.c`、`<target>_irq_binding.c/h` 和 SDK entry，不应修改 App/Service 业务逻辑。
+
+仍需继续收敛的边界：
+
+- `platform.h` 仍是宽接口，后续应拆分资源类型，避免一个 `pal_ch_t` 混用 PIT、UART、Encoder、Camera。
+- 摄像头尺寸、显示像素级接口仍偏 TC264/逐飞板级特性，建议继续抽象为 capability/config。
+- `isr_adapter.c` 仍是目标平台集中适配文件，下一阶段可按 PIT/DMA/UART 子适配拆分。
 
 提交格式：
 

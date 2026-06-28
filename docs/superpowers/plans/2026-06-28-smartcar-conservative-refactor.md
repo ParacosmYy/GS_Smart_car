@@ -281,41 +281,24 @@ void SmartcarApp_RunOnce(void);
 
 - [ ] **Step 2: Create app implementation**
 
-Create `code/app/smartcar_app.c`:
+Current architecture note: this early plan has since been superseded by
+`code/system/runtime/smartcar_system.c` and `code/system/board/smartcar_board.c`.
+Application code registers tasks only; board startup belongs to System.
+
+Current `code/app/smartcar_app.c` shape:
 
 ```c
 #include "smartcar_app.h"
-#include "zf_common_headfile.h"
+#include "scheduler.h"
 
 void SmartcarApp_Init(void)
 {
-    init_all();
-    pit_init_all();
+    /* 注册应用任务表，不能直接启动外设或 PIT。 */
 }
 
 void SmartcarApp_RunOnce(void)
 {
-    if(mt9v03x_finish_flag == 1)
-    {
-        task_calculte();
-    }
-
-    tft180_show_gray_image(0, 0, mt9v03x_image_bandw_zip[0], 94, 60, MT9V03X_W / 2, MT9V03X_H / 2, 0);
-
-    tft180_show_string(0, 80, "left:");
-    tft180_show_int(50, 80, left_encoder_speed, 4);
-
-    tft180_show_string(0, 60, "right:");
-    tft180_show_int(50, 60, right_encoder_speed, 4);
-
-    tft180_show_string(0, 100, "l_spd:");
-    tft180_show_string(0, 120, "r_spd:");
-
-    tft180_show_int(50, 100, (int32)left_motor_pid_output, 6);
-    tft180_show_int(50, 120, (int32)right_motor_pid_output, 6);
-
-    tft180_show_string(0, 140, "err:");
-    tft180_show_int(50, 140, calculate_error, 4);
+    scheduler_run();
 }
 ```
 
@@ -332,15 +315,13 @@ Add this include after `#include "zf_common_headfile.h"`:
 Replace:
 
 ```c
-    init_all();
-
-    pit_init_all();
+    /* 旧版：App 直接初始化外设和 PIT。 */
 ```
 
 with:
 
 ```c
-    SmartcarApp_Init();
+    SmartcarSystem_Boot();
 ```
 
 - [ ] **Step 5: Replace main loop body**
@@ -358,10 +339,11 @@ Keep existing commented debug blocks out of the loop body only if they do not ob
 Run:
 
 ```bash
-rg -n "SmartcarApp_|init_all\\(|pit_init_all\\(|task_calculte\\(" code user
+rg -n "SmartcarSystem_|SmartcarApp_|SmartcarBoard_|Tc264IrqBinding_" code user
 ```
 
-Expected: `SmartcarApp_Init()` and `SmartcarApp_RunOnce()` appear in the new app files and `cpu0_main.c`; `task_calculte()` is called by `smartcar_app.c`.
+Expected: `SmartcarSystem_Boot()` appears in `user/cpu0_main.c`; `SmartcarApp_Init()`
+only registers tasks and does not initialize board devices.
 
 - [ ] **Step 7: Commit app entry point**
 

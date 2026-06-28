@@ -32,8 +32,8 @@
 * 日期              作者                备注
 * 2022-09-15       pudding            first version
 ********************************************************************************************************************/
-#include "platform.h"
-#include "smartcar_app.h"
+#include "impl/tc264/tc264_irq_binding.h"
+#include "system/runtime/smartcar_system.h"
 #pragma section all "cpu0_dsram"
 // 将本语句与#pragma section all restore语句之间的全局变量都放在CPU0的RAM中
 
@@ -47,30 +47,16 @@
 /**
  * @brief CPU0 主函数入口。
  *
- * 启动顺序：
- *   1. clock_init()      获取系统时钟频率，所有外设初始化依赖此步
- *   2. debug_init()      初始化默认调试串口（UART0），后续日志可输出
- *   3. SmartcarApp_Init() 装载全部外设 + PID 参数 + 周期中断（详见 init.c）
- *   4. cpu_wait_event_ready() 等待 CPU0/CPU1 都就绪，再进主循环
- *
- * 主循环以摄像头帧完成标志为节拍：有新帧才跑视觉→控制→执行，
- * 其余时间刷新 TFT 调试画面。
+ * SDK entry 只装配目标中断绑定并进入 system runtime。
  */
 int core0_main(void)
 {
-    pal_sys_clock_init();           // 步骤1：获取时钟频率，务必保留
-    pal_sys_debug_init();           // 步骤2：初始化默认调试串口
+    Tc264IrqBinding_Init();
+    SmartcarSystem_Boot();
 
-    SmartcarApp_Init();             // 步骤3：初始化全部外设与周期中断
-    // 此处编写用户代码 例如外设初始化代码等
-    pal_sys_core_sync();            // 步骤4：等待所有核心初始化完毕
-
-
-
-    while (TRUE)
+    while (1)
     {
-        // 主循环：每帧触发一次视觉处理 + 控制更新 + 执行器输出
-        SmartcarApp_RunOnce();
+        SmartcarSystem_RunOnce();
     }
 }
 

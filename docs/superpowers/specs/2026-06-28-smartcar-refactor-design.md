@@ -2,6 +2,10 @@
 
 日期：2026-06-28
 
+状态：本文件是第一阶段保守重构设计记录。当前工程已演进为
+`SDK Entry -> System Runtime -> App -> Service/Handler -> BSP/Driver -> Platform API -> Impl -> Vendor SDK`
+分层；以下内容已同步为当前目录和职责边界，避免继续引用早期过渡目录。
+
 ## 背景
 
 `main` 分支当前只有 README，完整 TC264 智能车工程在 `origin/master`。工程基于 AURIX TC264、TASKING ADS/Eclipse 和逐飞库，业务代码主要在 `code/` 与 `user/`，底层 SDK、驱动和外设库主要在 `libraries/`。
@@ -46,17 +50,23 @@ user/
   isr.c                # 保留中断入口，逐步只做采样/置位/清标志
 
 code/
-  app/                 # 后续新增：智能车主流程、调试显示、模式切换
-  vision/              # 后续新增：图像二值化、滤波、边线/中线计算
-  control/             # 后续新增：PID、舵机/电机控制策略
-  device/              # 后续新增：对逐飞设备接口的薄封装
-  common/              # 后续新增：通用工具、错误码、配置常量
-  legacy/              # 过渡期可选：暂存未拆完的旧模块
+  system/runtime/      # 启动编排：clock/debug、board、scheduler、App、PIT 顺序
+  system/board/        # 本车板级启动序列：设备初始化、周期中断启动
+  system/irq/          # 中断路由：target source -> fact -> scheduler event/tick
+  app/                 # 应用任务表和主循环驱动
+  service/vision/      # 图像二值化、滤波、边线/中线计算
+  service/control/     # PID、舵机/电机控制策略
+  service/sensor/      # 编码器、陀螺仪数据处理上下文
+  service/diagnostics/ # 调试显示服务
+  bsp/                 # 电机、舵机、显示、按键、蜂鸣器板级驱动
+  platform/            # PAL 契约，禁止包含 Vendor 头
+  impl/tc264/          # TC264 PAL 实现、ISR adapter、target IRQ binding
+  common/              # 通用工具、legacy data；init.h 仅作 SEEKFREE 兼容头
 
 libraries/             # Vendor/SDK，保持只读式依赖
 ```
 
-这里的 `device/` 不是重写 BSP，而是给自有代码提供更窄的接口，例如 `SmartcarMotor_SetSpeed()` 内部仍调用逐飞 `pwm_set_duty()`。后续如果进入完整五层架构，`device/` 可以演进成 `Platform/Impl` 边界。
+当前不再使用早期 `device/` 过渡目录。板级设备能力归入 `code/bsp/`，平台无关硬件契约归入 `code/platform/`，目标芯片实现归入 `code/impl/<target>/`。
 
 ## 分阶段方案
 
@@ -77,7 +87,7 @@ libraries/             # Vendor/SDK，保持只读式依赖
 
 ### 阶段 3：图像与控制解耦
 
-1. 将 `task_calculte()` 拆成三步：视觉处理、控制决策、执行输出。
+1. 将旧式整帧业务处理拆成三步：视觉处理、控制决策、执行输出。
 2. 图像模块只产出结构化结果，例如中线、偏差、丢线状态。
 3. 控制模块读取图像结果和速度快照，计算电机/舵机输出。
 4. 执行模块负责调用逐飞 PWM/电机/舵机接口。
@@ -93,20 +103,22 @@ libraries/             # Vendor/SDK，保持只读式依赖
 ### 阶段 5：向五层架构过渡
 
 1. `libraries/` 固定作为 Vendor。
-2. `code/device/` 中的薄封装逐步演进为 Platform/Impl 接口。
-3. `code/control/` 和 `code/vision/` 保持平台无关，减少直接包含 `zf_common_headfile.h`。
-4. 当业务稳定后，再考虑将目录正式迁移为 `app/ service/ platform/ impl/ vendor/`。
+2. `code/bsp/` 只依赖 `platform.h`，不直接包含 Vendor 头。
+3. `code/service/control/` 和 `code/service/vision/` 保持平台无关，减少直接包含 `zf_common_headfile.h`。
+4. 换 MCU 时优先新增 `code/impl/<target>/platform_<target>.c`、`<target>_irq_binding.c/h` 和 SDK entry glue。
 
 ## 数据流
 
 ```text
 Camera/Encoder/IMU ISR or driver
-    -> sample flags and raw buffers
+    -> code/impl/<target>/isr_adapter
+    -> code/system/irq/SmartcarIrqRouter
+    -> scheduler event/tick
     -> SmartcarApp_RunOnce()
     -> Vision_Process()
     -> Control_Update()
     -> Actuator_Apply()
-    -> DebugView_Render()
+    -> DebugDisplayService_Update()
 ```
 
 第一阶段不强制改变所有数据流，只先建立 app 调度点和模块边界。

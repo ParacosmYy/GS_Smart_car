@@ -15,11 +15,23 @@
 #include "control.h"
 #include "buzzer.h"
 #include "debug_display.h"
-#include "init.h"
 #include "scheduler.h"
 #include "event.h"
 #include "sensor.h"
 #include "vision.h"
+
+//******************************** Types ************************************//
+typedef struct
+{
+    task_fn_t    handler;
+    uint32_t     period_ms;
+    event_mask_t trigger;
+} smartcar_app_task_desc_t;
+//******************************** Types ************************************//
+
+//******************************** Variables ********************************//
+static uint8_t s_task_register_fail_count = 0U;
+//******************************** Variables ********************************//
 
 /**
  * @brief 陀螺仪处理任务
@@ -94,21 +106,73 @@ static void SmartcarApp_TaskControl(event_mask_t events)
 }
 
 /**
- * @brief 应用层初始化入口
- *        初始化外设、启动周期中断、注册调度器任务。
+ * @brief 注册一个应用任务。
+ *
+ * 处理步骤：
+ *  1. 调用调度器注册任务。
+ *  2. 若注册失败，记录失败次数供诊断读取。
+ *
+ * @param[in] p_task : 应用任务描述。
+ *
+ * @return void : 无返回值。
+ *
  */
+static void SmartcarApp_RegisterTask(const smartcar_app_task_desc_t *p_task)
+{
+    int8_t task_index = -1;
+
+    if (p_task == 0)
+    {
+        s_task_register_fail_count++;
+        return;
+    }
+
+    task_index = scheduler_add(p_task->handler, p_task->period_ms, p_task->trigger);
+    if (task_index < 0)
+    {
+        s_task_register_fail_count++;
+    }
+}
+
+/**
+ * @brief 应用层初始化入口。
+ *
+ * 处理步骤：
+ *  1. 清零任务注册诊断计数。
+ *  2. 按优先级从高到低注册业务任务。
+ *
+ * @return void : 无返回值。
+ *
+ * */
 void SmartcarApp_Init(void)
 {
-    init_all();
-    pit_init_all();
-    scheduler_init();
+    uint8_t i = 0U;
+    static const smartcar_app_task_desc_t s_app_tasks[] =
+    {
+        {SmartcarApp_TaskGyro,       0U,   EVT_GYRO_10MS},
+        {SmartcarApp_TaskEncoder,    0U,   EVT_ENCODER_50MS},
+        {SmartcarApp_TaskVision,     0U,   EVT_CAM_FRAME},
+        {SmartcarApp_TaskControl,    10U,  EVT_NONE},
+        {DebugDisplayService_Update, 100U, EVT_NONE}
+    };
 
-    /* 注册任务（按优先级从高到低）*/
-    scheduler_add(SmartcarApp_TaskGyro,      0,   EVT_GYRO_10MS);    /* 陀螺仪：事件触发 */
-    scheduler_add(SmartcarApp_TaskEncoder,   0,   EVT_ENCODER_50MS); /* 编码器：事件触发 */
-    scheduler_add(SmartcarApp_TaskVision,    0,   EVT_CAM_FRAME);    /* 视觉：事件触发   */
-    scheduler_add(SmartcarApp_TaskControl,   10,  EVT_NONE);         /* 控制：10ms 周期  */
-    scheduler_add(DebugDisplayService_Update, 100, EVT_NONE);        /* 显示：100ms 周期 */
+    s_task_register_fail_count = 0U;
+
+    for (i = 0U; i < (uint8_t)(sizeof(s_app_tasks) / sizeof(s_app_tasks[0])); i++)
+    {
+        SmartcarApp_RegisterTask(&s_app_tasks[i]);
+    }
+}
+
+/**
+ * @brief 获取应用任务注册失败次数。
+ *
+ * @return uint8_t : 注册失败次数。
+ *
+ * */
+uint8_t SmartcarApp_GetTaskRegisterFailCount(void)
+{
+    return s_task_register_fail_count;
 }
 
 /**

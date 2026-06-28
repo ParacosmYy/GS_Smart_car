@@ -25,6 +25,8 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/code}&quot;"/>
 												<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/code/app}&quot;"/>
 												<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/code/system/irq}&quot;"/>
+												<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/code/system/board}&quot;"/>
+												<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/code/system/runtime}&quot;"/>
 												<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/code/config}&quot;"/>
 												<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/code/bsp}&quot;"/>
 												<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/code/service/vision}&quot;"/>

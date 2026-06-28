@@ -35,6 +35,11 @@ uint32_t Scheduler_GetNowMs(void)
 
 int8_t scheduler_add(task_fn_t fn, uint32_t period_ms, event_mask_t trigger)
 {
+    if (fn == 0)
+    {
+        return -1;
+    }
+
     if (s_count >= SCH_MAX_TASKS)
     {
         return -1;
