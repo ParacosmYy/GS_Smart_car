@@ -1,73 +1,79 @@
 /**
  * @file smartcar_board.c
- * @brief Smart car board startup implementation.
- *
- * This module owns the product board initialization sequence. Moving to a new
- * MCU should replace the Impl/Vendor layer first; this board sequence changes
- * only when the product board devices or startup policy change.
+ * @brief Smart car board startup。
  */
 
 #include "smartcar_board.h"
-
-#include "config.h"
-#include "platform/device/pal_camera.h"
-#include "platform/device/pal_comm.h"
-#include "platform/device/pal_display.h"
-#include "platform/device/pal_imu.h"
-#include "platform/mcu/pal_encoder.h"
-#include "platform/mcu/pal_pit.h"
-#include "platform/mcu/pal_uart.h"
+#include "platform/board/board_ops_if.h"
+#include "system/board/smartcar_board_resources.h"
+#include "platform/interface/actuator_if.h"
+#include "platform/interface/feedback_if.h"
+#include "platform/interface/track_display_if.h"
+#include "display.h"
 #include "motor.h"
 #include "servo.h"
 #include "input.h"
 #include "buzzer.h"
 
-/**
- * @brief 初始化全部板级设备与控制 Handler。
- *
- * 处理步骤：
- *  1. 先初始化通信口，便于后续调试与设备配置。
- *  2. 初始化编码器和执行机构，保证控制环反馈与输出都就绪。
- *  3. 初始化显示、摄像头、人机交互、陀螺仪和无线通信。
- *  4. 初始化陀螺仪和无线通信。
- *
- * @return void : 无返回值。
- *
- * */
-void SmartcarBoard_InitDevices(void)
-{
-    pal_uart_init(PAL_CH_UART_CAM, 115200U);
-    pal_uart_init(PAL_CH_UART_BT, 115200U);
+/* ── 前置声明 ──────────────────────────────────────── */
+static void board_buzzer_notify(uint8_t element);
 
-    pal_encoder_init(PAL_CH_ENCODER_L);
-    pal_encoder_init(PAL_CH_ENCODER_R);
+/* ── Board 本地 ops 表 ─────────────────────────────── */
+static const actuator_ops_t s_actuator_ops = {
+    .set_servo = Servo_SetAngle,
+    .set_motor_left = Motor_SetLeft,
+    .set_motor_right = Motor_SetRight,
+};
+static const feedback_ops_t s_feedback_ops = {
+    .notify_element = board_buzzer_notify,
+    .is_busy = Buzzer_IsBusy,
+    .tick = Buzzer_Tick,
+};
+static const track_display_ops_t s_track_ops = {
+    .draw_lines = Display_DrawTrackLines,
+};
 
-    Motor_Init();
-    Servo_Init();
-
-    pal_disp_init();
-    pal_cam_init();
-
-    Input_Init();
-    buzzer_init();
-
-    pal_gyro_init();
-    pal_wireless_init();
-
+static void board_buzzer_notify(uint8_t element) {
+    if (element == 1U) Buzzer_Trigger(BUZZER_EVENT_RING);
+    else if (element == 2U) Buzzer_Trigger(BUZZER_EVENT_CROSSROAD);
 }
 
-/**
- * @brief 启动周期中断源。
- *
- * 处理步骤：
- *  1. 启动编码器 10ms 采样 PIT。
- *  2. 启动陀螺仪 10ms tick PIT。
- *
- * @return void : 无返回值。
- *
- * */
+void Board_BindOps(const target_board_ops_t *p_ops)
+{
+    if (p_ops == 0) { return; }
+    McuIo_GpioRegister(p_ops->gpio);
+    McuIo_PwmRegister(p_ops->pwm);
+    McuIo_UartRegister(p_ops->uart);
+    McuIo_EncoderRegister(p_ops->encoder);
+    McuIo_PitRegister(p_ops->pit);
+    Device_CameraRegister(p_ops->camera);
+    Device_DisplayRegister(p_ops->display);
+    Device_ImuRegister(p_ops->imu);
+    Device_WirelessRegister(p_ops->wireless);
+    Device_KeyRegister(p_ops->key);
+    Actuator_Register(&s_actuator_ops);
+    Feedback_Register(&s_feedback_ops);
+    TrackDisplay_Register(&s_track_ops);
+}
+
+void SmartcarBoard_InitDevices(void)
+{
+    McuIo_UartInit(SMARTCAR_UART_CAMERA, 115200U);
+    McuIo_UartInit(SMARTCAR_UART_BT, 115200U);
+    McuIo_EncoderInit(SMARTCAR_ENCODER_LEFT);
+    McuIo_EncoderInit(SMARTCAR_ENCODER_RIGHT);
+    Motor_Init();
+    Servo_Init();
+    Device_DisplayInit();
+    Device_CameraInit();
+    Input_Init();
+    buzzer_init();
+    Device_ImuInit();
+    Device_WirelessInit();
+}
+
 void SmartcarBoard_StartPeriodicIrq(void)
 {
-    pal_pit_init(PAL_CH_PIT_0, PIT_PERIOD_MS);
-    pal_pit_init(PAL_CH_PIT_1, PIT_PERIOD_MS);
+    McuIo_PitInit(SMARTCAR_PIT_ENCODER_SAMPLE, 10U);
+    McuIo_PitInit(SMARTCAR_PIT_GYRO_TICK, 10U);
 }
