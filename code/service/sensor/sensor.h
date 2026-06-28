@@ -3,12 +3,12 @@
  *
  * @file sensor.h
  *
- * @par 依赖
+ * @par dependencies
  * - stdint.h
  *
  * @author GS_Mark
  *
- * @brief 传感器服务接口声明
+ * @brief Sensor service interface.
  *
  * @version V1.0 2026-06-29
  *

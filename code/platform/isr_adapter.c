@@ -3,7 +3,7 @@
  *
  * @file isr_adapter.c
  *
- * @par 依赖
+ * @par dependencies
  * - isr_adapter.h
  * - platform.h
  * - event.h
@@ -12,38 +12,39 @@
  *
  * @author GS_Mark
  *
- * @brief TC264 中断适配层实现。
+ * @brief TC264 ISR adapter implementation.
  *
- * 处理流程：
- * user/isr.c 中的中断入口统一调用本适配层。本文件负责清除硬件标志、
- * 执行有界的整数型中断工作，并向协作式调度器发布事件。
+ * Processing flow:
+ * ISR entry functions in user/isr.c call this adapter. The adapter clears
+ * hardware flags, performs bounded integer ISR work, and publishes events to
+ * the cooperative scheduler.
  *
  * @version V1.0 2026-06-29
  *
  *****************************************************************************/
 
-//******************************** 包含文件 *********************************//
+//******************************** Includes *********************************//
 #include "isr_adapter.h"
 
 #include "event.h"
 #include "platform.h"
 #include "scheduler.h"
 #include "zf_common_headfile.h"
-//******************************** 包含文件 *********************************//
+//******************************** Includes *********************************//
 
-//******************************** 宏定义 ***********************************//
+//******************************** Defines **********************************//
 #define ISR_ADAPTER_ENCODER_WINDOW_SAMPLES   (5)
-//******************************** 宏定义 ***********************************//
+//******************************** Defines **********************************//
 
-//******************************** 变量 *************************************//
+//******************************** Variables ********************************//
 static volatile int s_left_speed_sum = 0;
 static volatile int s_right_speed_sum = 0;
 static volatile int s_sample_count = 0;
 
 extern volatile int pit_ch1_count;
-//******************************** 变量 *************************************//
+//******************************** Variables ********************************//
 
-//******************************** 实现 *************************************//
+//******************************** Implement ********************************//
 /**
  * @brief 处理 CCU60 PIT 通道 0 中断。
  *

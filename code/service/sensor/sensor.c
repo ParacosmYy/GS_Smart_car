@@ -3,30 +3,36 @@
  *
  * @file sensor.c
  *
- * @par 依赖
+ * @par dependencies
  * - sensor.h
  *
  * @author GS_Mark
  *
- * @brief 传感器服务实现。
+ * @brief Sensor service implementation.
  *
- * 处理流程：
- * 中断适配层只负责发布事件和累加原始计数；本服务在主循环中完成
- * 陀螺仪零漂补偿、角度积分和编码器速度平均，避免在 ISR 中执行算法。
+ * Processing flow:
+ * The ISR adapter only publishes events and accumulates raw counts. This
+ * service runs in the main loop to compensate gyro drift, integrate heading,
+ * and average encoder speed, keeping algorithms out of ISR context.
  *
  * @version V1.0 2026-06-29
  *
  *****************************************************************************/
 
+//******************************** Includes *********************************//
 #include <math.h>
 #include <stdint.h>
 #include "sensor.h"
 #include "data.h"
 #include "isr_adapter.h"
 #include "platform.h"
+//******************************** Includes *********************************//
 
+//******************************** Defines **********************************//
 #define GYRO_IDLE_THRESHOLD  1.0f
+//******************************** Defines **********************************//
 
+//******************************** Variables ********************************//
 static int s_left_encoder_speed = 0;
 static int s_right_encoder_speed = 0;
 
@@ -35,7 +41,9 @@ static uint8_t s_gyro_z_offset_idx = 0;
 static float   s_gyro_z_offset_sum = 0.0f;
 static float   s_gyro_z_offset     = 0.0f;
 static float   s_gyro_raw_z        = 0.0f;
+//******************************** Variables ********************************//
 
+//******************************** Implement ********************************//
 /**
  * @brief 处理 10ms 陀螺仪采样事件。
  *
@@ -115,3 +123,4 @@ int Sensor_GetRightEncoderSpeed(void)
 {
     return s_right_encoder_speed;
 }
+//******************************** Implement ********************************//
