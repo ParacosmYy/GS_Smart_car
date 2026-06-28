@@ -3,7 +3,7 @@
  * @brief Event flag system implementation.
  */
 #include "event.h"
-#include "platform.h"
+#include "pal_system.h"
 
 static volatile event_mask_t s_events = 0;
 static volatile uint32_t s_gyro_10ms_pending = 0;

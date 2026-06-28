@@ -7,14 +7,14 @@
  * the cooperative scheduler:
  *    SmartcarApp_TaskGyro      陀螺仪传感器服务处理（事件触发）
  *    SmartcarApp_TaskEncoder   编码器传感器服务处理（事件触发）
- *    SmartcarApp_TaskVision    视觉处理 + 元素检测 + 蜂鸣器（DMA 事件触发）
+ *    SmartcarApp_TaskVision    视觉处理 + 元素检测 + 反馈服务（DMA 事件触发）
  *    SmartcarApp_TaskControl   控制 PID + 执行器下发（10ms 周期）
  *    DebugDisplayService_Update TFT 调试显示（100ms 周期）
  */
 #include "smartcar_app.h"
 #include "control.h"
-#include "buzzer.h"
 #include "debug_display.h"
+#include "feedback_service.h"
 #include "scheduler.h"
 #include "event.h"
 #include "sensor.h"
@@ -77,19 +77,8 @@ static void SmartcarApp_TaskVision(event_mask_t events)
     Vision_Process();
     DebugDisplayService_DrawVisionLines();
 
-    /* 特殊元素检测 + 蜂鸣器提示 */
     element = Vision_DetectElement();
-    if (element != 0 && !Buzzer_IsBusy())
-    {
-        if (element == 1)
-        {
-            Buzzer_Trigger(BUZZER_EVENT_RING);       /* 圆环：3 声短促 */
-        }
-        else if (element == 2)
-        {
-            Buzzer_Trigger(BUZZER_EVENT_CROSSROAD);  /* 十字路口：1 声长鸣 */
-        }
-    }
+    FeedbackService_NotifyTrackElement(element);
 
     Vision_ClearFrameReady();
 }
@@ -184,6 +173,5 @@ void SmartcarApp_RunOnce(void)
     /* 调度器驱动全部任务 */
     scheduler_run();
 
-    /* 蜂鸣器时序驱动（非阻塞）*/
-    Buzzer_Tick();
+    FeedbackService_Tick();
 }

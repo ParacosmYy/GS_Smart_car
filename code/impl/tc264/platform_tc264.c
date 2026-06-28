@@ -4,13 +4,23 @@
  *
  *        本文件集中包装逐飞头文件依赖。少量启动/ISR 入口仍因
  *        TC264 中断宏限制保留 Vendor 头文件。
- *        业务自研代码通过 platform.h 的 pal_* 接口访问硬件，
+ *        业务自研代码通过具体 pal_*.h 能力接口访问硬件，
  *        本文件负责将 pal_* 调用转发到逐飞库 API。
  *
  *        换 MCU 时：编写新的 platform_<mcu>.c 替换本文件即可。
  */
 
-#include "platform.h"
+#include "pal_camera.h"
+#include "pal_comm.h"
+#include "pal_display.h"
+#include "pal_encoder.h"
+#include "pal_gpio.h"
+#include "pal_imu.h"
+#include "pal_key.h"
+#include "pal_pit.h"
+#include "pal_pwm.h"
+#include "pal_system.h"
+#include "pal_uart.h"
 #include "zf_common_headfile.h"   /* Vendor 头文件依赖集中在平台/适配层 */
 
 /*===========================================================================

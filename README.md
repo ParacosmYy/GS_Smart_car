@@ -18,7 +18,7 @@
 
 ## 系统架构
 
-工程边界按大厂嵌入式项目的可维护性要求拆分：**SDK Entry 只接平台入口，System 负责启动和中断编排，App 只注册业务任务，Service/Handler 持有算法状态，BSP/Driver 封装板级设备，Platform 定义 PAL 契约，Impl 负责 TC264/逐飞实现，Vendor SDK 默认只读**。运行态状态逐步收敛到明确 owner 的 `context/handler`。
+工程边界按大厂嵌入式项目的可维护性要求拆分：**SDK Entry 只接平台入口，System 负责启动和中断编排，App 只注册业务任务，Service/Handler 持有算法状态，BSP/Driver 封装板级设备，Platform 定义细粒度 PAL 契约，Impl 负责 TC264/逐飞实现，Vendor SDK 默认只读**。运行态状态逐步收敛到明确 owner 的 `context/handler`，业务代码禁止依赖目标 MCU 或 Vendor 头文件。
 
 ```mermaid
 %%{init: {'theme':'base','themeVariables':{'fontFamily':'Segoe UI,Arial,sans-serif','fontSize':'13px','primaryTextColor':'#1f2328','lineColor':'#57606a','clusterBkg':'#ffffff','clusterBorder':'#d0d7de'}}}%%
@@ -56,7 +56,7 @@ flowchart TB
         SENSOR["sensor<br/>gyro / encoder context"]:::service
         VISION["vision<br/>frame processing / snapshot"]:::service
         CONTROL["control<br/>PID handler / actuator cmd"]:::service
-        DEBUG["diagnostics<br/>debug display service"]:::service
+        DEBUG["diagnostics<br/>debug / feedback service"]:::service
     end
 
     subgraph BSP["code/bsp · Board Driver"]
@@ -64,7 +64,8 @@ flowchart TB
     end
 
     subgraph PLATFORM["code/platform · Platform Contract"]
-        PAL["platform.h<br/>pal_* stable API"]:::platform
+        PAL["pal_*.h<br/>stable capability API"]:::platform
+        PAL_AGG["platform.h<br/>compat aggregator only"]:::platform
     end
 
     subgraph IMPL["code/impl/tc264 · Target Implementation"]
@@ -82,10 +83,10 @@ flowchart TB
     CPU0 --> BINDING
     ISR --> IRQ
     RUNTIME --> BOARD
+    RUNTIME --> CONTROL
     RUNTIME --> APP_MAIN
     RUNTIME --> SCHED
     BOARD --> DRIVERS
-    BOARD --> CONTROL
     APP_MAIN --> SCHED
     SCHED --> SENSOR
     SCHED --> VISION
@@ -96,6 +97,7 @@ flowchart TB
     SENSOR --> PAL
     VISION --> PAL
     DRIVERS --> PAL
+    PAL_AGG -. includes .-> PAL
     IRQ --> ADAPTER
     IRQ --> SCHED
     BINDING --> IRQ
@@ -108,7 +110,7 @@ flowchart TB
     ADAPTER --> ILLD
 ```
 
-**依赖铁律：** App/Service/BSP 只能向下依赖 PAL 或本层稳定接口，不能 include `zf_common_headfile.h`、`Ifx*` 或 Vendor 类型。`code/platform` 只放 `platform.h`，不放 TC264 实现。`libraries/` 是 Vendor SDK，默认只读。
+**依赖铁律：** App/Service/BSP 只能向下依赖本层稳定接口、BSP 或具体 `pal_*.h` 能力头，不能 include `zf_common_headfile.h`、`Ifx*` 或 Vendor 类型。`code/platform/platform.h` 仅作为历史兼容聚合头，新代码必须 include `pal_gpio.h`、`pal_pwm.h`、`pal_camera.h` 等具体能力头。`code/platform` 不放 TC264 实现，`libraries/` 是 Vendor SDK，默认只读。
 
 ## 中断与调度
 
@@ -158,7 +160,7 @@ GS_Smart_car/
 │   │   └── smartcar_app.c/h
 │   ├── service/                   # 服务/算法层：vision、sensor、control、diagnostics
 │   ├── bsp/                       # BSP/Driver：motor、servo、display、input、buzzer
-│   ├── platform/                  # PAL 契约：仅 platform.h
+│   ├── platform/                  # PAL 契约：pal_*.h；platform.h 仅兼容聚合
 │   ├── impl/tc264/                # TC264 Impl：platform_tc264、isr_adapter、tc264_irq_binding
 │   ├── system/board/              # 本车板级启动序列：设备初始化、周期中断启动
 │   ├── system/runtime/            # 系统启动编排：SDK entry 与 App 解耦
@@ -208,6 +210,7 @@ gcc -std=c99 -Werror=implicit-function-declaration -fsyntax-only \
   code/impl/tc264/tc264_irq_binding.c \
   code/service/control/control.c code/service/control/pid.c code/service/vision/vision.c \
   code/service/sensor/sensor.c code/service/diagnostics/debug_display.c \
+  code/service/diagnostics/feedback_service.c \
   code/scheduler/event.c code/scheduler/scheduler.c code/common/data.c code/common/utils.c \
   code/bsp/motor.c code/bsp/servo.c code/bsp/input.c code/bsp/buzzer.c code/bsp/display.c
 ```
@@ -226,7 +229,7 @@ gcc -std=c99 -Werror=implicit-function-declaration -fsyntax-only \
 | Service | 传感器 | `code/service/sensor/sensor.c` | 陀螺仪积分、编码器速度 context |
 | Service | 控制 | `code/service/control/control.c` | PID handler、执行器指令 |
 | BSP | 板级设备 | `code/bsp/*.c` | 电机、舵机、显示、输入、蜂鸣器 |
-| Platform API | PAL | `code/platform/platform.h` | 平台无关硬件接口 |
+| Platform API | PAL | `code/platform/pal_*.h` | 平台无关硬件能力接口 |
 | TC264 Impl | 目标绑定 | `code/impl/tc264/tc264_irq_binding.c` | TC264 source -> adapter handler route table |
 | TC264 Impl | PAL/ISR 实现 | `code/impl/tc264/*.c` | PAL 转 Vendor SDK、ISR 硬件事实 |
 | SDK Entry | TC264 入口 | `user/isr.c` | `IFX_INTERRUPT` 薄入口 |
@@ -238,19 +241,19 @@ gcc -std=c99 -Werror=implicit-function-declaration -fsyntax-only \
 
 1. 应用流程放 `code/app`，不能包含硬件宏。
 2. 算法和状态放 `code/service/<module>`，用 context/handler 管理运行态。
-3. 板级设备能力放 `code/bsp`，只依赖 `platform.h`。
-4. 新硬件抽象先扩展 `code/platform/platform.h`，再在 `code/impl/tc264` 实现。
+3. 板级设备能力放 `code/bsp`，只依赖具体 `pal_*.h`。
+4. 新硬件抽象先扩展或新增 `code/platform/pal_*.h` 能力头，再在 `code/impl/tc264` 实现；不要把新业务代码挂到 `platform.h` 聚合头上。
 5. 中断源新增时同步 `user/isr.c` source、`Tc264IrqBinding` 路由表、`IsrAdapter` fact。
 6. Vendor SDK 只读；确需修改时单独提交并说明原因。
 
 ## MCU 可移植性现状
 
-本轮后，App、Service、BSP 与 TC264 source 枚举解耦，SDK entry 通过 `SmartcarSystem_Boot()` 和 `Tc264IrqBinding_Init()` 接入系统。移植到新 MCU 时，优先新增 `code/impl/<target>/platform_<target>.c`、`<target>_irq_binding.c/h` 和 SDK entry，不应修改 App/Service 业务逻辑。
+本轮后，App、Service、BSP 与 TC264 source 枚举解耦，SDK entry 通过 `SmartcarSystem_Boot()` 和 `Tc264IrqBinding_Init()` 接入系统。`platform.h` 已降级为兼容聚合头，生产代码改为 include 具体 `pal_*.h` 能力接口。移植到新 MCU 时，优先新增 `code/impl/<target>/platform_<target>.c`、`<target>_irq_binding.c/h` 和 SDK entry，不应修改 App/Service 业务逻辑。
 
 仍需继续收敛的边界：
 
-- `platform.h` 已拆分 PWM/GPIO/Encoder/PIT/UART 资源 ID，但接口仍偏宽，后续应继续按 camera/display/imu capability 拆分。
-- 摄像头尺寸、显示像素级接口仍偏 TC264/逐飞板级特性，建议继续抽象为 capability/config。
+- `vision.c` 仍使用 `PAL_CAM_W/H` 静态几何尺寸，后续建议改为 frame context/capability 查询。
+- 显示像素级能力已进入 `pal_display.h`，但屏幕能力还可继续抽象为 runtime capability/config。
 - `isr_adapter.c` 仍是目标平台集中适配文件，下一阶段可按 PIT/DMA/UART 子适配拆分。
 
 提交格式：
@@ -269,6 +272,8 @@ scope: app | service | bsp | platform | impl | system | scheduler | docs
 - [x] 摄像头 DMA 帧事件归入 adapter fact -> system router -> scheduler event 链路
 - [x] `Driver + Handler + Context` 第一阶段：Sensor/ISR/Control/Vision 状态 owner 收敛
 - [x] README / AGENTS / `.cproject` 同步新架构边界
+- [x] `platform.h` 降级为兼容聚合头，业务代码改用具体 `pal_*.h`
+- [x] App -> Buzzer 与 Board -> Control 的跨层依赖收敛到 Service/System composition root
 - [ ] 拆分 `isr_adapter.c` 为 camera/encoder/uart 子 adapter
 - [ ] 为 `event` 增加 per-event policy：flag / counter / saturating counter
 - [ ] CPU1 视觉处理 offload

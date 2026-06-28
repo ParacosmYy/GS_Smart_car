@@ -5,7 +5,10 @@
  *
  * @par dependencies
  * - isr_adapter.h
- * - platform.h
+ * - pal_comm.h
+ * - pal_encoder.h
+ * - pal_pit.h
+ * - pal_system.h
  * - zf_common_headfile.h
  *
  * @author GS_Mark
@@ -24,7 +27,10 @@
 //******************************** Includes *********************************//
 #include "isr_adapter.h"
 
-#include "platform.h"
+#include "pal_comm.h"
+#include "pal_encoder.h"
+#include "pal_pit.h"
+#include "pal_system.h"
 #include "zf_common_headfile.h"
 //******************************** Includes *********************************//
 

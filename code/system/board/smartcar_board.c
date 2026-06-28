@@ -9,13 +9,18 @@
 
 #include "smartcar_board.h"
 
-#include "platform.h"
 #include "config.h"
+#include "pal_camera.h"
+#include "pal_comm.h"
+#include "pal_display.h"
+#include "pal_encoder.h"
+#include "pal_imu.h"
+#include "pal_pit.h"
+#include "pal_uart.h"
 #include "motor.h"
 #include "servo.h"
 #include "input.h"
 #include "buzzer.h"
-#include "control.h"
 
 /**
  * @brief 初始化全部板级设备与控制 Handler。
@@ -24,7 +29,7 @@
  *  1. 先初始化通信口，便于后续调试与设备配置。
  *  2. 初始化编码器和执行机构，保证控制环反馈与输出都就绪。
  *  3. 初始化显示、摄像头、人机交互、陀螺仪和无线通信。
- *  4. 最后初始化控制 Handler，装载 PID 参数。
+ *  4. 初始化陀螺仪和无线通信。
  *
  * @return void : 无返回值。
  *
@@ -49,7 +54,6 @@ void SmartcarBoard_InitDevices(void)
     pal_gyro_init();
     pal_wireless_init();
 
-    Control_Init();
 }
 
 /**

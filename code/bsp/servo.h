@@ -12,7 +12,7 @@
 #ifndef CODE_SERVO_H_
 #define CODE_SERVO_H_
 
-#include "platform.h"
+#include "pal_pwm.h"
 
 /**
  * @brief 舵机驱动对象（封装当前占空比、机械中位、最大偏转范围）

@@ -11,7 +11,7 @@
 #ifndef CODE_VISION_H_
 #define CODE_VISION_H_
 
-#include "platform.h"
+#include "pal_camera.h"
 
 #define VISION_ZIP_IMAGE_H 60 // 压缩后图像高度
 #define VISION_ZIP_IMAGE_W 94 // 压缩后图像宽度

@@ -12,7 +12,7 @@
 #ifndef CODE_INPUT_H_
 #define CODE_INPUT_H_
 
-#include "platform.h"
+#include "pal_gpio.h"
 
 /* ===== 菜单状态机（调试显示页切换，不属于 input_t）===== */
 typedef enum {

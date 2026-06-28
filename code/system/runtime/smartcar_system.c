@@ -8,7 +8,8 @@
 
 #include "smartcar_system.h"
 
-#include "platform.h"
+#include "control.h"
+#include "pal_system.h"
 #include "scheduler.h"
 #include "smartcar_app.h"
 #include "smartcar_board.h"
@@ -31,6 +32,7 @@ void SmartcarSystem_Boot(void)
     pal_sys_debug_init();
 
     SmartcarBoard_InitDevices();
+    Control_Init();
     scheduler_init();
     SmartcarApp_Init();
     SmartcarBoard_StartPeriodicIrq();

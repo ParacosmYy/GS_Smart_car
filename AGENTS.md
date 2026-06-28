@@ -10,7 +10,7 @@ This repository is an AURIX TC264 smart car firmware project. Keep self-owned co
 - `code/system/irq/`: generic interrupt routing from source/fact to scheduler event/tick.
 - `code/service/`: algorithm services and owned runtime state, such as `vision/`, `sensor/`, `control/`, and `diagnostics/`.
 - `code/bsp/`: board-level drivers for motor, servo, display, input, and buzzer; depend on PAL only.
-- `code/platform/`: platform contract only. `platform.h` defines stable `pal_*` APIs and must not include Vendor SDK headers.
+- `code/platform/`: platform contract only. Use concrete `pal_*.h` capability headers; `platform.h` is a legacy compatibility aggregator and must not include Vendor SDK headers.
 - `code/impl/tc264/`: TC264 PAL implementation, ISR hardware facts, and target route binding (`tc264_irq_binding.c/h`).
 - `code/common/init.h`: SEEKFREE compatibility shim only; do not add startup logic here.
 - `user/`: TC264 SDK entry layer with `IFX_INTERRUPT` functions; keep it thin.
@@ -42,7 +42,9 @@ Use C99, Allman braces, declarations near the top of functions, and no dynamic a
 
 Before writing code, first identify the owner, dependency direction, lifecycle timing, ISR impact, test surface, and future MCU-porting cost. Use mature embedded product codebases such as DJI or Insta360 as style references: stable interfaces, explicit lifecycle, table-driven dispatch where useful, thin ISR entries, and clear module ownership.
 
-Dependency direction is: `SDK Entry -> System Runtime -> App -> Service/Handler -> BSP/Driver -> Platform API -> Impl -> Vendor SDK`. `user/isr.c` is SDK entry, not business logic. `code/system/irq` may publish scheduler events but must not call App, Service, BSP, motor, vision, or control code directly. `code/impl/tc264` may call Vendor SDK and PAL primitives, but must not call application logic.
+Dependency direction is: `SDK Entry -> System Runtime -> App -> Service/Handler -> BSP/Driver -> Platform API -> Impl -> Vendor SDK`. `user/isr.c` is SDK entry, not business logic. `code/system/board` may initialize BSP devices but must not call business services. `code/system/runtime` is the composition root for service lifecycle such as `Control_Init()`. `code/system/irq` may publish scheduler events but must not call App, Service, BSP, motor, vision, or control code directly. `code/impl/tc264` may call Vendor SDK and PAL primitives, but must not call application logic.
+
+New production code must not include `platform.h`; include the narrow PAL header it needs, such as `pal_gpio.h`, `pal_pwm.h`, `pal_camera.h`, `pal_display.h`, or `pal_system.h`. Keep `platform.h` only for legacy compatibility or target implementation aggregation.
 
 Runtime state must have a clear owner in a `context` or `handler`. Do not add writable `extern` globals to public headers. Avoid new runtime state in `code/common/data.c`; it is legacy compatibility only.
 
