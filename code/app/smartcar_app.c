@@ -64,7 +64,7 @@ void SmartcarApp_RunOnce(void)
     // 实时显示图像与关键状态，便于现场调参与排错
 
     // 显示半分辨率灰度图（94×60 缩放窗口）
-    pal_disp_gray(0, 0, mt9v03x_image_bandw_zip[0], 94, 60, MT9V03X_W / 2, MT9V03X_H / 2, 0);
+    pal_disp_gray(0, 0, mt9v03x_image_bandw_zip[0], 94, 60, PAL_CAM_W / 2, PAL_CAM_H / 2, 0);
 
     // 左右编码器实测速度（来自控制模块）
     pal_disp_str(0, 80, "left:");

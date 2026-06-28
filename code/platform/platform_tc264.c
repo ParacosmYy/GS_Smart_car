@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @file platform_tc264.c
  * @brief TC264 平台实现层（包装逐飞 SEEKFREE TC264 库）
  *
@@ -48,6 +48,8 @@ static const uint32_t s_pit_map[] =
 {
     [PAL_CH_PIT_0]        = CCU60_CH0,
     [PAL_CH_PIT_1]        = CCU60_CH1,
+    [PAL_CH_PIT_2]        = CCU61_CH0,
+    [PAL_CH_PIT_3]        = CCU61_CH1,
 };
 
 /* UART 通道映射（tx_pin, rx_pin 成对存储） */

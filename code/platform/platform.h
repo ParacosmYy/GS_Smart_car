@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @file platform.h
  * @brief 硬件平台抽象层（Platform Abstraction Layer）
  *
@@ -53,6 +53,8 @@ typedef enum
     PAL_CH_ENCODER_R,          /* 右编码器定时器              */
     PAL_CH_PIT_0,              /* 周期中断通道 0（编码器采样）*/
     PAL_CH_PIT_1,              /* 周期中断通道 1（陀螺仪采样）*/
+    PAL_CH_PIT_2,              /* 周期中断通道 2（预留扩展）  */
+    PAL_CH_PIT_3,              /* 周期中断通道 3（预留扩展）  */
     PAL_CH_UART_CAM,           /* 摄像头配置 UART            */
     PAL_CH_UART_BT,            /* 蓝牙/无线 UART             */
 
@@ -129,6 +131,8 @@ void pal_disp_int (int16_t x, int16_t y, int32_t v, uint8_t digits);
  *  无线通信抽象
  *=========================================================================*/
 void pal_wireless_init(void);
+void pal_wireless_rx_handler(void); /* 无线模块 UART RX 中断回调  */
+void pal_gnss_rx_callback(void);    /* GNSS/蓝牙 UART RX 中断回调 */
 
 /*===========================================================================
  *  按键抽象

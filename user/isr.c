@@ -185,7 +185,7 @@ IFX_INTERRUPT(cc60_pit_ch1_isr, 0, CCU6_0_CH1_ISR_PRIORITY)
 IFX_INTERRUPT(cc61_pit_ch0_isr, 0, CCU6_1_CH0_ISR_PRIORITY)
 {
     pal_irq_global_ctrl(0);                     // 开启中断嵌套
-    pit_clear_flag(CCU61_CH0);
+    pal_pit_clear_flag(PAL_CH_PIT_2);
 
 
 
@@ -198,7 +198,7 @@ IFX_INTERRUPT(cc61_pit_ch0_isr, 0, CCU6_1_CH0_ISR_PRIORITY)
 IFX_INTERRUPT(cc61_pit_ch1_isr, 0, CCU6_1_CH1_ISR_PRIORITY)
 {
     pal_irq_global_ctrl(0);                     // 开启中断嵌套
-    pit_clear_flag(CCU61_CH1);
+    pal_pit_clear_flag(PAL_CH_PIT_3);
 
 
 
@@ -376,7 +376,7 @@ IFX_INTERRUPT(uart2_tx_isr, 0, UART2_TX_INT_PRIO)
 IFX_INTERRUPT(uart2_rx_isr, 0, UART2_RX_INT_PRIO)
 {
     pal_irq_global_ctrl(0);                     // 开启中断嵌套
-    wireless_module_uart_handler();                 // 无线模块统一回调函数
+    pal_wireless_rx_handler();                 // 无线模块统一回调函数
 
 
 
@@ -400,7 +400,7 @@ IFX_INTERRUPT(uart3_tx_isr, 0, UART3_TX_INT_PRIO)
 IFX_INTERRUPT(uart3_rx_isr, 0, UART3_RX_INT_PRIO)
 {
     pal_irq_global_ctrl(0);                     // 开启中断嵌套
-    wireless_uart_callback();                           // GNSS串口回调函数
+    pal_gnss_rx_callback();                           // GNSS串口回调函数
 
 
 

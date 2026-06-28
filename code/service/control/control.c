@@ -29,12 +29,12 @@ void Actuator_Apply(void)
     // 丢线保护：舵机回正中位 SERVO_CENTER_DUTY，避免继续转向冲出赛道
     if(lost_count > LOST_LINE_THRESHOLD)
     {
-        pwm_set_duty(ATOM1_CH1_P33_9, SERVO_CENTER_DUTY);
+        pal_pwm_set_duty(PAL_CH_SERVO, SERVO_CENTER_DUTY);
         return;
     }
     // 舵机PWM = 中心值 + PID增量输出（关键修复：原代码此行被注释导致舵机不响应）
-    pwm_set_duty(ATOM1_CH1_P33_9, SERVO_CENTER_DUTY + (int)servo_pid_output);
+    pal_pwm_set_duty(PAL_CH_SERVO, SERVO_CENTER_DUTY + (int)servo_pid_output);
     // 左右电机施加PID速度输出
-    motor_setspeed_left((int32)left_motor_pid_output);
-    motor_setspeed_right((int32)right_motor_pid_output);
+    motor_setspeed_left((int32_t)left_motor_pid_output);
+    motor_setspeed_right((int32_t)right_motor_pid_output);
 }
