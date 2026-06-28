@@ -47,4 +47,11 @@ void find_mid_line_weight(void);//图像中值 与 补线中值差 然后 计算
 /** @brief 视觉处理总入口：OTSU → 二值化 → 压缩 → 滤波 → 边线 → 加权中线 → 画线 */
 void Vision_Process(void);//找边界 计算权重中值 画线 显示 集合体
 
+/**
+ * @brief 检测特殊赛道元素（圆环 / 十字路口）
+ * @return 0=无特殊元素, 1=圆环, 2=十字路口
+ * @note 基于 left_line_list / right_line_list 的启发式判断，带冷却防抖
+ */
+uint8_t Vision_DetectElement(void);
+
 #endif /* CODE_VISION_H_ */

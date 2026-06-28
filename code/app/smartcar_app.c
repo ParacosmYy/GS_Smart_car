@@ -12,6 +12,7 @@
 #include "smartcar_app.h"
 #include "zf_common_headfile.h"
 #include "control.h"
+#include "buzzer.h"
 
 /**
  * @brief 应用层初始化入口
@@ -36,10 +37,28 @@ void SmartcarApp_RunOnce(void)
     if(mt9v03x_finish_flag == 1)
     {
         Vision_Process();    // 步骤 1：视觉处理，从图像提取赛道中线与转向误差
+
+        // ===== 特殊元素检测 + 蜂鸣器提示 =====
+        uint8_t element = Vision_DetectElement();
+        if (element != 0 && !Buzzer_IsBusy())
+        {
+            if (element == 1)
+            {
+                Buzzer_Trigger(BUZZER_EVENT_RING);       // 圆环：3 声短促
+            }
+            else if (element == 2)
+            {
+                Buzzer_Trigger(BUZZER_EVENT_CROSSROAD);  // 十字路口：1 声长鸣
+            }
+        }
+
         Control_Update();    // 步骤 2：控制更新，PID 计算舵机和电机目标值
         Actuator_Apply();    // 步骤 3：执行下发，将目标值写入 PWM 寄存器
         mt9v03x_finish_flag = 0;   // 清除帧完成标志，等待下一帧
     }
+
+    // 蜂鸣器时序驱动（每帧调用，非阻塞）
+    Buzzer_Tick();
 
     // ===== TFT180 调试显示 =====
     // 实时显示图像与关键状态，便于现场调参与排错

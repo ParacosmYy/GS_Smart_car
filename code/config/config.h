@@ -41,4 +41,22 @@
 /* ===== 周期中断（PERIODIC INTERRUPT）===== */
 #define PIT_PERIOD_MS           10      /* CCU60 通道周期，单位 ms；默认 10ms，需与 data.c 中 dt 保持一致  */
 
+/* ===== 蜂鸣器参数（BUZZER）===== */
+/* GPIO 有源蜂鸣器（P11_11），通过开关时序产生不同提示音           */
+/* 1 帧 ≈ 33ms（30fps），帧数 × 33 ≈ 实际毫秒数                  */
+#define BUZZER_BEEP_SHORT_F    3       /* 短声持续帧数（~100ms），用于圆环提示       */
+#define BUZZER_BEEP_LONG_F     12      /* 长声持续帧数（~400ms），用于十字路口提示   */
+#define BUZZER_GAP_F           2       /* 声间间隔帧数（~66ms），区分连续短声        */
+
+/* ===== 特殊元素检测（ELEMENT DETECT）===== */
+/* 基于边线数据的启发式检测，行索引范围对应图像中下部              */
+/* 行号说明：0=图像顶部（远端），59=图像底部（近端/车前）         */
+#define ELEM_ROW_START         20      /* 检测窗口起始行（跳过远端噪点）             */
+#define ELEM_ROW_END           50      /* 检测窗口结束行（跳过近端车体遮挡）         */
+#define ELEM_EDGE_LEFT         2       /* 左边线贴边阈值（列号 ≤ 此值视为丢线）      */
+#define ELEM_EDGE_RIGHT        91      /* 右边线贴边阈值（列号 ≥ 此值视为丢线）      */
+#define ELEM_CROSSROAD_ROWS    8       /* 双侧丢线行数 ≥ 此值 → 判定十字路口         */
+#define ELEM_RING_ROWS         15      /* 单侧丢线行数 ≥ 此值 → 判定圆环             */
+#define ELEM_COOLDOWN_FRAMES   30      /* 检测冷却帧数（~1s），防止单元素重复触发     */
+
 #endif /* CODE_CONFIG_CONFIG_H_ */

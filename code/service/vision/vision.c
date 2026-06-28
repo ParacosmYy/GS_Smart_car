@@ -389,3 +389,76 @@ void Vision_Process(void)
     // 步骤 7：调试画线（左/右/中线绘制到屏幕）
     draw_all_lines_test();
 }
+
+/* ===== 特殊元素检测 ===== */
+
+/**
+ * @brief 检测冷却计数器（帧数），每帧递减
+ *        检测到元素后置为 ELEM_COOLDOWN_FRAMES，期间不再触发
+ */
+static uint8_t s_element_cooldown = 0;
+
+/**
+ * @brief 检测特殊赛道元素（圆环 / 十字路口）
+ *
+ * 启发式策略（基于压缩图像边线数据 left_line_list / right_line_list）：
+ *
+ *   十字路口：检测窗口内双侧边线同时贴边的行数 >= ELEM_CROSSROAD_ROWS
+ *            （左右两边线都到达图像边缘，说明赛道横向完全打开）
+ *
+ *   圆环：检测窗口内单侧边线贴边的行数 >= ELEM_RING_ROWS
+ *         （一侧边线大量丢失，但另一侧正常，是圆环入口的典型特征）
+ *
+ * 判定优先级：先十字路口（更严格），再圆环（更宽松）
+ *
+ * @return 0=无特殊元素, 1=圆环, 2=十字路口
+ */
+uint8_t Vision_DetectElement(void)
+{
+    uint8_t i;
+    uint8_t left_lost  = 0;
+    uint8_t right_lost = 0;
+    uint8_t both_lost  = 0;
+
+    /* 冷却期内不检测，防止单元素持续触发蜂鸣器 */
+    if (s_element_cooldown > 0)
+    {
+        s_element_cooldown--;
+        return 0;
+    }
+
+    /* 扫描检测窗口行，统计各方向丢线行数 */
+    for (i = ELEM_ROW_START; i < ELEM_ROW_END; i++)
+    {
+        uint8_t left_at_edge  = (left_line_list[i]  <= ELEM_EDGE_LEFT);
+        uint8_t right_at_edge = (right_line_list[i] >= ELEM_EDGE_RIGHT);
+
+        if (left_at_edge)
+        {
+            left_lost++;
+        }
+        if (right_at_edge)
+        {
+            right_lost++;
+        }
+        if (left_at_edge && right_at_edge)
+        {
+            both_lost++;
+        }
+    }
+
+    /* 判定优先级：先十字（双侧丢线），再圆环（单侧丢线） */
+    if (both_lost >= ELEM_CROSSROAD_ROWS)
+    {
+        s_element_cooldown = ELEM_COOLDOWN_FRAMES;
+        return 2;  /* 十字路口 */
+    }
+
+    if (left_lost >= ELEM_RING_ROWS || right_lost >= ELEM_RING_ROWS)
+    {
+        s_element_cooldown = ELEM_COOLDOWN_FRAMES;
+        return 1;  /* 圆环 */
+    }
+
+    return 0;
+}
