@@ -249,7 +249,7 @@ gcc -std=c99 -Werror=implicit-function-declaration -fsyntax-only \
 
 仍需继续收敛的边界：
 
-- `platform.h` 仍是宽接口，后续应拆分资源类型，避免一个 `pal_ch_t` 混用 PIT、UART、Encoder、Camera。
+- `platform.h` 已拆分 PWM/GPIO/Encoder/PIT/UART 资源 ID，但接口仍偏宽，后续应继续按 camera/display/imu capability 拆分。
 - 摄像头尺寸、显示像素级接口仍偏 TC264/逐飞板级特性，建议继续抽象为 capability/config。
 - `isr_adapter.c` 仍是目标平台集中适配文件，下一阶段可按 PIT/DMA/UART 子适配拆分。
 

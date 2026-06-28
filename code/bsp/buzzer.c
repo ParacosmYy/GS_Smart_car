@@ -107,9 +107,15 @@ static void buzzer_step(buzzer_t *bz)
 /* ===== 硬件初始化 ===== */
 
 /**
- * @brief 蜂鸣器初始化
- *        将 P11_11 配置为 GPO 推挽输出，初始拉低
- */
+ * @brief 蜂鸣器初始化。
+ *
+ * 处理步骤：
+ *  1. 将蜂鸣器逻辑引脚配置为输出。
+ *  2. 输出保持默认低电平，等待非阻塞提示模式驱动。
+ *
+ * @return void : 无返回值。
+ *
+ * */
 void buzzer_init(void)
 {
     pal_gpio_init(PAL_PIN_BUZZER, PAL_GPIO_OUTPUT);

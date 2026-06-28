@@ -46,10 +46,10 @@
 #define LOST_MIDLINE_GAP        40      /* 相邻行中线跳变阈值，跳变过大视为丢线，过滤毛刺                 */
 
 /* ===== Periodic Interrupt ===== */
-#define PIT_PERIOD_MS           10      /* CCU60 通道周期，单位 ms；传感器积分周期默认由此换算              */
+#define PIT_PERIOD_MS           10      /* 周期中断节拍，单位 ms；传感器积分周期默认由此换算               */
 
 /* ===== Buzzer Parameters ===== */
-/* GPIO 有源蜂鸣器（P11_11），通过开关时序产生不同提示音           */
+/* GPIO 有源蜂鸣器，通过开关时序产生不同提示音                    */
 /* 1 帧 ≈ 33ms（30fps），帧数 × 33 ≈ 实际毫秒数                  */
 #define BUZZER_BEEP_SHORT_F    3       /* 短声持续帧数（~100ms），用于圆环提示       */
 #define BUZZER_BEEP_LONG_F     12      /* 长声持续帧数（~400ms），用于十字路口提示   */

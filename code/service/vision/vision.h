@@ -5,8 +5,7 @@
  *      Author: Paracosm
  *
  * @brief 视觉处理模块接口
- *        摄像头：MT9V03X（灰度，188×120）
- *        流程：OTSU 二值化 → 压缩(94×60) → 滤波 → 边线检测 → 加权中线
+ *        流程：OTSU 二值化 → 压缩 → 滤波 → 边线检测 → 加权中线
  *        输出：calculate_error（PID 输入）、lost_count（停止判断）
  */
 #ifndef CODE_VISION_H_
@@ -14,8 +13,8 @@
 
 #include "platform.h"
 
-#define zip_MT9V03X_H 60 // 压缩后图像高度
-#define zip_MT9V03X_W 94 // 压缩后图像宽度
+#define VISION_ZIP_IMAGE_H 60 // 压缩后图像高度
+#define VISION_ZIP_IMAGE_W 94 // 压缩后图像宽度
 
 typedef struct
 {
@@ -28,7 +27,7 @@ typedef struct
 
 typedef struct
 {
-    const uint8_t (*p_binary_zip)[zip_MT9V03X_W]; // 压缩后二值图
+    const uint8_t (*p_binary_zip)[VISION_ZIP_IMAGE_W]; // 压缩后二值图
     const uint8_t *p_left_line;                   // 每行左边界列坐标
     const uint8_t *p_right_line;                  // 每行右边界列坐标
     const uint8_t *p_mid_line;                    // 每行中线列坐标

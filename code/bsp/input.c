@@ -12,10 +12,10 @@
 #include "input.h"
 
 /* ===== 按键 / 拨码开关引脚映射（只读常量）===== */
-static const pal_ch_t s_key_pins[4] = {
+static const pal_gpio_id_t s_key_pins[4] = {
     PAL_PIN_KEY1, PAL_PIN_KEY2, PAL_PIN_KEY3, PAL_PIN_KEY4,
 };
-static const pal_ch_t s_dip_pins[4] = {
+static const pal_gpio_id_t s_dip_pins[4] = {
     PAL_PIN_DIP1, PAL_PIN_DIP2, PAL_PIN_DIP3, PAL_PIN_DIP4,
 };
 

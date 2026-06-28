@@ -12,9 +12,6 @@
  */
 #include "display.h"
 
-// 压缩后图像尺寸（用于TFT显示坐标映射）
-#define zip_MT9V03X_H 60   // 图像高度（行数）
-#define zip_MT9V03X_W 94   // 图像宽度（列数）
 #define DISPLAY_BOLD_POINT_COUNT  9
 #define DISPLAY_TRACK_BLIND_ROWS  10
 

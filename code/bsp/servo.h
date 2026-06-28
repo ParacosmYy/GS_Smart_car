@@ -26,7 +26,7 @@ typedef struct {
 
 /**
  * @brief 舵机初始化
- *        启动 PAL_CH_SERVO 上 SERVO_PWM_HZ 的 PWM，初始居中
+ *        启动舵机 PWM，初始居中
  *        中位与范围从 config.h 装载（SERVO_CENTER_DUTY / SERVO_RANGE）
  */
 void Servo_Init(void);

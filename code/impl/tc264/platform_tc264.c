@@ -18,14 +18,33 @@
  *  换板子时改这里。换 MCU 时改这里 + 改 #include。
  *=========================================================================*/
 
-/* GPIO 引脚映射 */
-static const uint32_t s_pin_map[] =
+typedef struct
+{
+    uint32_t timer;
+    uint32_t ch1_pin;
+    uint32_t ch2_pin;
+} tc264_encoder_map_t;
+
+typedef struct
+{
+    uint32_t uart;
+    uint32_t tx;
+    uint32_t rx;
+} tc264_uart_map_t;
+
+/* PWM 通道映射 */
+static const uint32_t s_pwm_map[PAL_PWM_ID_MAX] =
 {
     [PAL_CH_MOTOR_R_FWD]  = ATOM0_CH1_P21_3,   /* 右电机正转 PWM 通道     */
     [PAL_CH_MOTOR_R_REV]  = ATOM0_CH0_P21_2,   /* 右电机反转 PWM 通道     */
     [PAL_CH_MOTOR_L_FWD]  = ATOM0_CH3_P21_5,   /* 左电机正转 PWM 通道     */
     [PAL_CH_MOTOR_L_REV]  = ATOM0_CH2_P21_4,   /* 左电机反转 PWM 通道     */
     [PAL_CH_SERVO]        = ATOM1_CH1_P33_9,   /* 舵机 PWM 输出通道       */
+};
+
+/* GPIO 引脚映射 */
+static const uint32_t s_gpio_map[PAL_GPIO_ID_MAX] =
+{
     [PAL_PIN_BUZZER]      = P11_11,             /* 蜂鸣器 GPIO            */
     [PAL_PIN_KEY1]        = P20_6,              /* 按键 1                 */
     [PAL_PIN_KEY2]        = P20_7,              /* 按键 2                 */
@@ -38,14 +57,24 @@ static const uint32_t s_pin_map[] =
 };
 
 /* 编码器定时器映射 */
-static const uint32_t s_encoder_map[] =
+static const tc264_encoder_map_t s_encoder_map[PAL_ENCODER_ID_MAX] =
 {
-    [PAL_CH_ENCODER_L]    = TIM2_ENCODER,
-    [PAL_CH_ENCODER_R]    = TIM4_ENCODER,
+    [PAL_CH_ENCODER_L]    =
+    {
+        TIM2_ENCODER,
+        TIM2_ENCODER_CH1_P33_7,
+        TIM2_ENCODER_CH2_P33_6
+    },
+    [PAL_CH_ENCODER_R]    =
+    {
+        TIM4_ENCODER,
+        TIM4_ENCODER_CH1_P02_8,
+        TIM4_ENCODER_CH2_P00_9
+    },
 };
 
 /* PIT 通道映射 */
-static const uint32_t s_pit_map[] =
+static const uint32_t s_pit_map[PAL_PIT_ID_MAX] =
 {
     [PAL_CH_PIT_0]        = CCU60_CH0,
     [PAL_CH_PIT_1]        = CCU60_CH1,
@@ -54,7 +83,7 @@ static const uint32_t s_pit_map[] =
 };
 
 /* UART 通道映射（tx_pin, rx_pin 成对存储） */
-static const struct { uint32_t uart; uint32_t tx; uint32_t rx; } s_uart_map[] =
+static const tc264_uart_map_t s_uart_map[PAL_UART_ID_MAX] =
 {
     [PAL_CH_UART_CAM]     = { UART_1, UART1_TX_P02_2, UART1_RX_P02_3 },
     [PAL_CH_UART_BT]      = { UART_3, UART3_TX_P15_7, UART3_RX_P20_3 },
@@ -63,94 +92,149 @@ static const struct { uint32_t uart; uint32_t tx; uint32_t rx; } s_uart_map[] =
 /*===========================================================================
  *  GPIO 实现
  *=========================================================================*/
-void pal_gpio_init(pal_ch_t pin, pal_gpio_mode_t mode)
+void pal_gpio_init(pal_gpio_id_t pin, pal_gpio_mode_t mode)
 {
+    if (pin >= PAL_GPIO_ID_MAX)
+    {
+        return;
+    }
+
     if (mode == PAL_GPIO_OUTPUT)
     {
-        gpio_init(s_pin_map[pin], GPO, GPIO_LOW, GPO_PUSH_PULL);
+        gpio_init(s_gpio_map[pin], GPO, GPIO_LOW, GPO_PUSH_PULL);
     }
     else
     {
-        gpio_init(s_pin_map[pin], GPI, GPIO_HIGH, GPI_PULL_UP);
+        gpio_init(s_gpio_map[pin], GPI, GPIO_HIGH, GPI_PULL_UP);
     }
 }
 
-void pal_gpio_high(pal_ch_t pin)
+void pal_gpio_high(pal_gpio_id_t pin)
 {
-    gpio_high(s_pin_map[pin]);
+    if (pin >= PAL_GPIO_ID_MAX)
+    {
+        return;
+    }
+
+    gpio_high(s_gpio_map[pin]);
 }
 
-void pal_gpio_low(pal_ch_t pin)
+void pal_gpio_low(pal_gpio_id_t pin)
 {
-    gpio_low(s_pin_map[pin]);
+    if (pin >= PAL_GPIO_ID_MAX)
+    {
+        return;
+    }
+
+    gpio_low(s_gpio_map[pin]);
 }
 
-uint8_t pal_gpio_read(pal_ch_t pin)
+uint8_t pal_gpio_read(pal_gpio_id_t pin)
 {
-    return (uint8_t)gpio_get_level(s_pin_map[pin]);
+    if (pin >= PAL_GPIO_ID_MAX)
+    {
+        return 0U;
+    }
+
+    return (uint8_t)gpio_get_level(s_gpio_map[pin]);
 }
 
 /*===========================================================================
  *  PWM 实现
  *=========================================================================*/
-void pal_pwm_init(pal_ch_t ch, uint32_t freq_hz, uint32_t duty)
+void pal_pwm_init(pal_pwm_id_t ch, uint32_t freq_hz, uint32_t duty)
 {
-    pwm_init(s_pin_map[ch], freq_hz, duty);
+    if (ch >= PAL_PWM_ID_MAX)
+    {
+        return;
+    }
+
+    pwm_init(s_pwm_map[ch], freq_hz, duty);
 }
 
-void pal_pwm_set_duty(pal_ch_t ch, uint32_t duty)
+void pal_pwm_set_duty(pal_pwm_id_t ch, uint32_t duty)
 {
-    pwm_set_duty(s_pin_map[ch], duty);
+    if (ch >= PAL_PWM_ID_MAX)
+    {
+        return;
+    }
+
+    pwm_set_duty(s_pwm_map[ch], duty);
 }
 
 /*===========================================================================
  *  PIT 周期中断实现
  *=========================================================================*/
-void pal_pit_init(pal_ch_t ch, uint32_t period_ms)
+void pal_pit_init(pal_pit_id_t ch, uint32_t period_ms)
 {
+    if (ch >= PAL_PIT_ID_MAX)
+    {
+        return;
+    }
+
     pit_ms_init(s_pit_map[ch], period_ms);
 }
 
-void pal_pit_clear_flag(pal_ch_t ch)
+void pal_pit_clear_flag(pal_pit_id_t ch)
 {
+    if (ch >= PAL_PIT_ID_MAX)
+    {
+        return;
+    }
+
     pit_clear_flag(s_pit_map[ch]);
 }
 
 /*===========================================================================
  *  编码器实现
  *=========================================================================*/
-void pal_encoder_init(pal_ch_t ch)
+void pal_encoder_init(pal_encoder_id_t ch)
 {
-    if (ch == PAL_CH_ENCODER_L)
+    if (ch >= PAL_ENCODER_ID_MAX)
     {
-        encoder_dir_init(TIM2_ENCODER, TIM2_ENCODER_CH1_P33_7, TIM2_ENCODER_CH2_P33_6);
+        return;
     }
-    else
-    {
-        encoder_dir_init(TIM4_ENCODER, TIM4_ENCODER_CH1_P02_8, TIM4_ENCODER_CH2_P00_9);
-    }
+
+    encoder_dir_init(s_encoder_map[ch].timer,
+                     s_encoder_map[ch].ch1_pin,
+                     s_encoder_map[ch].ch2_pin);
 }
 
-int32_t pal_encoder_get(pal_ch_t ch)
+int32_t pal_encoder_get(pal_encoder_id_t ch)
 {
-    return encoder_get_count(s_encoder_map[ch]);
+    if (ch >= PAL_ENCODER_ID_MAX)
+    {
+        return 0;
+    }
+
+    return encoder_get_count(s_encoder_map[ch].timer);
 }
 
-void pal_encoder_clear(pal_ch_t ch)
+void pal_encoder_clear(pal_encoder_id_t ch)
 {
-    encoder_clear_count(s_encoder_map[ch]);
+    if (ch >= PAL_ENCODER_ID_MAX)
+    {
+        return;
+    }
+
+    encoder_clear_count(s_encoder_map[ch].timer);
 }
 
 /*===========================================================================
  *  UART 实现
  *=========================================================================*/
-void pal_uart_init(pal_ch_t ch, uint32_t baud)
+void pal_uart_init(pal_uart_id_t ch, uint32_t baud)
 {
+    if (ch >= PAL_UART_ID_MAX)
+    {
+        return;
+    }
+
     uart_init(s_uart_map[ch].uart, baud, s_uart_map[ch].tx, s_uart_map[ch].rx);
 }
 
 /*===========================================================================
- *  摄像头（MT9V03X）实现
+ *  摄像头实现
  *=========================================================================*/
 void pal_cam_init(void)
 {
@@ -159,7 +243,14 @@ void pal_cam_init(void)
 
 bool pal_cam_ready(void)
 {
-    return (mt9v03x_finish_flag == 1) ? true : false;
+    bool is_ready = false;
+
+    if (mt9v03x_finish_flag == 1)
+    {
+        is_ready = true;
+    }
+
+    return is_ready;
 }
 
 void pal_cam_clear(void)
@@ -172,8 +263,20 @@ uint8_t* pal_cam_data(void)
     return (uint8_t*)mt9v03x_image;
 }
 
+void pal_cam_get_frame_desc(pal_cam_frame_desc_t *p_desc)
+{
+    if (p_desc == 0)
+    {
+        return;
+    }
+
+    p_desc->width = PAL_CAM_W;
+    p_desc->height = PAL_CAM_H;
+    p_desc->stride = PAL_CAM_W;
+}
+
 /*===========================================================================
- *  陀螺仪（ICM20602）实现
+ *  陀螺仪实现
  *=========================================================================*/
 void pal_gyro_init(void)
 {
@@ -191,7 +294,7 @@ float pal_gyro_z(void)
 }
 
 /*===========================================================================
- *  显示（TFT180）实现
+ *  显示实现
  *=========================================================================*/
 void pal_disp_init(void)
 {

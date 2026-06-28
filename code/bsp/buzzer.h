@@ -11,12 +11,12 @@
 #include "platform.h"
 
 /**
- * @brief 打开蜂鸣器（P11_11 拉高）
+ * @brief 打开蜂鸣器
  */
 static inline void buzzer_on(void)  { pal_gpio_high(PAL_PIN_BUZZER); }
 
 /**
- * @brief 关闭蜂鸣器（P11_11 拉低）
+ * @brief 关闭蜂鸣器
  */
 static inline void buzzer_off(void) { pal_gpio_low(PAL_PIN_BUZZER);  }
 
@@ -49,7 +49,7 @@ void Buzzer_Tick(void);
 uint8_t Buzzer_IsBusy(void);
 
 /**
- * @brief 蜂鸣器初始化，配置 P11_11 为 GPO 推挽输出并拉低
+ * @brief 蜂鸣器初始化
  */
 void buzzer_init(void);
 

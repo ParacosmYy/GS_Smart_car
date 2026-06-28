@@ -26,20 +26,22 @@
 #include <stdbool.h>
 
 /*===========================================================================
- *  引脚 / 通道逻辑编号
+ *  平台资源逻辑编号
  *  平台无关。物理映射在 platform_<mcu>.c 的查找表中。
  *=========================================================================*/
 typedef enum
 {
-    /* --- 电机 PWM 通道（H 桥：每轮正转/反转各一路 PWM）--- */
     PAL_CH_MOTOR_R_FWD  = 0,   /* 右电机正转 PWM             */
     PAL_CH_MOTOR_R_REV,        /* 右电机反转 PWM             */
     PAL_CH_MOTOR_L_FWD,        /* 左电机正转 PWM             */
     PAL_CH_MOTOR_L_REV,        /* 左电机反转 PWM             */
     PAL_CH_SERVO,              /* 舵机 PWM 输出               */
+    PAL_PWM_ID_MAX
+} pal_pwm_id_t;
 
-    /* --- GPIO 引脚 --- */
-    PAL_PIN_BUZZER,            /* 蜂鸣器控制引脚              */
+typedef enum
+{
+    PAL_PIN_BUZZER = 0,        /* 蜂鸣器控制引脚              */
     PAL_PIN_KEY1,              /* 按键 1                     */
     PAL_PIN_KEY2,              /* 按键 2                     */
     PAL_PIN_KEY3,              /* 按键 3                     */
@@ -48,19 +50,31 @@ typedef enum
     PAL_PIN_DIP2,              /* 拨码开关 2                 */
     PAL_PIN_DIP3,              /* 拨码开关 3                 */
     PAL_PIN_DIP4,              /* 拨码开关 4                 */
+    PAL_GPIO_ID_MAX
+} pal_gpio_id_t;
 
-    /* --- 外设通道 --- */
-    PAL_CH_ENCODER_L,          /* 左编码器定时器              */
+typedef enum
+{
+    PAL_CH_ENCODER_L = 0,      /* 左编码器定时器              */
     PAL_CH_ENCODER_R,          /* 右编码器定时器              */
-    PAL_CH_PIT_0,              /* 周期中断通道 0（编码器采样）*/
+    PAL_ENCODER_ID_MAX
+} pal_encoder_id_t;
+
+typedef enum
+{
+    PAL_CH_PIT_0 = 0,          /* 周期中断通道 0（编码器采样）*/
     PAL_CH_PIT_1,              /* 周期中断通道 1（陀螺仪采样）*/
     PAL_CH_PIT_2,              /* 周期中断通道 2（预留扩展）  */
     PAL_CH_PIT_3,              /* 周期中断通道 3（预留扩展）  */
-    PAL_CH_UART_CAM,           /* 摄像头配置 UART            */
-    PAL_CH_UART_BT,            /* 蓝牙/无线 UART             */
+    PAL_PIT_ID_MAX
+} pal_pit_id_t;
 
-    PAL_CH_MAX                 /* 哨兵值                      */
-} pal_ch_t;
+typedef enum
+{
+    PAL_CH_UART_CAM = 0,       /* 摄像头配置 UART            */
+    PAL_CH_UART_BT,            /* 蓝牙/无线 UART             */
+    PAL_UART_ID_MAX
+} pal_uart_id_t;
 
 /*===========================================================================
  *  GPIO 抽象
@@ -71,56 +85,64 @@ typedef enum
     PAL_GPIO_INPUT             /* 上拉输入                    */
 } pal_gpio_mode_t;
 
-void     pal_gpio_init(pal_ch_t pin, pal_gpio_mode_t mode);
-void     pal_gpio_high(pal_ch_t pin);
-void     pal_gpio_low (pal_ch_t pin);
-uint8_t  pal_gpio_read(pal_ch_t pin);
+void     pal_gpio_init(pal_gpio_id_t pin, pal_gpio_mode_t mode);
+void     pal_gpio_high(pal_gpio_id_t pin);
+void     pal_gpio_low (pal_gpio_id_t pin);
+uint8_t  pal_gpio_read(pal_gpio_id_t pin);
 
 /*===========================================================================
  *  PWM 抽象
  *=========================================================================*/
-void pal_pwm_init   (pal_ch_t ch, uint32_t freq_hz, uint32_t duty);
-void pal_pwm_set_duty(pal_ch_t ch, uint32_t duty);
+void pal_pwm_init   (pal_pwm_id_t ch, uint32_t freq_hz, uint32_t duty);
+void pal_pwm_set_duty(pal_pwm_id_t ch, uint32_t duty);
 
 /*===========================================================================
  *  周期中断（PIT）抽象
  *=========================================================================*/
-void pal_pit_init      (pal_ch_t ch, uint32_t period_ms);
-void pal_pit_clear_flag(pal_ch_t ch);
+void pal_pit_init      (pal_pit_id_t ch, uint32_t period_ms);
+void pal_pit_clear_flag(pal_pit_id_t ch);
 
 /*===========================================================================
  *  编码器抽象
  *=========================================================================*/
-void    pal_encoder_init (pal_ch_t ch);
-int32_t pal_encoder_get  (pal_ch_t ch);
-void    pal_encoder_clear(pal_ch_t ch);
+void    pal_encoder_init (pal_encoder_id_t ch);
+int32_t pal_encoder_get  (pal_encoder_id_t ch);
+void    pal_encoder_clear(pal_encoder_id_t ch);
 void    pal_encoder_take_snapshot(int *p_left_sum, int *p_right_sum, int *p_sample_count);
 
 /*===========================================================================
  *  UART 抽象
  *=========================================================================*/
-void pal_uart_init(pal_ch_t ch, uint32_t baud);
+void pal_uart_init(pal_uart_id_t ch, uint32_t baud);
 
 /*===========================================================================
- *  摄像头（MT9V03X）抽象
+ *  摄像头抽象
  *=========================================================================*/
 #define PAL_CAM_W  188               /* 图像宽度（像素）           */
 #define PAL_CAM_H  120               /* 图像高度（像素）           */
+
+typedef struct
+{
+    uint16_t width;                  /* 图像有效宽度               */
+    uint16_t height;                 /* 图像有效高度               */
+    uint16_t stride;                 /* 相邻两行首地址间隔         */
+} pal_cam_frame_desc_t;
 
 void     pal_cam_init  (void);       /* 初始化摄像头采集           */
 bool     pal_cam_ready (void);       /* 新一帧是否就绪             */
 void     pal_cam_clear (void);       /* 清除帧就绪标志             */
 uint8_t* pal_cam_data  (void);       /* 返回图像数据首地址（PAL_CAM_H × PAL_CAM_W）*/
+void     pal_cam_get_frame_desc(pal_cam_frame_desc_t *p_desc);
 
 /*===========================================================================
- *  陀螺仪（ICM20602）抽象
+ *  陀螺仪抽象
  *=========================================================================*/
 void  pal_gyro_init (void);          /* 初始化陀螺仪               */
 void  pal_gyro_read (void);          /* 触发一次 SPI 读取          */
 float pal_gyro_z    (void);          /* 返回 Z 轴角速度（已转换为 deg/s）*/
 
 /*===========================================================================
- *  显示（TFT180）抽象
+ *  显示抽象
  *=========================================================================*/
 void pal_disp_init(void);
 void pal_disp_point(int16_t x, int16_t y, uint16_t color);

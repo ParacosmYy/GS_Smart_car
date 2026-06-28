@@ -60,7 +60,7 @@ static isr_adapter_encoder_handler_t s_encoder_handler =
 //******************************** Variables ********************************//
 
 //******************************** Declaring ********************************//
-static void IsrAdapter_PreparePitChannel(pal_ch_t pit_channel);
+static void IsrAdapter_PreparePitChannel(pal_pit_id_t pit_channel);
 static void IsrAdapter_EncoderHandlerAccumulate(isr_adapter_encoder_handler_t *p_handler);
 static smartcar_irq_fact_t IsrAdapter_EncoderHandlerCheckWindow(isr_adapter_encoder_handler_t *p_handler);
 static void IsrAdapter_EncoderHandlerTakeSnapshot(isr_adapter_encoder_handler_t *p_handler,
@@ -80,7 +80,7 @@ static void IsrAdapter_EncoderHandlerTakeSnapshot(isr_adapter_encoder_handler_t 
  * @return void : 无返回值。
  *
  * */
-static void IsrAdapter_PreparePitChannel(pal_ch_t pit_channel)
+static void IsrAdapter_PreparePitChannel(pal_pit_id_t pit_channel)
 {
     pal_irq_global_ctrl(0);
     pal_pit_clear_flag(pit_channel);

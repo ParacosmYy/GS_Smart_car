@@ -92,8 +92,8 @@ void DebugDisplayService_Update(uint32_t events)
                   vision_snapshot.p_binary_zip[0],
                   vision_snapshot.image_width,
                   vision_snapshot.image_height,
-                  PAL_CAM_W / 2,
-                  PAL_CAM_H / 2,
+                  vision_snapshot.image_width,
+                  vision_snapshot.image_height,
                   0);
 
     pal_disp_str(DEBUG_DISPLAY_ENCODER_LABEL_X, DEBUG_DISPLAY_LEFT_ENCODER_Y, "left:");
