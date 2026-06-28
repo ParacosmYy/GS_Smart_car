@@ -1,3 +1,11 @@
+﻿/*
+ * smartcar_app.h
+ *  应用层主循环接口声明
+ *
+ *  对外暴露两个入口：
+ *    SmartcarApp_Init()    系统启动时调用一次
+ *    SmartcarApp_RunOnce() 主循环中反复调用
+ */
 #ifndef CODE_APP_SMARTCAR_APP_H_
 #define CODE_APP_SMARTCAR_APP_H_
 
@@ -5,7 +13,20 @@
 extern "C" {
 #endif
 
+/**
+ * @brief 应用层初始化
+ *
+ * 串联 init_all() 与 pit_init_all()，完成全部外设和周期中断配置。
+ * 应在主任务进入循环前调用一次。
+ */
 void SmartcarApp_Init(void);
+
+/**
+ * @brief 应用层单次循环
+ *
+ * 内部执行 Vision → Control → Actuator 三步流水线，并刷新 TFT 调试显示。
+ * 由主循环周期性调用。
+ */
 void SmartcarApp_RunOnce(void);
 
 #ifdef __cplusplus
