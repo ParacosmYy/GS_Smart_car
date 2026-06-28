@@ -1,4 +1,4 @@
-<div align="center">
+﻿<div align="center">
 
 # 🏎️ GS_Smart_car
 
@@ -114,13 +114,13 @@ flowchart LR
         MOTOR["电机<br/>20kHz PWM"]:::actOut
     end
 
-    CAM    -->|DMA 帧|          VISION
-    ENC    -->|脉冲计数|         ISR
-    GYRO   -->|SPI 帧|           ISR
-    ISR    -->|轮速快照|         CONTROL
+    CAM    -->|DMA 帧| VISION
+    ENC    -->|脉冲计数| ISR
+    GYRO   -->|SPI 帧| ISR
+    ISR    -->|轮速快照| CONTROL
     VISION -->|中线偏差| CONTROL
-    CONTROL -->|舵机 duty|       SERVO
-    CONTROL -->|电机 duty|       MOTOR
+    CONTROL -->|舵机 duty| SERVO
+    CONTROL -->|电机 duty| MOTOR
 ```
 
 > **采样周期：** PIT 10ms 触发 ISR 完成传感器采样与积分；摄像头 DMA 帧异步到达，主循环按 `frame ready` 标志触发 Vision。
@@ -165,14 +165,14 @@ flowchart LR
         T_DSP["Display<br/>UI 刷新"]:::task
     end
 
-    PIT -->|tick|         HANDLER
-    DMA -->|frame_ready|  HANDLER
-    ENC -->|speed_pulse|  HANDLER
-    HANDLER -->|enqueue|  Q
-    Q     -->|dequeue|    SCH
-    SCH   -->|VISION_EVT|  T_VIS
+    PIT -->|tick| HANDLER
+    DMA -->|frame_ready| HANDLER
+    ENC -->|speed_pulse| HANDLER
+    HANDLER -->|enqueue| Q
+    Q     -->|dequeue| SCH
+    SCH   -->|VISION_EVT| T_VIS
     SCH   -->|CONTROL_EVT| T_CTL
-    SCH   -->|SENSOR_EVT|  T_SEN
+    SCH   -->|SENSOR_EVT| T_SEN
     SCH   -->|DISPLAY_EVT| T_DSP
 ```
 
