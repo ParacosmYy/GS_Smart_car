@@ -10,8 +10,7 @@
 #include "pid.h"
 #include "sensor.h"
 #include "vision.h"
-#include "motor.h"
-#include "servo.h"
+#include "platform/interface/actuator_if.h"
 
 //******************************** Types ************************************//
 typedef struct
@@ -108,14 +107,12 @@ void Actuator_Apply(void)
     // 丢线保护：舵机回正中位 SERVO_CENTER_DUTY，避免继续转向冲出赛道
     if (Control_IsLostLine(vision_snapshot.lost_count) != 0U)
     {
-        Servo_SetAngle(0);
+        Actuator_SetServo(0);
         return;
     }
-    // 舵机PWM = 中心值 + PID增量输出（关键修复：原代码此行被注释导致舵机不响应）
-    Servo_SetAngle((int32_t)s_control_handler.output.servo);
-    // 左右电机施加PID速度输出
-    Motor_SetLeft((int32_t)s_control_handler.output.left_motor);
-    Motor_SetRight((int32_t)s_control_handler.output.right_motor);
+    Actuator_SetServo((int32_t)s_control_handler.output.servo);
+    Actuator_SetMotorLeft((int32_t)s_control_handler.output.left_motor);
+    Actuator_SetMotorRight((int32_t)s_control_handler.output.right_motor);
 }
 
 /**
