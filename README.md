@@ -13,21 +13,81 @@
 
 ```mermaid
 flowchart LR
-    ENTRY["SDK Entry<br/>cpu0_main / user/isr"]
-    RUNTIME["System Runtime<br/>smartcar_system"]
-    APP["App<br/>task table only"]
-    TASKS["Service Tasks<br/>VisionTask / ControlTask / FeedbackTask / DiagnosticsTask"]
-    SERVICE["Services<br/>vision / sensor / control / diagnostics"]
-    PORT["Port Interfaces<br/>mcu_io_if / device_if / service_port_if"]
-    BOARD["Board Contract<br/>smartcar_board / smartcar_contract"]
-    BSP["BSP<br/>motor / servo / display / input / buzzer"]
-    TC264["TC264 Link-Time Ports<br/>tc264_mcu_io_ops / tc264_device_ops"]
-    SDK["Vendor SDK<br/>SEEKFREE / iLLD"]
+    subgraph L0["入口层 · SDK Entry"]
+        direction TB
+        ENTRY["cpu0_main.c<br/>user/isr.c"]
+    end
+
+    subgraph L1["系统层 · System"]
+        direction TB
+        RUNTIME["smartcar_system.c<br/>boot composition"]
+        IRQ["smartcar_irq_router.c<br/>route consumer"]
+        BOARD["smartcar_board.c<br/>smartcar_contract.c"]
+    end
+
+    subgraph L2["应用层 · App"]
+        direction TB
+        APP["smartcar_app.c<br/>task table only"]
+    end
+
+    subgraph L3["服务层 · Service"]
+        direction TB
+        TASKS["smartcar_tasks.c<br/>task facade"]
+        SERVICE["vision / sensor / control<br/>diagnostics"]
+    end
+
+    subgraph L3B["设备层 · BSP"]
+        direction TB
+        BSP["motor / servo / display<br/>input / buzzer"]
+    end
+
+    subgraph L4["平台契约 · Platform"]
+        direction TB
+        PORT["mcu_io_if.h<br/>device_if.h<br/>service_port_if.h"]
+    end
+
+    subgraph L5["目标适配 · Impl"]
+        direction TB
+        TC264["TC264 link-time ports<br/>mcu_io_ops / device_ops"]
+    end
+
+    subgraph L6["厂家底座 · Vendor"]
+        direction TB
+        SDK["SEEKFREE SDK<br/>Infineon iLLD"]
+    end
 
     ENTRY --> RUNTIME --> APP --> TASKS --> SERVICE --> PORT
+    ENTRY --> IRQ
     RUNTIME --> BOARD --> BSP --> PORT
-    SERVICE --> PORT
     PORT -. "link-time symbols" .-> TC264 --> SDK
+    IRQ -. "IRQ routes" .-> TC264
+
+    class ENTRY entry
+    class RUNTIME,IRQ,BOARD system
+    class APP app
+    class TASKS,SERVICE service
+    class BSP bsp
+    class PORT platform
+    class TC264 impl
+    class SDK vendor
+
+    classDef entry fill:#f8fafc,stroke:#94a3b8,color:#0f172a,stroke-width:1px;
+    classDef system fill:#eff6ff,stroke:#2563eb,color:#1e3a8a,stroke-width:1.4px;
+    classDef app fill:#ecfdf5,stroke:#059669,color:#064e3b,stroke-width:1.4px;
+    classDef service fill:#fff7ed,stroke:#ea580c,color:#7c2d12,stroke-width:1.4px;
+    classDef bsp fill:#f0fdfa,stroke:#0d9488,color:#134e4a,stroke-width:1.4px;
+    classDef platform fill:#f5f3ff,stroke:#7c3aed,color:#4c1d95,stroke-width:1.4px;
+    classDef impl fill:#fef2f2,stroke:#dc2626,color:#7f1d1d,stroke-width:1.4px;
+    classDef vendor fill:#f9fafb,stroke:#6b7280,color:#111827,stroke-width:1px;
+
+    style L0 fill:#ffffff,stroke:#cbd5e1,stroke-dasharray:5 5,color:#334155;
+    style L1 fill:#f8fbff,stroke:#bfdbfe,stroke-dasharray:5 5,color:#1e3a8a;
+    style L2 fill:#f7fefb,stroke:#bbf7d0,stroke-dasharray:5 5,color:#064e3b;
+    style L3 fill:#fffaf5,stroke:#fed7aa,stroke-dasharray:5 5,color:#7c2d12;
+    style L3B fill:#f7fffd,stroke:#99f6e4,stroke-dasharray:5 5,color:#134e4a;
+    style L4 fill:#faf8ff,stroke:#ddd6fe,stroke-dasharray:5 5,color:#4c1d95;
+    style L5 fill:#fff8f8,stroke:#fecaca,stroke-dasharray:5 5,color:#7f1d1d;
+    style L6 fill:#ffffff,stroke:#d1d5db,stroke-dasharray:5 5,color:#374151;
 ```
 
 核心边界：
@@ -45,18 +105,64 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-    HW["PIT / DMA / ERU / UART"]
-    ISR["IFX_INTERRUPT<br/>user/isr.c"]
-    ROUTER["SmartcarIrq_Dispatch"]
-    ROUTES["Target IRQ Routes<br/>tc264_board_bind.c"]
-    ADAPTER["TC264 ISR Adapter"]
-    EVENT["event.c"]
-    SCHED["scheduler.c"]
-    TASK["Service Task"]
+    subgraph H["硬件触发 · Hardware"]
+        direction TB
+        PIT["CCU60 PIT<br/>encoder / gyro"]
+        DMA["DMA CH5<br/>camera frame"]
+        IO["ERU / UART<br/>flag or callback"]
+    end
 
-    HW --> ISR --> ROUTER
-    ROUTER --> ROUTES --> ADAPTER --> ROUTER
+    subgraph E["入口转发 · SDK Entry"]
+        direction TB
+        ISR["IFX_INTERRUPT<br/>user/isr.c"]
+    end
+
+    subgraph R["路由决策 · System IRQ"]
+        direction TB
+        ROUTER["SmartcarIrq_Dispatch"]
+        ROUTES["Target IRQ Routes<br/>tc264_board_bind.c"]
+        FACT{"fact_mask<br/>gate"}
+    end
+
+    subgraph I["目标处理 · TC264 Impl"]
+        direction TB
+        ADAPTER["isr_adapter.c<br/>clear / sample / callback"]
+    end
+
+    subgraph S["调度出口 · Scheduler"]
+        direction TB
+        EVENT["event.c<br/>event_post_from_isr"]
+        TICK["Scheduler_AddTickFromIsr"]
+        SCHED["scheduler.c<br/>cooperative loop"]
+        TASK["Service Task<br/>Vision / Sensor / Control"]
+    end
+
+    PIT --> ISR
+    DMA --> ISR
+    IO --> ISR
+    ISR --> ROUTER
+    ROUTER --> ROUTES --> ADAPTER --> FACT
+    FACT --> ROUTER
     ROUTER --> EVENT --> SCHED --> TASK
+    ROUTER --> TICK --> SCHED
+
+    class PIT,DMA,IO hardware
+    class ISR entry
+    class ROUTER,ROUTES,FACT system
+    class ADAPTER impl
+    class EVENT,TICK,SCHED,TASK service
+
+    classDef hardware fill:#f8fafc,stroke:#94a3b8,color:#0f172a,stroke-width:1px;
+    classDef entry fill:#eff6ff,stroke:#2563eb,color:#1e3a8a,stroke-width:1.4px;
+    classDef system fill:#f5f3ff,stroke:#7c3aed,color:#4c1d95,stroke-width:1.4px;
+    classDef impl fill:#fef2f2,stroke:#dc2626,color:#7f1d1d,stroke-width:1.4px;
+    classDef service fill:#ecfdf5,stroke:#059669,color:#064e3b,stroke-width:1.4px;
+
+    style H fill:#ffffff,stroke:#cbd5e1,stroke-dasharray:5 5,color:#334155;
+    style E fill:#f8fbff,stroke:#bfdbfe,stroke-dasharray:5 5,color:#1e3a8a;
+    style R fill:#faf8ff,stroke:#ddd6fe,stroke-dasharray:5 5,color:#4c1d95;
+    style I fill:#fff8f8,stroke:#fecaca,stroke-dasharray:5 5,color:#7f1d1d;
+    style S fill:#f7fefb,stroke:#bbf7d0,stroke-dasharray:5 5,color:#064e3b;
 ```
 
 保留的调度事件：
