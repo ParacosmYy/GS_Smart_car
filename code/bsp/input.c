@@ -1,5 +1,10 @@
-/*
- * input.c
+/**
+ * @file input.c
+ * @brief 按键和拨码输入 BSP 初始化。
+ * @author GS_Mark
+ *
+ * @par 设计说明
+ * 输入资源由产品配置表给出，本模块只完成 GPIO 输入模式配置。
  */
 #include "input.h"
 
@@ -24,6 +29,15 @@ static const uint16_t s_dips[INPUT_KEY_COUNT] =
     SMARTCAR_GPIO_DIP4,
 };
 
+/**
+ * @brief 初始化按键与拨码 GPIO。
+ *
+ * Steps:
+ *   1. 遍历产品定义的四个按键资源。
+ *   2. 同步初始化四个拨码输入资源。
+ *
+ * @return void。
+ */
 void Input_Init(void)
 {
     uint8_t i;

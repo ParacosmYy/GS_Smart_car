@@ -1,5 +1,10 @@
-/*
- * servo.c
+/**
+ * @file servo.c
+ * @brief 转向舵机 PWM BSP。
+ * @author GS_Mark
+ *
+ * @par 设计说明
+ * 本模块将控制层输出的舵机偏移量限制在机械安全范围内，再写入 PWM 占空比。
  */
 #include "servo.h"
 
@@ -16,6 +21,18 @@ typedef struct
 
 static servo_t s_servo = {0};
 
+/**
+ * @brief 应用舵机偏移并执行机械限幅。
+ *
+ * Steps:
+ *   1. 根据中位和允许范围计算占空比上下界。
+ *   2. 将输入偏移叠加到中位。
+ *   3. 限幅后写入 PWM。
+ *
+ * @param[in,out] p_servo 舵机状态对象。
+ * @param[in] offset 相对中位的占空比偏移。
+ * @return void。
+ */
 static void servo_apply(servo_t *p_servo, int32_t offset)
 {
     int32_t min_duty = (int32_t)p_servo->center - (int32_t)p_servo->range;
@@ -35,6 +52,15 @@ static void servo_apply(servo_t *p_servo, int32_t offset)
     McuIo_PwmSetDuty(SMARTCAR_PWM_SERVO, (uint32_t)target);
 }
 
+/**
+ * @brief 初始化舵机 PWM。
+ *
+ * Steps:
+ *   1. 装载中位、初始占空比和允许范围。
+ *   2. 初始化舵机 PWM 输出。
+ *
+ * @return void。
+ */
 void Servo_Init(void)
 {
     s_servo.center = SERVO_CENTER_DUTY;
@@ -44,6 +70,15 @@ void Servo_Init(void)
     McuIo_PwmInit(SMARTCAR_PWM_SERVO, SERVO_PWM_HZ, SERVO_INIT_DUTY);
 }
 
+/**
+ * @brief 设置舵机偏移。
+ *
+ * Steps:
+ *   1. 将控制层输出传给内部限幅与 PWM 写入函数。
+ *
+ * @param[in] offset 相对中位的占空比偏移。
+ * @return void。
+ */
 void Servo_SetAngle(int32_t offset)
 {
     servo_apply(&s_servo, offset);
