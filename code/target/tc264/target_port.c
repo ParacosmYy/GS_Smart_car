@@ -65,14 +65,14 @@ void SystemPort_IrqGlobalRestore(uint32_t state)
 }
 
 /**
- * @brief 设置全局中断控制状态。
+ * @brief 按 Vendor 恢复参数控制全局中断。
  *
- * @param[in] state Vendor 全局中断控制参数。
+ * @param[in] restore_state TC264 Vendor 恢复参数；0U 表示打开全局中断，非 0U 保持关闭状态。
  * @return void。
  */
-void SystemPort_IrqGlobalCtrl(uint8_t state)
+void SystemPort_IrqGlobalCtrl(uint8_t restore_state)
 {
-    interrupt_global_enable(state);
+    interrupt_global_enable(restore_state);
 }
 
 /**

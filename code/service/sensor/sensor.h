@@ -13,8 +13,15 @@
  * @version V1.0 2026-06-29
  *
  *****************************************************************************/
-#ifndef SENSOR_H_
-#define SENSOR_H_
+#ifndef CODE_SERVICE_SENSOR_SENSOR_H_
+#define CODE_SERVICE_SENSOR_SENSOR_H_
+
+typedef struct
+{
+    float heading_angle;
+    int left_encoder_speed;
+    int right_encoder_speed;
+} sensor_service_snapshot_t;
 
 /**
  * @brief 处理 10ms 陀螺仪采样事件
@@ -27,6 +34,16 @@ void SensorService_ProcessGyro10ms(void);
 void SensorService_ProcessEncoder50ms(void);
 
 /**
+ * @brief 获取 Z 轴航向角积分值
+ */
+float SensorService_GetHeadingAngle(void);
+
+/**
+ * @brief 获取传感器服务快照
+ */
+void SensorService_GetSnapshot(sensor_service_snapshot_t *p_snapshot);
+
+/**
  * @brief 获取左轮编码器速度
  */
 int SensorService_GetLeftEncoderSpeed(void);
@@ -36,4 +53,4 @@ int SensorService_GetLeftEncoderSpeed(void);
  */
 int SensorService_GetRightEncoderSpeed(void);
 
-#endif /* SENSOR_H_ */
+#endif /* CODE_SERVICE_SENSOR_SENSOR_H_ */

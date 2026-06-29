@@ -22,7 +22,12 @@ void SystemPort_DebugInit(void);
 void SystemPort_CoreSync(void);
 uint32_t SystemPort_IrqGlobalDisable(void);
 void SystemPort_IrqGlobalRestore(uint32_t state);
-void SystemPort_IrqGlobalCtrl(uint8_t state);
+/**
+ * @brief 按目标平台的恢复参数控制全局中断。
+ *
+ * @param[in] restore_state 目标平台解释的恢复参数；0U 表示请求打开全局中断。
+ */
+void SystemPort_IrqGlobalCtrl(uint8_t restore_state);
 
 //******************************** MCU IO Port *************************************//
 #define MCUIO_GPIO_OUTPUT 0

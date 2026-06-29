@@ -35,6 +35,8 @@ typedef struct
 
 /* Public API */
 void Vision_Process(void);
+uint8_t Vision_IsFrameReady(void);
+void Vision_MarkFrameConsumed(void);
 void Vision_GetControlSnapshot(vision_control_snapshot_t *p_snapshot);
 void Vision_GetDebugSnapshot(vision_debug_snapshot_t *p_snapshot);
 uint8_t Vision_DetectElement(void);

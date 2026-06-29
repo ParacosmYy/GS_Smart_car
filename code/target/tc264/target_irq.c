@@ -11,9 +11,9 @@
 #include "target_irq.h"
 
 #include "config.h"
-#include "scheduler/encoder_sample.h"
 #include "event.h"
 #include "platform/port_if.h"
+#include "platform/sensor_hal.h"
 #include "scheduler.h"
 #include "smartcar_board_resources.h"
 #include "zf_common_headfile.h"
@@ -67,6 +67,19 @@ static void TargetIrq_SampleEncoder(void)
 }
 
 /**
+ * @brief 准备处理 UART 中断。
+ *
+ * Steps:
+ *   1. 按 TC264 Vendor 约定传入 0，打开全局中断。
+ *
+ * @return void。
+ */
+static void TargetIrq_PrepareUart(void)
+{
+    SystemPort_IrqGlobalCtrl(0);
+}
+
+/**
  * @brief 处理 ASCLIN UART 错误中断。
  *
  * Steps:
@@ -78,7 +91,7 @@ static void TargetIrq_SampleEncoder(void)
  */
 static void TargetIrq_UartError(IfxAsclin_Asc *p_handle)
 {
-    SystemPort_IrqGlobalCtrl(0);
+    TargetIrq_PrepareUart();
     IfxAsclin_Asc_isrError(p_handle);
 }
 
@@ -174,7 +187,7 @@ void TargetIrq_CameraDma(void)
  */
 void TargetIrq_Uart0Rx(void)
 {
-    SystemPort_IrqGlobalCtrl(0);
+    TargetIrq_PrepareUart();
 
 #if DEBUG_UART_USE_INTERRUPT
     debug_interrupr_handler();
@@ -185,13 +198,14 @@ void TargetIrq_Uart0Rx(void)
  * @brief 处理 UART1 RX 中断。
  *
  * Steps:
- *   1. 转发到摄像头配置串口 Vendor handler。
+ *   1. 打开全局中断控制。
+ *   2. 转发到摄像头配置串口 Vendor handler。
  *
  * @return void。
  */
 void TargetIrq_Uart1Rx(void)
 {
-    SystemPort_IrqGlobalCtrl(0);
+    TargetIrq_PrepareUart();
     camera_uart_handler();
 }
 
@@ -199,13 +213,14 @@ void TargetIrq_Uart1Rx(void)
  * @brief 处理 UART3 RX 中断。
  *
  * Steps:
- *   1. 转发到无线串口 Vendor handler。
+ *   1. 打开全局中断控制。
+ *   2. 转发到无线串口 Vendor handler。
  *
  * @return void。
  */
 void TargetIrq_Uart3Rx(void)
 {
-    SystemPort_IrqGlobalCtrl(0);
+    TargetIrq_PrepareUart();
     wireless_module_uart_handler();
 }
 
@@ -252,7 +267,7 @@ void TargetIrq_Uart3Error(void)
  * @param[out] p_sample_count 窗口采样次数输出。
  * @return void。
  */
-void EncoderSample_TakeSnapshot(int *p_left_sum, int *p_right_sum, int *p_sample_count)
+void SensorHal_EncoderTakeSnapshot(int *p_left_sum, int *p_right_sum, int *p_sample_count)
 {
     uint32_t irq_state;
 

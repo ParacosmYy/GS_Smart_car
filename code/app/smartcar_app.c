@@ -14,7 +14,6 @@
 #include "debug_display.h"
 #include "event.h"
 #include "feedback_service.h"
-#include "platform/port_if.h"
 #include "scheduler.h"
 #include "sensor.h"
 #include "vision.h"
@@ -98,7 +97,7 @@ static void VisionTask_OnFrame(event_mask_t events)
         return;
     }
 
-    if (!Device_CameraReady())
+    if (!Vision_IsFrameReady())
     {
         return;
     }
@@ -107,7 +106,7 @@ static void VisionTask_OnFrame(event_mask_t events)
     element = Vision_DetectElement();
     FeedbackService_NotifyTrackElement(element);
 
-    Device_CameraClear();
+    Vision_MarkFrameConsumed();
 }
 
 /**
@@ -121,7 +120,7 @@ static void ControlTask_10ms(event_mask_t events)
     (void)events;
 
     Control_Update();
-    Actuator_Apply();
+    Control_ApplyActuator();
 }
 
 /**
