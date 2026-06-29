@@ -2,7 +2,7 @@
 
 **AURIX TC264D 智能车固件**
 
-基于 Infineon AURIX TC264D、逐飞 SEEKFREE SDK 与 iLLD。当前架构采用事件驱动协作调度、链接期端口替换和静态 IRQ route 表；业务层不依赖 TC264 Vendor 头，也不经过运行期 dispatch/ops 回环。
+基于 Infineon AURIX TC264D、逐飞 SEEKFREE SDK 与 iLLD。当前架构采用事件驱动协作调度和链接期端口替换；业务层不依赖 TC264 Vendor 头，也不经过运行期 dispatch/ops 回环。
 
 ![Platform](https://img.shields.io/badge/Platform-AURIX%20TC264D-blue?style=flat-square)
 ![Language](https://img.shields.io/badge/Language-C99-orange?style=flat-square)
@@ -21,18 +21,17 @@ flowchart LR
     subgraph L1["系统层 · System"]
         direction TB
         RUNTIME["smartcar_system.c<br/>boot composition"]
-        IRQ["smartcar_irq_router.c<br/>route consumer"]
-        BOARD["smartcar_board.c<br/>smartcar_contract.c"]
+        IRQ["smartcar_irq_router.c<br/>fact mapper"]
+        BOARD["smartcar_board.c<br/>board resources"]
     end
 
     subgraph L2["应用层 · App"]
         direction TB
-        APP["smartcar_app.c<br/>lifecycle facade"]
+        APP["smartcar_app.c<br/>lifecycle + task table"]
     end
 
     subgraph L3["服务层 · Service"]
         direction TB
-        TASKS["smartcar_tasks.c<br/>task registry"]
         SERVICE["vision / sensor / control<br/>diagnostics"]
     end
 
@@ -43,7 +42,7 @@ flowchart LR
 
     subgraph L4["平台契约 · Platform"]
         direction TB
-        PORT["mcu_io_if.h<br/>device_if.h<br/>service_port_if.h"]
+        PORT["mcu_io_if.h<br/>device_if.h"]
     end
 
     subgraph L5["目标适配 · Impl"]
@@ -56,16 +55,15 @@ flowchart LR
         SDK["SEEKFREE SDK<br/>Infineon iLLD"]
     end
 
-    ENTRY --> RUNTIME --> APP --> TASKS --> SERVICE --> PORT
-    ENTRY --> IRQ
+    ENTRY --> RUNTIME --> APP --> SERVICE --> BSP --> PORT
     RUNTIME --> BOARD --> BSP --> PORT
     PORT -. "link-time symbols" .-> TC264 --> SDK
-    IRQ -. "IRQ routes" .-> TC264
+    ENTRY -. "direct ISR facts" .-> TC264 --> IRQ
 
     class ENTRY entry
     class RUNTIME,IRQ,BOARD system
     class APP app
-    class TASKS,SERVICE service
+    class SERVICE service
     class BSP bsp
     class PORT platform
     class TC264 impl
@@ -94,10 +92,10 @@ flowchart LR
 
 | Layer | Responsibility |
 |:--|:--|
-| App | 只保留 Init/RunOnce/GetFailCount 入口 |
+| App | 持有生命周期入口与应用任务表 |
 | Service | 持有业务状态与算法流水线 |
 | BSP | 板级动作封装，只面向平台接口 |
-| Platform Interface | `McuIo_*`、`Device_*`、`service_port_if.h` 契约 |
+| Platform Interface | `McuIo_*`、`Device_*` 链接期契约 |
 | Impl/TC264 | 直接实现链接期端口符号，调用 SEEKFREE/iLLD |
 | Vendor | 第三方 SDK，默认只读 |
 
@@ -117,10 +115,8 @@ flowchart LR
         ISR["IFX_INTERRUPT<br/>user/isr.c"]
     end
 
-    subgraph R["路由决策 · System IRQ"]
+    subgraph R["事实映射 · System IRQ"]
         direction TB
-        ROUTER["SmartcarIrq_Dispatch"]
-        ROUTES["IRQ target routes<br/>source -> handler"]
         FACT{"IRQ facts<br/>adapter result"}
         MAP["System mapping<br/>fact -> event / tick"]
     end
@@ -141,15 +137,14 @@ flowchart LR
     PIT --> ISR
     DMA --> ISR
     IO --> ISR
-    ISR --> ROUTER
-    ROUTER --> ROUTES --> ADAPTER --> FACT
+    ISR --> ADAPTER --> FACT
     FACT --> MAP
     MAP --> EVENT --> SCHED --> TASK
     MAP --> TICK --> SCHED
 
     class PIT,DMA,IO hardware
     class ISR entry
-    class ROUTER,ROUTES,FACT,MAP system
+    class FACT,MAP system
     class ADAPTER impl
     class EVENT,TICK,SCHED,TASK service
 
@@ -179,24 +174,22 @@ flowchart LR
 
 ```text
 code/
-  app/                    lifecycle facade and main-loop handoff
-  service/                task registry plus vision/sensor/control/diagnostics
+  app/                    lifecycle facade, task table, and main-loop handoff
+  service/                vision/sensor/control/diagnostics
   bsp/                    motor, servo, display, input, buzzer
-  platform/interface/     mcu_io_if, device_if, service_port_if
+  platform/interface/     mcu_io_if, device_if
   platform/system/        system_port, irq_fact
   impl/tc264/             TC264 link-time ports, board map, IRQ adapter
-  system/board/           board init and product contract binding
-  system/irq/             source -> fact/event/tick router
+  system/board/           board init and resources
+  system/irq/             fact -> event/tick router
   system/runtime/         boot composition root
   scheduler/              event flags and cooperative scheduler
   config/                 product parameters and board resources
 user/                     TC264 SDK entry layer
 libraries/                SEEKFREE and Infineon vendor code
-scripts/                  host smoke guard
-tests/smoke/              minimal pure-logic smoke test
 ```
 
-## Build And Verify
+## Build
 
 Firmware build:
 
@@ -204,13 +197,14 @@ Firmware build:
 AURIX Development Studio -> Open Projects -> Build Project
 ```
 
-Minimal host guard:
+No host smoke tests, unit tests, or test runner scripts are maintained in this repository. Do not
+recreate `tests/`, `tests/smoke/`, `scripts/check_syntax.ps1`, or equivalent host test guards.
 
-```powershell
-powershell -ExecutionPolicy Bypass -File scripts/check_syntax.ps1
-```
+## Source Documentation
 
-The smoke guard covers event flags, scheduler dispatch, IRQ routing, vision logic, and app/service task syntax. `tests/`, `scripts/`, `docs/`, and `build/` are excluded from ADS target source paths.
+All non-vendor `.c` files under `code/` and `user/` should keep Doxygen `@file`, `@brief`,
+`@author`, and function-level comments current. Vendor files under `libraries/` keep their
+original headers and are treated as read-only.
 
 ## Porting Rules
 
@@ -218,9 +212,10 @@ To add another MCU target:
 
 1. Add `code/impl/<target>/` with direct `McuIo_*` and `Device_*` implementations.
 2. Add a target board map and IRQ adapter.
-3. Provide `TargetPlatform_GetIrqRoutes()` for that target using the System IRQ route contract.
+3. Add ISR adapter functions for that target and post returned facts through `SmartcarIrq_PostFacts()`.
 4. Keep App, Service, BSP public headers free of Vendor, board-resource, and `impl/*` includes.
 5. Do not reintroduce runtime ops registration, platform dispatch files, old PAL aliases, or duplicate IRQ fact headers.
+6. Do not add host smoke tests, unit tests, or test runner scripts.
 
 ## Commit Format
 
