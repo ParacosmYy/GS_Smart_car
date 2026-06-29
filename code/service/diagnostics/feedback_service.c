@@ -12,35 +12,35 @@
 #include "actuator.h"
 
 /**
- * @brief 将赛道元素映射为蜂鸣器反馈事件。
+ * @brief 将赛道元素映射为执行器反馈事件。
  *
  * Steps:
- *   1. 将无元素和未知元素保持为 BUZZER_EVENT_NONE。
- *   2. 将圆环和十字路口元素映射为对应蜂鸣器事件。
+ *   1. 将无元素和未知元素保持为 ACTUATOR_FEEDBACK_NONE。
+ *   2. 将圆环和十字路口元素映射为对应执行器反馈事件。
  *
  * @param[in] element 视觉元素 ID。
- * @return 蜂鸣器反馈事件。
+ * @return 执行器反馈事件。
  */
-static buzzer_event_t FeedbackService_MapTrackElement(vision_track_element_t element)
+static actuator_feedback_event_t FeedbackService_MapTrackElement(vision_track_element_t element)
 {
-    buzzer_event_t event = BUZZER_EVENT_NONE;
+    actuator_feedback_event_t event = ACTUATOR_FEEDBACK_NONE;
 
     switch (element)
     {
     case VISION_TRACK_ELEMENT_NONE:
-        event = BUZZER_EVENT_NONE;
+        event = ACTUATOR_FEEDBACK_NONE;
         break;
 
     case VISION_TRACK_ELEMENT_RING:
-        event = BUZZER_EVENT_RING;
+        event = ACTUATOR_FEEDBACK_RING;
         break;
 
     case VISION_TRACK_ELEMENT_CROSSROAD:
-        event = BUZZER_EVENT_CROSSROAD;
+        event = ACTUATOR_FEEDBACK_CROSSROAD;
         break;
 
     default:
-        event = BUZZER_EVENT_NONE;
+        event = ACTUATOR_FEEDBACK_NONE;
         break;
     }
 
@@ -59,9 +59,9 @@ static buzzer_event_t FeedbackService_MapTrackElement(vision_track_element_t ele
  */
 void FeedbackService_NotifyTrackElement(vision_track_element_t element)
 {
-    buzzer_event_t event = FeedbackService_MapTrackElement(element);
+    actuator_feedback_event_t event = FeedbackService_MapTrackElement(element);
 
-    Actuator_TriggerBuzzer(event);
+    Actuator_TriggerFeedback(event);
 }
 
 /**

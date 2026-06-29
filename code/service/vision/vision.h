@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+#include "vision_types.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -34,13 +36,6 @@ typedef struct
     int16_t calculate_error;
     uint32_t version; /* Monotonic service stamp for snapshot comparisons. */
 } vision_debug_snapshot_t;
-
-typedef enum
-{
-    VISION_TRACK_ELEMENT_NONE = 0,
-    VISION_TRACK_ELEMENT_RING,
-    VISION_TRACK_ELEMENT_CROSSROAD
-} vision_track_element_t;
 
 /* Public API */
 void Vision_Process(void);
