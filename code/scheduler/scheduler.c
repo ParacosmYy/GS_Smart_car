@@ -8,12 +8,74 @@
  */
 #include "scheduler.h"
 
+#define SCHEDULER_FAST_PERIOD_MS        10U
+#define SCHEDULER_HIGH_PRIORITY_EVENTS  (EVT_GYRO_10MS | EVT_ENCODER_50MS)
+
 /* 系统毫秒计数器（由 PIT ISR 通过调度器 API 递增）*/
 static volatile uint32_t g_system_ms = 0;
 
 /* 任务表 */
 static sch_task_t s_tasks[SCH_MAX_TASKS];
 static uint8_t    s_count = 0;
+
+/**
+ * @brief 尝试执行一个指定速度等级的周期任务。
+ *
+ * @param[in,out] p_task 任务描述符。
+ * @param[in] events 本轮事件快照。
+ * @param[in] now 当前调度时间。
+ * @param[in] run_fast 1 表示执行快速周期任务；0 表示执行慢速周期任务。
+ * @return 1 表示任务已执行；0 表示未执行。
+ */
+static uint8_t Scheduler_RunPeriodicTask(sch_task_t *p_task,
+                                         event_mask_t events,
+                                         uint32_t now,
+                                         uint8_t run_fast)
+{
+    uint8_t is_fast = 0U;
+    uint8_t did_run = 0U;
+
+    if (p_task->period_ms != 0U)
+    {
+        is_fast = (p_task->period_ms <= SCHEDULER_FAST_PERIOD_MS) ? 1U : 0U;
+    }
+
+    if ((p_task->period_ms != 0U) &&
+        (is_fast == run_fast) &&
+        ((now - p_task->last_run) >= p_task->period_ms))
+    {
+        p_task->last_run = now;
+        p_task->fn(events);
+        did_run = 1U;
+    }
+
+    return did_run;
+}
+
+/**
+ * @brief 尝试执行一个指定事件集合中的事件任务。
+ *
+ * @param[in] p_task 任务描述符。
+ * @param[in] events 本轮事件快照。
+ * @param[in] phase_events 当前阶段允许执行的事件集合。
+ * @return 1 表示任务已执行；0 表示未执行。
+ */
+static uint8_t Scheduler_RunEventTask(const sch_task_t *p_task,
+                                      event_mask_t events,
+                                      event_mask_t phase_events)
+{
+    event_mask_t matched_events = EVT_NONE;
+    uint8_t did_run = 0U;
+
+    matched_events = events & p_task->trigger & phase_events;
+    if ((p_task->trigger != EVT_NONE) && (matched_events != EVT_NONE))
+    {
+        p_task->fn(events);
+        did_run = 1U;
+    }
+
+    return did_run;
+}
 
 /**
  * @brief 初始化协作调度器。
@@ -97,8 +159,10 @@ int8_t scheduler_add(task_fn_t fn, uint32_t period_ms, event_mask_t trigger)
  *
  * Steps:
  *   1. 获取并消费本轮事件。
- *   2. 遍历已注册任务。
- *   3. 命中事件触发或周期触发时调用任务函数。
+ *   2. 第一阶段执行传感器采样事件，先刷新控制输入。
+ *   3. 第二阶段执行快速周期任务，避免视觉处理阻塞 10ms 控制。
+ *   4. 第三阶段执行普通事件任务，例如摄像头帧处理。
+ *   5. 第四阶段执行慢速周期任务，例如诊断显示。
  *
  * @return void。
  */
@@ -106,6 +170,7 @@ void scheduler_run(void)
 {
     event_mask_t events = event_get();
     uint32_t now = Scheduler_GetNowMs();
+    uint8_t ran[SCH_MAX_TASKS] = {0U};
 
     uint8_t i;
     for (i = 0; i < s_count; i++)
@@ -117,24 +182,42 @@ void scheduler_run(void)
             continue;
         }
 
-        uint8_t should_run = 0;
+        ran[i] = Scheduler_RunEventTask(t, events, SCHEDULER_HIGH_PRIORITY_EVENTS);
+    }
 
-        /* 事件触发 */
-        if (t->trigger != 0 && (events & t->trigger) != 0)
+    for (i = 0; i < s_count; i++)
+    {
+        sch_task_t *t = &s_tasks[i];
+
+        if ((!t->active) || (ran[i] != 0U))
         {
-            should_run = 1;
+            continue;
         }
 
-        /* 周期触发 */
-        if (t->period_ms != 0 && (now - t->last_run) >= t->period_ms)
+        ran[i] = Scheduler_RunPeriodicTask(t, events, now, 1U);
+    }
+
+    for (i = 0; i < s_count; i++)
+    {
+        sch_task_t *t = &s_tasks[i];
+
+        if ((!t->active) || (ran[i] != 0U))
         {
-            should_run     = 1;
-            t->last_run    = now;
+            continue;
         }
 
-        if (should_run)
+        ran[i] = Scheduler_RunEventTask(t, events, ~SCHEDULER_HIGH_PRIORITY_EVENTS);
+    }
+
+    for (i = 0; i < s_count; i++)
+    {
+        sch_task_t *t = &s_tasks[i];
+
+        if ((!t->active) || (ran[i] != 0U))
         {
-            t->fn(events);
+            continue;
         }
+
+        ran[i] = Scheduler_RunPeriodicTask(t, events, now, 0U);
     }
 }

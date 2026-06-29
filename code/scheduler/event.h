@@ -8,8 +8,8 @@
  *
  *        单生产者（ISR）→ 单消费者（主循环），无需 RTOS
  */
-#ifndef EVENT_H_
-#define EVENT_H_
+#ifndef CODE_SCHEDULER_EVENT_H_
+#define CODE_SCHEDULER_EVENT_H_
 
 #include <stdint.h>
 
@@ -34,4 +34,10 @@ void event_post_from_isr(event_mask_t events);
  */
 event_mask_t event_get(void);
 
-#endif /* EVENT_H_ */
+/**
+ * @brief 读取陀螺 10ms 事件计数溢出诊断标志
+ * @return 1 表示曾发生计数饱和；0 表示未发生。
+ */
+uint8_t event_is_gyro_10ms_overflow_latched(void);
+
+#endif /* CODE_SCHEDULER_EVENT_H_ */

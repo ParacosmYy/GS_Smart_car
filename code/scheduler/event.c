@@ -11,7 +11,8 @@
 #include "platform/port_if.h"
 
 static volatile event_mask_t s_events = 0;
-static volatile uint32_t s_gyro_10ms_pending = 0;
+static volatile uint32_t s_gyro_10ms_pending = 0U;
+static volatile uint8_t s_gyro_10ms_overflow_latched = 0U;
 
 /**
  * @brief 从 ISR 上下文投递事件。
@@ -20,7 +21,8 @@ static volatile uint32_t s_gyro_10ms_pending = 0;
  *   1. 进入全局临界区。
  *   2. 普通事件按位合并到 s_events。
  *   3. EVT_GYRO_10MS 使用独立计数器记录待处理次数。
- *   4. 恢复中断状态。
+ *   4. 若陀螺 tick 计数已饱和，则置位内部诊断标志。
+ *   5. 恢复中断状态。
  *
  * @param[in] events 待投递事件掩码。
  * @return void。
@@ -39,6 +41,10 @@ void event_post_from_isr(event_mask_t events)
         if (s_gyro_10ms_pending < UINT32_MAX)
         {
             s_gyro_10ms_pending++;
+        }
+        else
+        {
+            s_gyro_10ms_overflow_latched = 1U;
         }
     }
     SystemPort_IrqGlobalRestore(irq_state);
@@ -72,4 +78,21 @@ event_mask_t event_get(void)
     SystemPort_IrqGlobalRestore(irq_state);
 
     return pending;
+}
+
+/**
+ * @brief 读取陀螺 10ms 事件计数溢出诊断标志。
+ *
+ * @return 1 表示曾发生计数饱和；0 表示未发生。
+ */
+uint8_t event_is_gyro_10ms_overflow_latched(void)
+{
+    uint8_t overflow_latched = 0U;
+    uint32_t irq_state = 0U;
+
+    irq_state = SystemPort_IrqGlobalDisable();
+    overflow_latched = s_gyro_10ms_overflow_latched;
+    SystemPort_IrqGlobalRestore(irq_state);
+
+    return overflow_latched;
 }

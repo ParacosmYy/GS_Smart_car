@@ -11,8 +11,8 @@
  *          scheduler_add(SmartcarApp_TaskControl, 10, 0);              // 10ms 周期
  *          while (1) { scheduler_run(); }
  */
-#ifndef SCHEDULER_H_
-#define SCHEDULER_H_
+#ifndef CODE_SCHEDULER_SCHEDULER_H_
+#define CODE_SCHEDULER_SCHEDULER_H_
 
 #include <stdint.h>
 #include "event.h"
@@ -64,4 +64,4 @@ int8_t scheduler_add(task_fn_t fn, uint32_t period_ms, event_mask_t trigger);
  */
 void scheduler_run(void);
 
-#endif /* SCHEDULER_H_ */
+#endif /* CODE_SCHEDULER_SCHEDULER_H_ */

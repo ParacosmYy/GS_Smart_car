@@ -13,6 +13,7 @@
 #include "debug_display.h"
 #include "control.h"
 #include "display.h"
+#include "event.h"
 #include "platform/port_if.h"
 #include "sensor.h"
 #include "vision.h"
@@ -28,9 +29,13 @@
 #define DEBUG_DISPLAY_LEFT_PID_Y          100
 #define DEBUG_DISPLAY_RIGHT_PID_Y         120
 #define DEBUG_DISPLAY_ERROR_Y             140
+#define DEBUG_DISPLAY_STATUS_LABEL_X      100
+#define DEBUG_DISPLAY_STATUS_VALUE_X      135
+#define DEBUG_DISPLAY_GYRO_OVERFLOW_Y     60
 #define DEBUG_DISPLAY_ENCODER_DIGITS      4
 #define DEBUG_DISPLAY_PID_DIGITS          6
 #define DEBUG_DISPLAY_ERROR_DIGITS        4
+#define DEBUG_DISPLAY_STATUS_DIGITS       1
 
 /**
  * @brief 绘制视觉边线和中线。
@@ -93,4 +98,8 @@ void DebugDisplayService_Update(uint32_t events)
     Device_DisplayStr(DEBUG_DISPLAY_PID_LABEL_X, DEBUG_DISPLAY_ERROR_Y, "err:");
     Device_DisplayInt(DEBUG_DISPLAY_PID_VALUE_X, DEBUG_DISPLAY_ERROR_Y,
                       vision_snapshot.calculate_error, DEBUG_DISPLAY_ERROR_DIGITS);
+
+    Device_DisplayStr(DEBUG_DISPLAY_STATUS_LABEL_X, DEBUG_DISPLAY_GYRO_OVERFLOW_Y, "gof:");
+    Device_DisplayInt(DEBUG_DISPLAY_STATUS_VALUE_X, DEBUG_DISPLAY_GYRO_OVERFLOW_Y,
+                      event_is_gyro_10ms_overflow_latched(), DEBUG_DISPLAY_STATUS_DIGITS);
 }

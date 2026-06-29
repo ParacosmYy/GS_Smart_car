@@ -13,8 +13,8 @@
  * @version V1.0 2026-06-29
  *
  *****************************************************************************/
-#ifndef DEBUG_DISPLAY_H_
-#define DEBUG_DISPLAY_H_
+#ifndef CODE_SERVICE_DIAGNOSTICS_DEBUG_DISPLAY_H_
+#define CODE_SERVICE_DIAGNOSTICS_DEBUG_DISPLAY_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -39,4 +39,4 @@ void DebugDisplayService_Update(uint32_t events);
 }
 #endif
 
-#endif /* DEBUG_DISPLAY_H_ */
+#endif /* CODE_SERVICE_DIAGNOSTICS_DEBUG_DISPLAY_H_ */
