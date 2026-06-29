@@ -1,18 +1,21 @@
 /**
- * @file isr_adapter.c
- * @brief TC264 ISR adapter 硬件清标志和事实上报实现。
+ * @file tc264_isr.c
+ * @brief TC264 中断适配与事件投递实现。
  * @author GS_Mark
  *
  * @par 设计说明
- * 本文件是 TC264 Vendor ISR 和 System IRQ router 之间的薄适配层。
- * 每个入口完成硬件清标志、采样或 Vendor 回调，然后返回 IRQ_FACT_* 给 System。
+ * 本文件是 TC264 Vendor ISR 和协作调度器之间的目标端口。每个入口完成硬件清标志、
+ * 采样或 Vendor 回调，并直接投递对应事件或调度 tick。
  */
 
-#include "isr_adapter.h"
+#include "tc264_isr.h"
 
+#include "config.h"
+#include "event.h"
 #include "platform/interface/mcu_io_if.h"
-#include "smartcar_board_resources.h"
 #include "platform/system/system_port.h"
+#include "scheduler.h"
+#include "smartcar_board_resources.h"
 #include "zf_common_headfile.h"
 
 #define ENCODER_WINDOW_SAMPLES 5
@@ -37,7 +40,7 @@ static encoder_window_t s_encoder_window = {0, 0, 0, 0U};
  * @param[in] pit 产品 PIT 资源 ID。
  * @return void。
  */
-static void prepare_pit(uint16_t pit)
+static void Tc264Isr_PreparePit(uint16_t pit)
 {
     SystemPort_IrqGlobalCtrl(0);
     McuIo_PitClearFlag(pit);
@@ -53,7 +56,7 @@ static void prepare_pit(uint16_t pit)
  *
  * @return void。
  */
-static void sample_encoder(void)
+static void Tc264Isr_SampleEncoder(void)
 {
     s_encoder_window.left_sum += (int)McuIo_EncoderGet(SMARTCAR_ENCODER_LEFT);
     s_encoder_window.right_sum += (int)McuIo_EncoderGet(SMARTCAR_ENCODER_RIGHT);
@@ -64,29 +67,41 @@ static void sample_encoder(void)
 }
 
 /**
+ * @brief 处理 ASCLIN UART 错误中断。
+ *
+ * Steps:
+ *   1. 打开全局中断控制。
+ *   2. 调用 iLLD 错误 ISR。
+ *
+ * @param[in,out] p_handle ASCLIN 句柄。
+ * @return void。
+ */
+static void Tc264Isr_UartError(IfxAsclin_Asc *p_handle)
+{
+    SystemPort_IrqGlobalCtrl(0);
+    IfxAsclin_Asc_isrError(p_handle);
+}
+
+/**
  * @brief 处理 CCU60 PIT CH0 编码器采样中断。
  *
  * Steps:
  *   1. 清除 PIT 标志。
  *   2. 累加一次左右编码器采样。
- *   3. 满足窗口采样数时返回 IRQ_FACT_ENCODER_WINDOW。
+ *   3. 满足窗口采样数时投递 EVT_ENCODER_50MS。
  *
- * @return 编码器窗口就绪事实；未就绪返回 IRQ_FACT_NONE。
+ * @return void。
  */
-irq_fact_t IsrAdapter_Ccu60PitCh0(void)
+void Tc264Isr_Ccu60PitCh0(void)
 {
-    irq_fact_t fact = IRQ_FACT_NONE;
-
-    prepare_pit(SMARTCAR_PIT_ENCODER_SAMPLE);
-    sample_encoder();
+    Tc264Isr_PreparePit(SMARTCAR_PIT_ENCODER_SAMPLE);
+    Tc264Isr_SampleEncoder();
 
     if ((s_encoder_window.samples >= ENCODER_WINDOW_SAMPLES) && (s_encoder_window.ready == 0U))
     {
         s_encoder_window.ready = 1U;
-        fact = IRQ_FACT_ENCODER_WINDOW;
+        event_post_from_isr(EVT_ENCODER_50MS);
     }
-
-    return fact;
 }
 
 /**
@@ -94,14 +109,16 @@ irq_fact_t IsrAdapter_Ccu60PitCh0(void)
  *
  * Steps:
  *   1. 清除 PIT 标志。
- *   2. 返回系统 10ms tick 事实。
+ *   2. 推进调度器时间基。
+ *   3. 投递 EVT_GYRO_10MS。
  *
- * @return IRQ_FACT_GYRO_TICK。
+ * @return void。
  */
-irq_fact_t IsrAdapter_Ccu60PitCh1(void)
+void Tc264Isr_Ccu60PitCh1(void)
 {
-    prepare_pit(SMARTCAR_PIT_GYRO_TICK);
-    return IRQ_FACT_GYRO_TICK;
+    Tc264Isr_PreparePit(SMARTCAR_PIT_GYRO_TICK);
+    Scheduler_AddTickFromIsr(PIT_PERIOD_MS);
+    event_post_from_isr(EVT_GYRO_10MS);
 }
 
 /**
@@ -112,9 +129,9 @@ irq_fact_t IsrAdapter_Ccu60PitCh1(void)
  *   2. 调用 Vendor 摄像头 VSYNC handler。
  *   3. 清除 CH7 预留标志。
  *
- * @return IRQ_FACT_NONE。
+ * @return void。
  */
-irq_fact_t IsrAdapter_ExtiCh3Ch7(void)
+void Tc264Isr_ExtiCh3Ch7(void)
 {
     SystemPort_IrqGlobalCtrl(0);
 
@@ -128,8 +145,6 @@ irq_fact_t IsrAdapter_ExtiCh3Ch7(void)
     {
         exti_flag_clear(ERU_CH7_REQ16_P15_1);
     }
-
-    return IRQ_FACT_NONE;
 }
 
 /**
@@ -137,15 +152,15 @@ irq_fact_t IsrAdapter_ExtiCh3Ch7(void)
  *
  * Steps:
  *   1. 调用 Vendor 摄像头 DMA handler。
- *   2. 返回摄像头帧完成事实。
+ *   2. 投递 EVT_CAM_FRAME。
  *
- * @return IRQ_FACT_CAMERA_FRAME。
+ * @return void。
  */
-irq_fact_t IsrAdapter_DmaCh5(void)
+void Tc264Isr_DmaCh5(void)
 {
     SystemPort_IrqGlobalCtrl(0);
     camera_dma_handler();
-    return IRQ_FACT_CAMERA_FRAME;
+    event_post_from_isr(EVT_CAM_FRAME);
 }
 
 /**
@@ -155,17 +170,15 @@ irq_fact_t IsrAdapter_DmaCh5(void)
  *   1. 打开全局中断控制。
  *   2. 在调试串口中断开启时转发给 Vendor 调试 handler。
  *
- * @return IRQ_FACT_NONE。
+ * @return void。
  */
-irq_fact_t IsrAdapter_Uart0Rx(void)
+void Tc264Isr_Uart0Rx(void)
 {
     SystemPort_IrqGlobalCtrl(0);
 
 #if DEBUG_UART_USE_INTERRUPT
     debug_interrupr_handler();
 #endif
-
-    return IRQ_FACT_NONE;
 }
 
 /**
@@ -174,13 +187,12 @@ irq_fact_t IsrAdapter_Uart0Rx(void)
  * Steps:
  *   1. 转发到摄像头配置串口 Vendor handler。
  *
- * @return IRQ_FACT_NONE。
+ * @return void。
  */
-irq_fact_t IsrAdapter_Uart1Rx(void)
+void Tc264Isr_Uart1Rx(void)
 {
     SystemPort_IrqGlobalCtrl(0);
     camera_uart_handler();
-    return IRQ_FACT_NONE;
 }
 
 /**
@@ -189,60 +201,42 @@ irq_fact_t IsrAdapter_Uart1Rx(void)
  * Steps:
  *   1. 转发到无线串口 Vendor handler。
  *
- * @return IRQ_FACT_NONE。
+ * @return void。
  */
-irq_fact_t IsrAdapter_Uart3Rx(void)
+void Tc264Isr_Uart3Rx(void)
 {
     SystemPort_IrqGlobalCtrl(0);
     wireless_module_uart_handler();
-    return IRQ_FACT_NONE;
-}
-
-/**
- * @brief 处理 ASCLIN UART 错误中断。
- *
- * Steps:
- *   1. 打开全局中断控制。
- *   2. 调用 iLLD 错误 ISR。
- *
- * @param[in,out] p_handle ASCLIN 句柄。
- * @return IRQ_FACT_NONE。
- */
-static irq_fact_t uart_error(IfxAsclin_Asc *p_handle)
-{
-    SystemPort_IrqGlobalCtrl(0);
-    IfxAsclin_Asc_isrError(p_handle);
-    return IRQ_FACT_NONE;
 }
 
 /**
  * @brief 处理 UART0 错误中断。
  *
- * @return IRQ_FACT_NONE。
+ * @return void。
  */
-irq_fact_t IsrAdapter_Uart0Error(void)
+void Tc264Isr_Uart0Error(void)
 {
-    return uart_error(&uart0_handle);
+    Tc264Isr_UartError(&uart0_handle);
 }
 
 /**
  * @brief 处理 UART1 错误中断。
  *
- * @return IRQ_FACT_NONE。
+ * @return void。
  */
-irq_fact_t IsrAdapter_Uart1Error(void)
+void Tc264Isr_Uart1Error(void)
 {
-    return uart_error(&uart1_handle);
+    Tc264Isr_UartError(&uart1_handle);
 }
 
 /**
  * @brief 处理 UART3 错误中断。
  *
- * @return IRQ_FACT_NONE。
+ * @return void。
  */
-irq_fact_t IsrAdapter_Uart3Error(void)
+void Tc264Isr_Uart3Error(void)
 {
-    return uart_error(&uart3_handle);
+    Tc264Isr_UartError(&uart3_handle);
 }
 
 /**

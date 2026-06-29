@@ -1,10 +1,7 @@
-﻿/*
- * smartcar_app.h
- * @brief Smart car application task interface.
- *
- *  对外暴露两个入口：
- *    SmartcarApp_Init()    注册应用任务
- *    SmartcarApp_RunOnce() 主循环中反复调用
+/**
+ * @file smartcar_app.h
+ * @brief Smart car application task registration interface.
+ * @author GS_Mark
  */
 #ifndef CODE_APP_SMARTCAR_APP_H_
 #define CODE_APP_SMARTCAR_APP_H_
@@ -13,11 +10,8 @@
 extern "C" {
 #endif
 
-/** @brief 应用层初始化，只注册业务任务 */
-void SmartcarApp_Init(void);
-
-/** @brief 应用层单次循环 */
-void SmartcarApp_RunOnce(void);
+/** @brief 注册应用层业务任务，仅在 scheduler_init() 后启动期调用一次 */
+void SmartcarApp_RegisterTasks(void);
 
 #ifdef __cplusplus
 }

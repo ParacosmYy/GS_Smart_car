@@ -13,7 +13,7 @@ extern "C" {
 /** @brief 执行系统启动编排 */
 void SmartcarSystem_Boot(void);
 
-/** @brief 执行一次系统主循环 */
+/** @brief 执行一次系统调度 */
 void SmartcarSystem_RunOnce(void);
 
 #ifdef __cplusplus

@@ -21,8 +21,8 @@ flowchart LR
     subgraph L1["系统层 · System"]
         direction TB
         RUNTIME["smartcar_system.c<br/>boot composition"]
-        IRQ["smartcar_irq_router.c<br/>fact mapper"]
         BOARD["smartcar_board.c<br/>board resources"]
+        SCHED["scheduler.c / event.c<br/>cooperative dispatch"]
     end
 
     subgraph L2["应用层 · App"]
@@ -45,9 +45,9 @@ flowchart LR
         PORT["mcu_io_if.h<br/>device_if.h"]
     end
 
-    subgraph L5["目标适配 · Impl"]
+    subgraph L5["目标端口 · Target"]
         direction TB
-        TC264["TC264 link-time ports<br/>mcu_io_ops / device_ops"]
+        TC264["target/tc264<br/>port / board map / isr"]
     end
 
     subgraph L6["厂家底座 · Vendor"]
@@ -55,13 +55,14 @@ flowchart LR
         SDK["SEEKFREE SDK<br/>Infineon iLLD"]
     end
 
-    ENTRY --> RUNTIME --> APP --> SERVICE --> BSP --> PORT
+    ENTRY --> RUNTIME --> APP --> SCHED --> SERVICE --> BSP --> PORT
     RUNTIME --> BOARD --> BSP --> PORT
     PORT -. "link-time symbols" .-> TC264 --> SDK
-    ENTRY -. "direct ISR facts" .-> TC264 --> IRQ
+    ENTRY -. "TC264 ISR port" .-> TC264
+    TC264 -. "event / tick" .-> SCHED
 
     class ENTRY entry
-    class RUNTIME,IRQ,BOARD system
+    class RUNTIME,BOARD,SCHED system
     class APP app
     class SERVICE service
     class BSP bsp
@@ -96,7 +97,7 @@ flowchart LR
 | Service | 持有业务状态与算法流水线 |
 | BSP | 板级动作封装，只面向平台接口 |
 | Platform Interface | `McuIo_*`、`Device_*` 链接期契约 |
-| Impl/TC264 | 直接实现链接期端口符号，调用 SEEKFREE/iLLD |
+| Target/TC264 | 直接实现链接期端口符号和目标中断入口，调用 SEEKFREE/iLLD |
 | Vendor | 第三方 SDK，默认只读 |
 
 ## IRQ Flow
@@ -115,15 +116,9 @@ flowchart LR
         ISR["IFX_INTERRUPT<br/>user/isr.c"]
     end
 
-    subgraph R["事实映射 · System IRQ"]
+    subgraph I["目标处理 · TC264 Target"]
         direction TB
-        FACT{"IRQ facts<br/>adapter result"}
-        MAP["System mapping<br/>fact -> event / tick"]
-    end
-
-    subgraph I["目标处理 · TC264 Impl"]
-        direction TB
-        ADAPTER["isr_adapter.c<br/>clear / sample / callback"]
+        ADAPTER["tc264_isr.c<br/>clear / sample / callback"]
     end
 
     subgraph S["调度出口 · Scheduler"]
@@ -137,14 +132,12 @@ flowchart LR
     PIT --> ISR
     DMA --> ISR
     IO --> ISR
-    ISR --> ADAPTER --> FACT
-    FACT --> MAP
-    MAP --> EVENT --> SCHED --> TASK
-    MAP --> TICK --> SCHED
+    ISR --> ADAPTER
+    ADAPTER --> EVENT --> SCHED --> TASK
+    ADAPTER --> TICK --> SCHED
 
     class PIT,DMA,IO hardware
     class ISR entry
-    class FACT,MAP system
     class ADAPTER impl
     class EVENT,TICK,SCHED,TASK service
 
@@ -156,7 +149,6 @@ flowchart LR
 
     style H fill:#ffffff,stroke:#cbd5e1,stroke-dasharray:5 5,color:#334155;
     style E fill:#f8fbff,stroke:#bfdbfe,stroke-dasharray:5 5,color:#1e3a8a;
-    style R fill:#faf8ff,stroke:#ddd6fe,stroke-dasharray:5 5,color:#4c1d95;
     style I fill:#fff8f8,stroke:#fecaca,stroke-dasharray:5 5,color:#7f1d1d;
     style S fill:#f7fefb,stroke:#bbf7d0,stroke-dasharray:5 5,color:#064e3b;
 ```
@@ -174,14 +166,13 @@ flowchart LR
 
 ```text
 code/
-  app/                    lifecycle facade, task table, and main-loop handoff
+  app/                    task table and task registration
   service/                vision/sensor/control/diagnostics
   bsp/                    motor, servo, display, input, buzzer
   platform/interface/     mcu_io_if, device_if
-  platform/system/        system_port, irq_fact
-  impl/tc264/             TC264 link-time ports, board map, IRQ adapter
+  platform/system/        system_port
+  target/tc264/           TC264 link-time port, board map, ISR adapter
   system/board/           board init and resources
-  system/irq/             fact -> event/tick router
   system/runtime/         boot composition root
   scheduler/              event flags and cooperative scheduler
   config/                 product parameters and board resources
@@ -210,11 +201,11 @@ original headers and are treated as read-only.
 
 To add another MCU target:
 
-1. Add `code/impl/<target>/` with direct `McuIo_*` and `Device_*` implementations.
-2. Add a target board map and IRQ adapter.
-3. Add ISR adapter functions for that target and post returned facts through `SmartcarIrq_PostFacts()`.
-4. Keep App, Service, BSP public headers free of Vendor, board-resource, and `impl/*` includes.
-5. Do not reintroduce runtime ops registration, platform dispatch files, old PAL aliases, or duplicate IRQ fact headers.
+1. Add `code/target/<target>/` with direct `McuIo_*`, `Device_*`, and `SystemPort_*` implementations.
+2. Add a target board map and ISR adapter.
+3. Let target ISR functions directly post scheduler events/ticks.
+4. Keep App, Service, BSP public headers free of Vendor, board-resource, and `target/*` includes.
+5. Do not reintroduce runtime ops registration, platform dispatch files, old PAL aliases, IRQ facts, or route tables.
 6. Do not add host smoke tests, unit tests, or test runner scripts.
 
 ## Commit Format
@@ -223,7 +214,7 @@ To add another MCU target:
 type(scope): 中文描述
 ```
 
-Common scopes: `app`, `service`, `bsp`, `platform`, `impl`, `system`, `scheduler`, `build`, `docs`.
+Common scopes: `app`, `service`, `bsp`, `platform`, `target`, `system`, `scheduler`, `build`, `docs`.
 
 ## License
 

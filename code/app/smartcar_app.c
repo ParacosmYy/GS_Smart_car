@@ -157,7 +157,7 @@ static void DiagnosticsTask_100ms(event_mask_t events)
  *
  * @return void。
  */
-void SmartcarApp_Init(void)
+void SmartcarApp_RegisterTasks(void)
 {
     uint8_t i = 0U;
 
@@ -167,17 +167,4 @@ void SmartcarApp_Init(void)
                             s_smartcar_tasks[i].period_ms,
                             s_smartcar_tasks[i].trigger);
     }
-}
-
-/**
- * @brief 应用层单次循环。
- *
- * Steps:
- *   1. 由调度器分发 Service 任务。
- *
- * @return void。
- */
-void SmartcarApp_RunOnce(void)
-{
-    scheduler_run();
 }
