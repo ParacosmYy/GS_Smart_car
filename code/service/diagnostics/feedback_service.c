@@ -4,11 +4,15 @@
  */
 
 #include "feedback_service.h"
-#include "platform/interface/feedback_if.h"
+#include "platform/interface/service_port_if.h"
 
 void FeedbackService_NotifyTrackElement(uint8_t element)
 {
-    if ((element == 0U) || (Feedback_IsBusy() != 0U)) { return; }
+    if ((element == 0U) || (Feedback_IsBusy() != 0U))
+    {
+        return;
+    }
+
     Feedback_NotifyElement(element);
 }
 

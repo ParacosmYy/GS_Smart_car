@@ -14,19 +14,26 @@
  */
 
 #include "vision.h"
-#include "vision_context.h"
 #include "config.h"     /* ELEM_* 元素检测参数 */
 #include "platform/interface/device_if.h"
-#include <string.h>
 
 #define GrayScale 256    // OTSU 使用的灰度级数量（0-255）
-#define COL 120          // 原始图像行数（保留备用，实际用 VISION_RAW_H）
-#define ROW 188          // 原始图像列数（保留备用，实际用 VISION_RAW_W）
-
-#define FILTER_LEN 20    // 滤波相关参数（保留备用）
-#define WHITE_COL 93     // 压缩图像最右列索引（94 列，索引 0-93）
-
 ////////////////////大津法二值化//////////////////////
+typedef struct
+{
+    uint8_t binary[VISION_RAW_H][VISION_RAW_W];
+    uint8_t binary_zip[VISION_ZIP_IMAGE_H][VISION_ZIP_IMAGE_W];
+    uint8_t left_line[VISION_ZIP_IMAGE_H];
+    uint8_t right_line[VISION_ZIP_IMAGE_H];
+    uint8_t mid_line_per_row[VISION_ZIP_IMAGE_H];
+    uint8_t mid_line;
+    uint8_t image_mid;
+    int16_t calculate_error;
+    uint8_t lost_count;
+    uint8_t image_threshold;
+    uint8_t element_cooldown;
+} vision_context_t;
+
 static vision_context_t s_vision_ctx = {
     .image_threshold = 120U,
     .image_mid = IMAGE_MID_COL,
@@ -51,18 +58,6 @@ static const uint8_t mid_weight_list[60] = {
     // 行 48-59: 近端低权重 (1) — 抖动敏感区
     1,1,1,1,1,1,1,1,1,1,1,1
 };
-
-void Vision_InitContext(vision_context_t *p_ctx)
-{
-    if (p_ctx == 0)
-    {
-        return;
-    }
-
-    memset(p_ctx, 0, sizeof(*p_ctx));
-    p_ctx->image_threshold = 120U;
-    p_ctx->image_mid = IMAGE_MID_COL;
-}
 
 /**
  * @brief 灰度图像转二值图像
@@ -338,7 +333,7 @@ static void find_mid_line_weight(void)//图像中值 与 补线中值差 然后 
     // 跳过前 15 行（图像最远处，数据噪声大），从第 15 行处理到倒数第 2 行
     for(uint8_t i = 15 ; i < VISION_ZIP_IMAGE_H - 1 ; i++)
     {
-        // 相邻行中线差绝对值（替代原逐飞 my_abs）
+        // 相邻行中线差绝对值
         int _diff = (int)(s_vision_ctx.mid_line_per_row[i] - s_vision_ctx.mid_line_per_row[i+1]);
         if (_diff < 0)
         {
@@ -422,42 +417,6 @@ void Vision_Process(void)
 }
 
 /**
- * @brief 查询摄像头是否已有新帧。
- *
- * 处理步骤：
- *  1. 查询摄像头帧完成标志。
- *  2. 将 bool 结果收敛成模块对外的 uint8_t。
- *
- * @return uint8_t : 1 表示有新帧，0 表示无新帧。
- *
- * */
-uint8_t Vision_IsFrameReady(void)
-{
-    uint8_t is_ready = 0U;
-
-    if (Device_CameraReady())
-    {
-        is_ready = 1U;
-    }
-
-    return is_ready;
-}
-
-/**
- * @brief 清除摄像头帧就绪标志。
- *
- * 处理步骤：
- *  1. 清除摄像头帧完成标志。
- *
- * @return void : 无返回值。
- *
- * */
-void Vision_ClearFrameReady(void)
-{
-    Device_CameraClear();
-}
-
-/**
  * @brief 读取控制层所需的完整帧快照。
  *
  * 处理步骤：
@@ -510,28 +469,6 @@ void Vision_GetDebugSnapshot(vision_debug_snapshot_t *p_snapshot)
     p_snapshot->image_height = VISION_ZIP_IMAGE_H;
     p_snapshot->line_count = VISION_ZIP_IMAGE_H;
     p_snapshot->calculate_error = s_vision_ctx.calculate_error;
-}
-
-/**
- * @brief 获取中线偏差。
- *
- * @return int16_t : 中线偏差。
- *
- * */
-int16_t Vision_GetCalculateError(void)
-{
-    return s_vision_ctx.calculate_error;
-}
-
-/**
- * @brief 获取连续丢线计数。
- *
- * @return uint8_t : 连续丢线计数。
- *
- * */
-uint8_t Vision_GetLostCount(void)
-{
-    return s_vision_ctx.lost_count;
 }
 
 /* ===== 特殊元素检测 ===== */
@@ -600,40 +537,3 @@ uint8_t Vision_DetectElement(void)
 
     return 0;
 }
-
-/* ===== Test-only accessors ===== */
-#ifdef VISION_ENABLE_TEST_ACCESS
-
-uint8_t (*Vision_GetBinaryBuffer(void))[VISION_RAW_W]
-{
-    return s_vision_ctx.binary;
-}
-
-uint8_t (*Vision_GetZipBuffer(void))[VISION_ZIP_IMAGE_W]
-{
-    return s_vision_ctx.binary_zip;
-}
-
-uint8_t *Vision_GetLeftLine(void)
-{
-    return s_vision_ctx.left_line;
-}
-
-uint8_t *Vision_GetRightLine(void)
-{
-    return s_vision_ctx.right_line;
-}
-
-uint8_t *Vision_GetMidLine(void)
-{
-    return s_vision_ctx.mid_line_per_row;
-}
-
-void vision_set_image_grayscale_to_binary(uint8_t value) { set_image_grayscale_to_binary(value); }
-void vision_zip_image(void)                              { zip_image(); }
-void vision_bin_image_filter(void)                       { Bin_Image_Filter(); }
-void vision_find_mid_line(void)                          { find_mid_line(); }
-void vision_find_mid_line_weight(void)                   { find_mid_line_weight(); }
-uint8_t vision_otsu(uint8_t *image, uint16_t w, uint16_t h) { return otsu(image, w, h); }
-
-#endif /* VISION_ENABLE_TEST_ACCESS */

@@ -35,28 +35,9 @@ typedef struct
 
 /* Public API */
 void Vision_Process(void);
-uint8_t Vision_IsFrameReady(void);
-void Vision_ClearFrameReady(void);
 void Vision_GetControlSnapshot(vision_control_snapshot_t *p_snapshot);
 void Vision_GetDebugSnapshot(vision_debug_snapshot_t *p_snapshot);
-int16_t Vision_GetCalculateError(void);
-uint8_t Vision_GetLostCount(void);
 uint8_t Vision_DetectElement(void);
-
-/* Test-only accessors (internal functions are static, exposed for tests) */
-#ifdef VISION_ENABLE_TEST_ACCESS
-uint8_t (*Vision_GetBinaryBuffer(void))[VISION_RAW_W];
-uint8_t (*Vision_GetZipBuffer(void))[VISION_ZIP_IMAGE_W];
-uint8_t *Vision_GetLeftLine(void);
-uint8_t *Vision_GetRightLine(void);
-uint8_t *Vision_GetMidLine(void);
-void vision_set_image_grayscale_to_binary(uint8_t value);
-void vision_zip_image(void);
-void vision_bin_image_filter(void);
-void vision_find_mid_line(void);
-void vision_find_mid_line_weight(void);
-uint8_t vision_otsu(uint8_t *image, uint16_t width, uint16_t height);
-#endif
 
 #ifdef __cplusplus
 }

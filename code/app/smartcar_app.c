@@ -5,20 +5,17 @@
  * Processing flow:
  * ISR entries do minimum bounded work and task processing is dispatched by
  * the cooperative scheduler:
- *    SmartcarApp_TaskGyro      陀螺仪传感器服务处理（事件触发）
- *    SmartcarApp_TaskEncoder   编码器传感器服务处理（事件触发）
- *    SmartcarApp_TaskVision    视觉处理 + 元素检测 + 反馈服务（DMA 事件触发）
- *    SmartcarApp_TaskControl   控制 PID + 执行器下发（10ms 周期）
- *    DebugDisplayService_Update TFT 调试显示（100ms 周期）
+ *    SensorTask_Gyro10ms       陀螺仪传感器服务处理（事件触发）
+ *    SensorTask_Encoder50ms    编码器传感器服务处理（事件触发）
+ *    VisionTask_OnFrame        视觉处理流水线（DMA 事件触发）
+ *    ControlTask_10ms          控制输出（10ms 周期）
+ *    FeedbackTask_Tick         非阻塞反馈时序（随帧推进）
+ *    DiagnosticsTask_100ms     TFT 调试显示（100ms 周期）
  */
 #include "smartcar_app.h"
-#include "control.h"
-#include "debug_display.h"
-#include "feedback_service.h"
 #include "scheduler.h"
 #include "event.h"
-#include "sensor.h"
-#include "vision.h"
+#include "service/smartcar_tasks.h"
 
 //******************************** Types ************************************//
 typedef struct
@@ -29,70 +26,24 @@ typedef struct
 } smartcar_app_task_desc_t;
 //******************************** Types ************************************//
 
+static void SmartcarApp_RegisterTask(const smartcar_app_task_desc_t *p_task);
+
 //******************************** Variables ********************************//
 static uint8_t s_task_register_fail_count = 0U;
+
+static const smartcar_app_task_desc_t s_app_tasks[] =
+{
+    /* 事件任务优先注册，周期任务随后注册。 */
+    { .handler = SensorTask_Gyro10ms,     .period_ms = 0U,   .trigger = EVT_GYRO_10MS },
+    { .handler = SensorTask_Encoder50ms,  .period_ms = 0U,   .trigger = EVT_ENCODER_50MS },
+    { .handler = VisionTask_OnFrame,      .period_ms = 0U,   .trigger = EVT_CAM_FRAME },
+    { .handler = ControlTask_10ms,        .period_ms = 10U,  .trigger = EVT_NONE },
+    { .handler = FeedbackTask_Tick,       .period_ms = 0U,   .trigger = EVT_CAM_FRAME },
+    { .handler = DiagnosticsTask_100ms,   .period_ms = 100U, .trigger = EVT_NONE }
+};
+
+static const uint8_t s_app_task_count = (uint8_t)(sizeof(s_app_tasks) / sizeof(s_app_tasks[0]));
 //******************************** Variables ********************************//
-
-/**
- * @brief 陀螺仪处理任务
- *        EVT_GYRO_10MS 触发，10ms 周期。
- */
-static void SmartcarApp_TaskGyro(event_mask_t events)
-{
-    if ((events & EVT_GYRO_10MS) == 0U)
-    {
-        return;
-    }
-
-    SensorService_ProcessGyro10ms();
-}
-
-/**
- * @brief 编码器测速任务（原 ISR 中的 Encoder_CalculateSpeed 逻辑）
- *        EVT_ENCODER_50MS 触发，50ms 周期。
- */
-static void SmartcarApp_TaskEncoder(event_mask_t events)
-{
-    if ((events & EVT_ENCODER_50MS) == 0U)
-    {
-        return;
-    }
-
-    SensorService_ProcessEncoder50ms();
-}
-
-/**
- * @brief 视觉处理任务
- *        EVT_CAM_FRAME 触发。处理一帧图像、检测特殊元素、蜂鸣器提示。
- */
-static void SmartcarApp_TaskVision(event_mask_t events)
-{
-    uint8_t element = 0;
-
-    if ((events & EVT_CAM_FRAME) == 0U)
-    {
-        return;
-    }
-
-    Vision_Process();
-    DebugDisplayService_DrawVisionLines();
-
-    element = Vision_DetectElement();
-    FeedbackService_NotifyTrackElement(element);
-
-    Vision_ClearFrameReady();
-}
-
-/**
- * @brief 控制任务（周期 10ms）
- *        基于视觉偏差与编码器速度计算 PID，并下发到执行器。
- */
-static void SmartcarApp_TaskControl(event_mask_t events)
-{
-    (void)events;
-    Control_Update();
-    Actuator_Apply();
-}
 
 /**
  * @brief 注册一个应用任务。
@@ -136,18 +87,10 @@ static void SmartcarApp_RegisterTask(const smartcar_app_task_desc_t *p_task)
 void SmartcarApp_Init(void)
 {
     uint8_t i = 0U;
-    static const smartcar_app_task_desc_t s_app_tasks[] =
-    {
-        {SmartcarApp_TaskGyro,       0U,   EVT_GYRO_10MS},
-        {SmartcarApp_TaskEncoder,    0U,   EVT_ENCODER_50MS},
-        {SmartcarApp_TaskVision,     0U,   EVT_CAM_FRAME},
-        {SmartcarApp_TaskControl,    10U,  EVT_NONE},
-        {DebugDisplayService_Update, 100U, EVT_NONE}
-    };
 
     s_task_register_fail_count = 0U;
 
-    for (i = 0U; i < (uint8_t)(sizeof(s_app_tasks) / sizeof(s_app_tasks[0])); i++)
+    for (i = 0U; i < s_app_task_count; i++)
     {
         SmartcarApp_RegisterTask(&s_app_tasks[i]);
     }
@@ -170,8 +113,5 @@ uint8_t SmartcarApp_GetTaskRegisterFailCount(void)
  */
 void SmartcarApp_RunOnce(void)
 {
-    /* 调度器驱动全部任务 */
     scheduler_run();
-
-    FeedbackService_Tick();
 }
