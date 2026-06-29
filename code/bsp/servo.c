@@ -10,7 +10,7 @@
 
 #include "config.h"
 #include "smartcar_board_resources.h"
-#include "platform/port_if.h"
+#include "hal/hal.h"
 
 #define SERVO_SAFE_MIN_DUTY  0LL
 #define SERVO_SAFE_MAX_DUTY  ((int64_t)UINT32_MAX)
@@ -68,7 +68,7 @@ static void servo_apply(servo_t *p_servo, int32_t offset)
     }
 
     p_servo->duty = (uint32_t)target;
-    McuIo_PwmSetDuty(SMARTCAR_PWM_SERVO, p_servo->duty);
+    SmartcarHal_PwmSetDuty(SMARTCAR_PWM_SERVO, p_servo->duty);
 }
 
 /**
@@ -86,7 +86,7 @@ void Servo_Init(void)
     s_servo.range = SERVO_RANGE;
     s_servo.duty = SERVO_INIT_DUTY;
 
-    McuIo_PwmInit(SMARTCAR_PWM_SERVO, SERVO_PWM_HZ, SERVO_INIT_DUTY);
+    SmartcarHal_PwmInit(SMARTCAR_PWM_SERVO, SERVO_PWM_HZ, SERVO_INIT_DUTY);
 }
 
 /**

@@ -8,7 +8,7 @@
  * 避免主循环偶发延迟时丢失连续 tick。
  */
 #include "event.h"
-#include "platform/port_if.h"
+#include "hal/hal.h"
 
 static volatile event_mask_t s_events = 0;
 static volatile uint32_t s_gyro_10ms_pending = 0U;
@@ -32,7 +32,7 @@ void Event_PostFromIsr(event_mask_t events)
     event_mask_t normal_events = EVT_NONE;
     uint32_t irq_state = 0;
 
-    irq_state = SystemPort_IrqGlobalDisable();
+    irq_state = SmartcarHal_IrqDisable();
     normal_events = events & (~EVT_GYRO_10MS);
     s_events |= normal_events;
 
@@ -47,7 +47,7 @@ void Event_PostFromIsr(event_mask_t events)
             s_gyro_10ms_overflow_latched = 1U;
         }
     }
-    SystemPort_IrqGlobalRestore(irq_state);
+    SmartcarHal_IrqRestore(irq_state);
 }
 
 /**
@@ -66,7 +66,7 @@ event_mask_t Event_Get(void)
     event_mask_t pending = EVT_NONE;
     uint32_t irq_state = 0;
 
-    irq_state = SystemPort_IrqGlobalDisable();
+    irq_state = SmartcarHal_IrqDisable();
     pending = s_events;
     s_events = 0;
 
@@ -75,7 +75,7 @@ event_mask_t Event_Get(void)
         pending |= EVT_GYRO_10MS;
         s_gyro_10ms_pending--;
     }
-    SystemPort_IrqGlobalRestore(irq_state);
+    SmartcarHal_IrqRestore(irq_state);
 
     return pending;
 }
@@ -90,9 +90,9 @@ uint8_t Event_IsGyro10msOverflowLatched(void)
     uint8_t overflow_latched = 0U;
     uint32_t irq_state = 0U;
 
-    irq_state = SystemPort_IrqGlobalDisable();
+    irq_state = SmartcarHal_IrqDisable();
     overflow_latched = s_gyro_10ms_overflow_latched;
-    SystemPort_IrqGlobalRestore(irq_state);
+    SmartcarHal_IrqRestore(irq_state);
 
     return overflow_latched;
 }

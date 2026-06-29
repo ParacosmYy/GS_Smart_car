@@ -4,13 +4,13 @@
  * @author GS_Mark
  *
  * @par 设计说明
- * Runtime 是启动组合根，负责把 SystemPort、Board、Service、App 任务表和调度器装配起来。
+ * Runtime 是启动组合根，负责把 SmartcarHal、Board、Service、App 任务表和调度器装配起来。
  */
 
 #include "smartcar_system.h"
 
 #include "control.h"
-#include "platform/port_if.h"
+#include "hal/hal.h"
 #include "scheduler.h"
 #include "smartcar_app.h"
 #include "smartcar_board.h"
@@ -28,8 +28,8 @@
  */
 void SmartcarSystem_Boot(void)
 {
-    SystemPort_ClockInit();
-    SystemPort_DebugInit();
+    SmartcarHal_ClockInit();
+    SmartcarHal_DebugInit();
 
     SmartcarBoard_InitDevices();
     Control_Init();
@@ -37,7 +37,7 @@ void SmartcarSystem_Boot(void)
     SmartcarApp_RegisterTasks();
     SmartcarBoard_StartPeriodicIrq();
 
-    SystemPort_CoreSync();
+    SmartcarHal_CoreSync();
 }
 
 /**

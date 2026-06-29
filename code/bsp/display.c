@@ -8,7 +8,7 @@
  */
 
 #include "display.h"
-#include "platform/port_if.h"
+#include "hal/hal.h"
 
 #define DISPLAY_TRACK_BLIND_ROWS        10U
 #define DISPLAY_BOLD_POINT_RADIUS       1
@@ -42,7 +42,7 @@ static void Display_DrawPointBold(uint8_t x, uint8_t y, uint16_t color)
 
             if ((point_x >= 0) && (point_y >= 0))
             {
-                Device_DisplayPoint(point_x, point_y, color);
+                SmartcarHal_DisplayPoint(point_x, point_y, color);
             }
         }
     }
@@ -77,8 +77,8 @@ void Display_DrawTrackLines(const uint8_t *p_left_line,
 
     for (i = (uint8_t)(line_count - 1U); i > DISPLAY_TRACK_BLIND_ROWS; i--)
     {
-        Device_DisplayPoint(p_left_line[i], i, RGB565_YELLOW);
-        Device_DisplayPoint(p_right_line[i], i, RGB565_BLUE);
+        SmartcarHal_DisplayPoint(p_left_line[i], i, RGB565_YELLOW);
+        SmartcarHal_DisplayPoint(p_right_line[i], i, RGB565_BLUE);
         Display_DrawPointBold(p_mid_line[i], i, RGB565_RED);
     }
 }

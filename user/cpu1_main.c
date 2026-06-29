@@ -41,7 +41,7 @@
  * CPU1 当前只完成基础中断和多核同步，作为后续视觉或通信任务迁移预留入口。
  */
 
-#include "platform/port_if.h"
+#include "hal/hal.h"
 #pragma section all "cpu1_dsram"
 // 将本语句与#pragma section all restore语句之间的全局变量都放在CPU1的RAM中
 
@@ -65,13 +65,13 @@
 void core1_main(void)
 {
     disable_Watchdog();                     // 关闭看门狗
-    SystemPort_IrqGlobalCtrl(0);        // 打开全局中断
+    SmartcarHal_IrqCtrl(0);             // 打开全局中断
     // 此处编写用户代码 例如外设初始化代码等
 
 
 
     // 此处编写用户代码 例如外设初始化代码等
-    SystemPort_CoreSync();              // 等待所有核心初始化完毕
+    SmartcarHal_CoreSync();             // 等待所有核心初始化完毕
     while (1)
     {
         // 此处编写需要循环执行的代码

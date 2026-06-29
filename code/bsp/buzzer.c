@@ -12,7 +12,7 @@
 
 #include "config.h"
 #include "smartcar_board_resources.h"
-#include "platform/port_if.h"
+#include "hal/hal.h"
 
 typedef struct
 {
@@ -84,7 +84,7 @@ static uint8_t should_replace_pending(buzzer_event_t pending_event, buzzer_event
  */
 static void start_beep(buzzer_t *p_buzzer)
 {
-    McuIo_GpioHigh(SMARTCAR_GPIO_BUZZER);
+    SmartcarHal_GpioHigh(SMARTCAR_GPIO_BUZZER);
     p_buzzer->is_beeping = 1U;
     p_buzzer->tick_count = 0U;
 }
@@ -102,7 +102,7 @@ static void start_beep(buzzer_t *p_buzzer)
  */
 static void enter_gap(buzzer_t *p_buzzer)
 {
-    McuIo_GpioLow(SMARTCAR_GPIO_BUZZER);
+    SmartcarHal_GpioLow(SMARTCAR_GPIO_BUZZER);
     p_buzzer->is_beeping = 0U;
     p_buzzer->tick_count = 0U;
     p_buzzer->remaining--;
@@ -120,7 +120,7 @@ static void enter_gap(buzzer_t *p_buzzer)
  */
 static void finish_beep(buzzer_t *p_buzzer)
 {
-    McuIo_GpioLow(SMARTCAR_GPIO_BUZZER);
+    SmartcarHal_GpioLow(SMARTCAR_GPIO_BUZZER);
     p_buzzer->active = 0U;
     p_buzzer->is_beeping = 0U;
     p_buzzer->tick_count = 0U;
@@ -208,7 +208,7 @@ static void step_pattern(buzzer_t *p_buzzer)
  */
 void Buzzer_Init(void)
 {
-    McuIo_GpioInit(SMARTCAR_GPIO_BUZZER, MCUIO_GPIO_OUTPUT);
+    SmartcarHal_GpioInit(SMARTCAR_GPIO_BUZZER, SMARTCAR_HAL_GPIO_OUTPUT);
     s_buzzer.pending_event = BUZZER_EVENT_NONE;
 }
 

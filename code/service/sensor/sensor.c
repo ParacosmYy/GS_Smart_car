@@ -23,8 +23,7 @@
 #include <stdint.h>
 #include "sensor.h"
 #include "config.h"
-#include "platform/port_if.h"
-#include "platform/sensor_hal.h"
+#include "hal/hal.h"
 //******************************** Includes *********************************//
 
 //******************************** Defines **********************************//
@@ -149,8 +148,8 @@ void SensorService_ProcessGyro10ms(void)
     sensor_gyro_context_t *p_gyro_ctx = &s_sensor_service_ctx.gyro;
     float z_angle_speed = 0.0f;
 
-    Device_ImuRead();
-    p_gyro_ctx->raw_z = Device_ImuZ();
+    SmartcarHal_ImuRead();
+    p_gyro_ctx->raw_z = SmartcarHal_ImuZ();
     SensorService_UpdateGyroOffset(p_gyro_ctx);
 
     z_angle_speed = p_gyro_ctx->raw_z - p_gyro_ctx->z_offset;
@@ -208,7 +207,7 @@ void SensorService_ProcessEncoder50ms(void)
     int right_sum_snapshot = 0;
     int sample_count_snapshot = 0;
 
-    SensorHal_EncoderTakeSnapshot(&left_sum_snapshot, &right_sum_snapshot, &sample_count_snapshot);
+    SmartcarHal_EncoderTakeSnapshot(&left_sum_snapshot, &right_sum_snapshot, &sample_count_snapshot);
     SensorService_UpdateEncoderSpeed(p_encoder_ctx,
                                      left_sum_snapshot,
                                      right_sum_snapshot,

@@ -10,7 +10,7 @@
 
 #include "config.h"
 #include "smartcar_board_resources.h"
-#include "platform/port_if.h"
+#include "hal/hal.h"
 
 typedef struct
 {
@@ -67,8 +67,8 @@ static int32_t motor_clamp_speed(int32_t speed, int32_t clamp)
  */
 static void motor_apply_pwm(int32_t *p_speed_snapshot,
                             int32_t speed,
-                            mcuio_pwm_id_t fwd_channel,
-                            mcuio_pwm_id_t rev_channel)
+                            smartcar_hal_pwm_id_t fwd_channel,
+                            smartcar_hal_pwm_id_t rev_channel)
 {
     uint32_t duty = 0U;
 
@@ -82,14 +82,14 @@ static void motor_apply_pwm(int32_t *p_speed_snapshot,
     if (speed > 0)
     {
         duty = (uint32_t)(speed * MOTOR_PWM_DUTY_SCALE);
-        McuIo_PwmSetDuty(fwd_channel, duty);
-        McuIo_PwmSetDuty(rev_channel, 0U);
+        SmartcarHal_PwmSetDuty(fwd_channel, duty);
+        SmartcarHal_PwmSetDuty(rev_channel, 0U);
     }
     else
     {
         duty = (uint32_t)(-speed * MOTOR_PWM_DUTY_SCALE);
-        McuIo_PwmSetDuty(rev_channel, duty);
-        McuIo_PwmSetDuty(fwd_channel, 0U);
+        SmartcarHal_PwmSetDuty(rev_channel, duty);
+        SmartcarHal_PwmSetDuty(fwd_channel, 0U);
     }
 }
 
@@ -107,10 +107,10 @@ void Motor_Init(void)
     s_motor.clamp_l = MOTOR_CLAMP_LEFT;
     s_motor.clamp_r = MOTOR_CLAMP_RIGHT;
 
-    McuIo_PwmInit(SMARTCAR_PWM_MOTOR_R_REV, MOTOR_PWM_HZ, 0U);
-    McuIo_PwmInit(SMARTCAR_PWM_MOTOR_R_FWD, MOTOR_PWM_HZ, 0U);
-    McuIo_PwmInit(SMARTCAR_PWM_MOTOR_L_REV, MOTOR_PWM_HZ, 0U);
-    McuIo_PwmInit(SMARTCAR_PWM_MOTOR_L_FWD, MOTOR_PWM_HZ, 0U);
+    SmartcarHal_PwmInit(SMARTCAR_PWM_MOTOR_R_REV, MOTOR_PWM_HZ, 0U);
+    SmartcarHal_PwmInit(SMARTCAR_PWM_MOTOR_R_FWD, MOTOR_PWM_HZ, 0U);
+    SmartcarHal_PwmInit(SMARTCAR_PWM_MOTOR_L_REV, MOTOR_PWM_HZ, 0U);
+    SmartcarHal_PwmInit(SMARTCAR_PWM_MOTOR_L_FWD, MOTOR_PWM_HZ, 0U);
 }
 
 /**

@@ -9,11 +9,11 @@
 #include "input.h"
 
 #include "smartcar_board_resources.h"
-#include "platform/port_if.h"
+#include "hal/hal.h"
 
 #define INPUT_KEY_COUNT 4U
 
-static const mcuio_gpio_id_t s_keys[INPUT_KEY_COUNT] =
+static const smartcar_hal_gpio_id_t s_keys[INPUT_KEY_COUNT] =
 {
     SMARTCAR_GPIO_KEY1,
     SMARTCAR_GPIO_KEY2,
@@ -21,7 +21,7 @@ static const mcuio_gpio_id_t s_keys[INPUT_KEY_COUNT] =
     SMARTCAR_GPIO_KEY4,
 };
 
-static const mcuio_gpio_id_t s_dips[INPUT_KEY_COUNT] =
+static const smartcar_hal_gpio_id_t s_dips[INPUT_KEY_COUNT] =
 {
     SMARTCAR_GPIO_DIP1,
     SMARTCAR_GPIO_DIP2,
@@ -44,7 +44,7 @@ void Input_Init(void)
 
     for (i = 0U; i < INPUT_KEY_COUNT; i++)
     {
-        McuIo_GpioInit(s_keys[i], MCUIO_GPIO_INPUT);
-        McuIo_GpioInit(s_dips[i], MCUIO_GPIO_INPUT);
+        SmartcarHal_GpioInit(s_keys[i], SMARTCAR_HAL_GPIO_INPUT);
+        SmartcarHal_GpioInit(s_dips[i], SMARTCAR_HAL_GPIO_INPUT);
     }
 }

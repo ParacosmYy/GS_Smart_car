@@ -4,11 +4,11 @@
  * @author GS_Mark
  *
  * @par 设计说明
- * 本文件直接实现 SystemPort_*、McuIo_* 和 Device_* 符号，并把产品资源 ID
+ * 本文件直接实现 SmartcarHal_* 符号，并把产品资源 ID
  * 映射到 TC264 / SEEKFREE / Infineon SDK。切换 MCU 时替换本文件即可保持上层无感。
  */
 
-#include "platform/port_if.h"
+#include "hal/hal.h"
 #include "smartcar_board_resources.h"
 #include "zf_common_headfile.h"
 
@@ -88,7 +88,7 @@ static const tc264_uart_map_t s_tc264_uart_map[SMARTCAR_UART_ID_MAX] =
  *
  * @return void。
  */
-void SystemPort_ClockInit(void)
+void SmartcarHal_ClockInit(void)
 {
     clock_init();
 }
@@ -98,7 +98,7 @@ void SystemPort_ClockInit(void)
  *
  * @return void。
  */
-void SystemPort_DebugInit(void)
+void SmartcarHal_DebugInit(void)
 {
     debug_init();
 }
@@ -108,7 +108,7 @@ void SystemPort_DebugInit(void)
  *
  * @return void。
  */
-void SystemPort_CoreSync(void)
+void SmartcarHal_CoreSync(void)
 {
     cpu_wait_event_ready();
 }
@@ -118,7 +118,7 @@ void SystemPort_CoreSync(void)
  *
  * @return Vendor 全局中断恢复状态。
  */
-uint32_t SystemPort_IrqGlobalDisable(void)
+uint32_t SmartcarHal_IrqDisable(void)
 {
     return interrupt_global_disable();
 }
@@ -126,10 +126,10 @@ uint32_t SystemPort_IrqGlobalDisable(void)
 /**
  * @brief 恢复全局中断状态。
  *
- * @param[in] state SystemPort_IrqGlobalDisable 返回的状态。
+ * @param[in] state SmartcarHal_IrqDisable 返回的状态。
  * @return void。
  */
-void SystemPort_IrqGlobalRestore(uint32_t state)
+void SmartcarHal_IrqRestore(uint32_t state)
 {
     interrupt_global_enable(state);
 }
@@ -140,7 +140,7 @@ void SystemPort_IrqGlobalRestore(uint32_t state)
  * @param[in] restore_state TC264 Vendor 恢复参数；0U 表示打开全局中断，非 0U 保持关闭状态。
  * @return void。
  */
-void SystemPort_IrqGlobalCtrl(uint8_t restore_state)
+void SmartcarHal_IrqCtrl(uint8_t restore_state)
 {
     interrupt_global_enable(restore_state);
 }
@@ -153,17 +153,17 @@ void SystemPort_IrqGlobalCtrl(uint8_t restore_state)
  *   2. 按输出或输入模式调用 TC264 GPIO 初始化。
  *
  * @param[in] pin 产品 GPIO 资源 ID。
- * @param[in] mode MCUIO_GPIO_OUTPUT 或输入模式。
+ * @param[in] mode SMARTCAR_HAL_GPIO_OUTPUT 或输入模式。
  * @return void。
  */
-void McuIo_GpioInit(mcuio_gpio_id_t pin, uint8_t mode)
+void SmartcarHal_GpioInit(smartcar_hal_gpio_id_t pin, uint8_t mode)
 {
     if (pin >= SMARTCAR_GPIO_ID_MAX)
     {
         return;
     }
 
-    if (mode == MCUIO_GPIO_OUTPUT)
+    if (mode == SMARTCAR_HAL_GPIO_OUTPUT)
     {
         gpio_init(s_tc264_gpio_map[pin], GPO, GPIO_LOW, GPO_PUSH_PULL);
     }
@@ -179,7 +179,7 @@ void McuIo_GpioInit(mcuio_gpio_id_t pin, uint8_t mode)
  * @param[in] pin 产品 GPIO 资源 ID。
  * @return void。
  */
-void McuIo_GpioHigh(mcuio_gpio_id_t pin)
+void SmartcarHal_GpioHigh(smartcar_hal_gpio_id_t pin)
 {
     if (pin < SMARTCAR_GPIO_ID_MAX)
     {
@@ -193,7 +193,7 @@ void McuIo_GpioHigh(mcuio_gpio_id_t pin)
  * @param[in] pin 产品 GPIO 资源 ID。
  * @return void。
  */
-void McuIo_GpioLow(mcuio_gpio_id_t pin)
+void SmartcarHal_GpioLow(smartcar_hal_gpio_id_t pin)
 {
     if (pin < SMARTCAR_GPIO_ID_MAX)
     {
@@ -209,7 +209,7 @@ void McuIo_GpioLow(mcuio_gpio_id_t pin)
  * @param[in] duty 初始占空比。
  * @return void。
  */
-void McuIo_PwmInit(mcuio_pwm_id_t channel, uint32_t freq_hz, uint32_t duty)
+void SmartcarHal_PwmInit(smartcar_hal_pwm_id_t channel, uint32_t freq_hz, uint32_t duty)
 {
     if (channel < SMARTCAR_PWM_ID_MAX)
     {
@@ -224,7 +224,7 @@ void McuIo_PwmInit(mcuio_pwm_id_t channel, uint32_t freq_hz, uint32_t duty)
  * @param[in] duty 目标占空比。
  * @return void。
  */
-void McuIo_PwmSetDuty(mcuio_pwm_id_t channel, uint32_t duty)
+void SmartcarHal_PwmSetDuty(smartcar_hal_pwm_id_t channel, uint32_t duty)
 {
     if (channel < SMARTCAR_PWM_ID_MAX)
     {
@@ -244,7 +244,7 @@ void McuIo_PwmSetDuty(mcuio_pwm_id_t channel, uint32_t duty)
  * @param[in] baud 波特率。
  * @return void。
  */
-void McuIo_UartInit(mcuio_uart_id_t channel, uint32_t baud)
+void SmartcarHal_UartInit(smartcar_hal_uart_id_t channel, uint32_t baud)
 {
     if (channel >= SMARTCAR_UART_ID_MAX)
     {
@@ -263,7 +263,7 @@ void McuIo_UartInit(mcuio_uart_id_t channel, uint32_t baud)
  * @param[in] channel 产品编码器资源 ID。
  * @return void。
  */
-void McuIo_EncoderInit(mcuio_encoder_id_t channel)
+void SmartcarHal_EncoderInit(smartcar_hal_encoder_id_t channel)
 {
     if (channel >= SMARTCAR_ENCODER_ID_MAX)
     {
@@ -281,7 +281,7 @@ void McuIo_EncoderInit(mcuio_encoder_id_t channel)
  * @param[in] channel 产品编码器资源 ID。
  * @return 编码器计数；资源 ID 无效时返回 0。
  */
-int32_t McuIo_EncoderGet(mcuio_encoder_id_t channel)
+int32_t SmartcarHal_EncoderGet(smartcar_hal_encoder_id_t channel)
 {
     int32_t count = 0;
 
@@ -299,7 +299,7 @@ int32_t McuIo_EncoderGet(mcuio_encoder_id_t channel)
  * @param[in] channel 产品编码器资源 ID。
  * @return void。
  */
-void McuIo_EncoderClear(mcuio_encoder_id_t channel)
+void SmartcarHal_EncoderClear(smartcar_hal_encoder_id_t channel)
 {
     if (channel < SMARTCAR_ENCODER_ID_MAX)
     {
@@ -314,7 +314,7 @@ void McuIo_EncoderClear(mcuio_encoder_id_t channel)
  * @param[in] period_ms 周期，单位 ms。
  * @return void。
  */
-void McuIo_PitInit(mcuio_pit_id_t channel, uint32_t period_ms)
+void SmartcarHal_PitInit(smartcar_hal_pit_id_t channel, uint32_t period_ms)
 {
     if (channel < SMARTCAR_PIT_ID_MAX)
     {
@@ -328,7 +328,7 @@ void McuIo_PitInit(mcuio_pit_id_t channel, uint32_t period_ms)
  * @param[in] channel 产品 PIT 资源 ID。
  * @return void。
  */
-void McuIo_PitClearFlag(mcuio_pit_id_t channel)
+void SmartcarHal_PitClearFlag(smartcar_hal_pit_id_t channel)
 {
     if (channel < SMARTCAR_PIT_ID_MAX)
     {
@@ -371,7 +371,7 @@ static uint8_t *Tc264Camera_GetFrameData(void)
  *
  * @return void。
  */
-void Device_CameraInit(void)
+void SmartcarHal_CameraInit(void)
 {
     mt9v03x_init();
 }
@@ -381,7 +381,7 @@ void Device_CameraInit(void)
  *
  * @return true 表示有新帧；false 表示暂无新帧。
  */
-bool Device_CameraReady(void)
+bool SmartcarHal_CameraReady(void)
 {
     return Tc264Camera_IsFrameReady();
 }
@@ -391,7 +391,7 @@ bool Device_CameraReady(void)
  *
  * @return void。
  */
-void Device_CameraClear(void)
+void SmartcarHal_CameraClear(void)
 {
     Tc264Camera_ClearFrameReady();
 }
@@ -401,7 +401,7 @@ void Device_CameraClear(void)
  *
  * @return 摄像头图像缓冲区首地址。
  */
-uint8_t *Device_CameraData(void)
+uint8_t *SmartcarHal_CameraData(void)
 {
     return Tc264Camera_GetFrameData();
 }
@@ -412,7 +412,7 @@ uint8_t *Device_CameraData(void)
  * @param[out] p_desc 帧描述输出指针。
  * @return void。
  */
-void Device_CameraGetFrameDesc(camera_frame_desc_t *p_desc)
+void SmartcarHal_CameraGetDesc(smartcar_hal_camera_desc_t *p_desc)
 {
     if (p_desc != 0)
     {
@@ -427,7 +427,7 @@ void Device_CameraGetFrameDesc(camera_frame_desc_t *p_desc)
  *
  * @return void。
  */
-void Device_DisplayInit(void)
+void SmartcarHal_DisplayInit(void)
 {
     tft180_init();
 }
@@ -440,7 +440,7 @@ void Device_DisplayInit(void)
  * @param[in] color RGB565 颜色。
  * @return void。
  */
-void Device_DisplayPoint(int16_t x, int16_t y, uint16_t color)
+void SmartcarHal_DisplayPoint(int16_t x, int16_t y, uint16_t color)
 {
     tft180_draw_point(x, y, color);
 }
@@ -458,14 +458,14 @@ void Device_DisplayPoint(int16_t x, int16_t y, uint16_t color)
  * @param[in] threshold 显示阈值。
  * @return void。
  */
-void Device_DisplayGray(int16_t x,
-                        int16_t y,
-                        const uint8_t *p_img,
-                        uint16_t w,
-                        uint16_t h,
-                        uint16_t dis_w,
-                        uint16_t dis_h,
-                        uint8_t threshold)
+void SmartcarHal_DisplayGray(int16_t x,
+                             int16_t y,
+                             const uint8_t *p_img,
+                             uint16_t w,
+                             uint16_t h,
+                             uint16_t dis_w,
+                             uint16_t dis_h,
+                             uint8_t threshold)
 {
     tft180_show_gray_image(x, y, p_img, w, h, dis_w, dis_h, threshold);
 }
@@ -478,7 +478,7 @@ void Device_DisplayGray(int16_t x,
  * @param[in] p_str 字符串指针。
  * @return void。
  */
-void Device_DisplayStr(int16_t x, int16_t y, const char *p_str)
+void SmartcarHal_DisplayStr(int16_t x, int16_t y, const char *p_str)
 {
     tft180_show_string(x, y, p_str);
 }
@@ -492,7 +492,7 @@ void Device_DisplayStr(int16_t x, int16_t y, const char *p_str)
  * @param[in] digits 显示位数。
  * @return void。
  */
-void Device_DisplayInt(int16_t x, int16_t y, int32_t value, uint8_t digits)
+void SmartcarHal_DisplayInt(int16_t x, int16_t y, int32_t value, uint8_t digits)
 {
     tft180_show_int(x, y, value, digits);
 }
@@ -502,7 +502,7 @@ void Device_DisplayInt(int16_t x, int16_t y, int32_t value, uint8_t digits)
  *
  * @return void。
  */
-void Device_ImuInit(void)
+void SmartcarHal_ImuInit(void)
 {
     icm20602_init();
 }
@@ -512,7 +512,7 @@ void Device_ImuInit(void)
  *
  * @return void。
  */
-void Device_ImuRead(void)
+void SmartcarHal_ImuRead(void)
 {
     icm20602_get_gyro();
 }
@@ -522,7 +522,7 @@ void Device_ImuRead(void)
  *
  * @return Z 轴角速度。
  */
-float Device_ImuZ(void)
+float SmartcarHal_ImuZ(void)
 {
     return icm20602_gyro_transition(icm20602_gyro_z);
 }
@@ -532,7 +532,7 @@ float Device_ImuZ(void)
  *
  * @return void。
  */
-void Device_WirelessInit(void)
+void SmartcarHal_WirelessInit(void)
 {
     wireless_uart_init();
 }

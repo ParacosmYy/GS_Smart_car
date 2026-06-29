@@ -12,8 +12,7 @@
 
 #include "config.h"
 #include "event.h"
-#include "platform/port_if.h"
-#include "platform/sensor_hal.h"
+#include "hal/hal.h"
 #include "scheduler.h"
 #include "smartcar_board_resources.h"
 #include "zf_common_headfile.h"
@@ -40,10 +39,10 @@ static encoder_window_t s_encoder_window = {0, 0, 0, 0U};
  * @param[in] pit 产品 PIT 资源 ID。
  * @return void。
  */
-static void TargetIrq_PreparePit(mcuio_pit_id_t pit)
+static void TargetIrq_PreparePit(smartcar_hal_pit_id_t pit)
 {
-    SystemPort_IrqGlobalCtrl(0);
-    McuIo_PitClearFlag(pit);
+    SmartcarHal_IrqCtrl(0);
+    SmartcarHal_PitClearFlag(pit);
 }
 
 /**
@@ -58,12 +57,12 @@ static void TargetIrq_PreparePit(mcuio_pit_id_t pit)
  */
 static void TargetIrq_SampleEncoder(void)
 {
-    s_encoder_window.left_sum += (int)McuIo_EncoderGet(SMARTCAR_ENCODER_LEFT);
-    s_encoder_window.right_sum += (int)McuIo_EncoderGet(SMARTCAR_ENCODER_RIGHT);
+    s_encoder_window.left_sum += (int)SmartcarHal_EncoderGet(SMARTCAR_ENCODER_LEFT);
+    s_encoder_window.right_sum += (int)SmartcarHal_EncoderGet(SMARTCAR_ENCODER_RIGHT);
     s_encoder_window.samples++;
 
-    McuIo_EncoderClear(SMARTCAR_ENCODER_LEFT);
-    McuIo_EncoderClear(SMARTCAR_ENCODER_RIGHT);
+    SmartcarHal_EncoderClear(SMARTCAR_ENCODER_LEFT);
+    SmartcarHal_EncoderClear(SMARTCAR_ENCODER_RIGHT);
 }
 
 /**
@@ -76,7 +75,7 @@ static void TargetIrq_SampleEncoder(void)
  */
 static void TargetIrq_PrepareUart(void)
 {
-    SystemPort_IrqGlobalCtrl(0);
+    SmartcarHal_IrqCtrl(0);
 }
 
 /**
@@ -146,7 +145,7 @@ void TargetIrq_GyroPit(void)
  */
 void TargetIrq_CameraVsync(void)
 {
-    SystemPort_IrqGlobalCtrl(0);
+    SmartcarHal_IrqCtrl(0);
 
     if (exti_flag_get(ERU_CH3_REQ6_P02_0))
     {
@@ -171,7 +170,7 @@ void TargetIrq_CameraVsync(void)
  */
 void TargetIrq_CameraDma(void)
 {
-    SystemPort_IrqGlobalCtrl(0);
+    SmartcarHal_IrqCtrl(0);
     camera_dma_handler();
     Event_PostFromIsr(EVT_CAM_FRAME);
 }
@@ -267,7 +266,7 @@ void TargetIrq_Uart3Error(void)
  * @param[out] p_sample_count 窗口采样次数输出。
  * @return void。
  */
-void SensorHal_EncoderTakeSnapshot(int *p_left_sum, int *p_right_sum, int *p_sample_count)
+void SmartcarHal_EncoderTakeSnapshot(int *p_left_sum, int *p_right_sum, int *p_sample_count)
 {
     uint32_t irq_state;
 
@@ -276,7 +275,7 @@ void SensorHal_EncoderTakeSnapshot(int *p_left_sum, int *p_right_sum, int *p_sam
         return;
     }
 
-    irq_state = SystemPort_IrqGlobalDisable();
+    irq_state = SmartcarHal_IrqDisable();
 
     *p_left_sum = s_encoder_window.left_sum;
     *p_right_sum = s_encoder_window.right_sum;
@@ -294,5 +293,5 @@ void SensorHal_EncoderTakeSnapshot(int *p_left_sum, int *p_right_sum, int *p_sam
     s_encoder_window.samples = 0;
     s_encoder_window.ready = 0U;
 
-    SystemPort_IrqGlobalRestore(irq_state);
+    SmartcarHal_IrqRestore(irq_state);
 }

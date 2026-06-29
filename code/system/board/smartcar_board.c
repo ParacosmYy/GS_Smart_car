@@ -9,7 +9,7 @@
 
 #include "smartcar_board.h"
 #include "config.h"
-#include "platform/port_if.h"
+#include "hal/hal.h"
 #include "smartcar_board_resources.h"
 #include "motor.h"
 #include "servo.h"
@@ -27,18 +27,18 @@
  */
 void SmartcarBoard_InitDevices(void)
 {
-    McuIo_UartInit(SMARTCAR_UART_CAMERA, 115200U);
-    McuIo_UartInit(SMARTCAR_UART_BT, 115200U);
-    McuIo_EncoderInit(SMARTCAR_ENCODER_LEFT);
-    McuIo_EncoderInit(SMARTCAR_ENCODER_RIGHT);
+    SmartcarHal_UartInit(SMARTCAR_UART_CAMERA, 115200U);
+    SmartcarHal_UartInit(SMARTCAR_UART_BT, 115200U);
+    SmartcarHal_EncoderInit(SMARTCAR_ENCODER_LEFT);
+    SmartcarHal_EncoderInit(SMARTCAR_ENCODER_RIGHT);
     Motor_Init();
     Servo_Init();
-    Device_DisplayInit();
-    Device_CameraInit();
+    SmartcarHal_DisplayInit();
+    SmartcarHal_CameraInit();
     Input_Init();
     Buzzer_Init();
-    Device_ImuInit();
-    Device_WirelessInit();
+    SmartcarHal_ImuInit();
+    SmartcarHal_WirelessInit();
 }
 
 /**
@@ -52,6 +52,6 @@ void SmartcarBoard_InitDevices(void)
  */
 void SmartcarBoard_StartPeriodicIrq(void)
 {
-    McuIo_PitInit(SMARTCAR_PIT_ENCODER_SAMPLE, PIT_PERIOD_MS);
-    McuIo_PitInit(SMARTCAR_PIT_GYRO_TICK, PIT_PERIOD_MS);
+    SmartcarHal_PitInit(SMARTCAR_PIT_ENCODER_SAMPLE, PIT_PERIOD_MS);
+    SmartcarHal_PitInit(SMARTCAR_PIT_GYRO_TICK, PIT_PERIOD_MS);
 }

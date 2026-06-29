@@ -14,7 +14,7 @@
 #include "control.h"
 #include "display.h"
 #include "event.h"
-#include "platform/port_if.h"
+#include "hal/hal.h"
 #include "sensor.h"
 #include "vision.h"
 
@@ -75,31 +75,31 @@ void DebugDisplayService_Update(uint32_t events)
     Vision_GetDebugSnapshot(&vision_snapshot);
     Control_GetOutputSnapshot(&control_output);
 
-    Device_DisplayGray(DEBUG_DISPLAY_IMAGE_X, DEBUG_DISPLAY_IMAGE_Y,
-                       vision_snapshot.p_binary_zip[0],
-                       vision_snapshot.image_width, vision_snapshot.image_height,
-                       vision_snapshot.image_width, vision_snapshot.image_height, 0);
+    SmartcarHal_DisplayGray(DEBUG_DISPLAY_IMAGE_X, DEBUG_DISPLAY_IMAGE_Y,
+                            vision_snapshot.p_binary_zip[0],
+                            vision_snapshot.image_width, vision_snapshot.image_height,
+                            vision_snapshot.image_width, vision_snapshot.image_height, 0);
 
-    Device_DisplayStr(DEBUG_DISPLAY_ENCODER_LABEL_X, DEBUG_DISPLAY_LEFT_ENCODER_Y, "left:");
-    Device_DisplayInt(DEBUG_DISPLAY_ENCODER_VALUE_X, DEBUG_DISPLAY_LEFT_ENCODER_Y,
-                      SensorService_GetLeftEncoderSpeed(), DEBUG_DISPLAY_ENCODER_DIGITS);
+    SmartcarHal_DisplayStr(DEBUG_DISPLAY_ENCODER_LABEL_X, DEBUG_DISPLAY_LEFT_ENCODER_Y, "left:");
+    SmartcarHal_DisplayInt(DEBUG_DISPLAY_ENCODER_VALUE_X, DEBUG_DISPLAY_LEFT_ENCODER_Y,
+                           SensorService_GetLeftEncoderSpeed(), DEBUG_DISPLAY_ENCODER_DIGITS);
 
-    Device_DisplayStr(DEBUG_DISPLAY_ENCODER_LABEL_X, DEBUG_DISPLAY_RIGHT_ENCODER_Y, "right:");
-    Device_DisplayInt(DEBUG_DISPLAY_ENCODER_VALUE_X, DEBUG_DISPLAY_RIGHT_ENCODER_Y,
-                      SensorService_GetRightEncoderSpeed(), DEBUG_DISPLAY_ENCODER_DIGITS);
+    SmartcarHal_DisplayStr(DEBUG_DISPLAY_ENCODER_LABEL_X, DEBUG_DISPLAY_RIGHT_ENCODER_Y, "right:");
+    SmartcarHal_DisplayInt(DEBUG_DISPLAY_ENCODER_VALUE_X, DEBUG_DISPLAY_RIGHT_ENCODER_Y,
+                           SensorService_GetRightEncoderSpeed(), DEBUG_DISPLAY_ENCODER_DIGITS);
 
-    Device_DisplayStr(DEBUG_DISPLAY_PID_LABEL_X, DEBUG_DISPLAY_LEFT_PID_Y, "l_spd:");
-    Device_DisplayStr(DEBUG_DISPLAY_PID_LABEL_X, DEBUG_DISPLAY_RIGHT_PID_Y, "r_spd:");
-    Device_DisplayInt(DEBUG_DISPLAY_PID_VALUE_X, DEBUG_DISPLAY_LEFT_PID_Y,
-                      (int32_t)control_output.left_motor, DEBUG_DISPLAY_PID_DIGITS);
-    Device_DisplayInt(DEBUG_DISPLAY_PID_VALUE_X, DEBUG_DISPLAY_RIGHT_PID_Y,
-                      (int32_t)control_output.right_motor, DEBUG_DISPLAY_PID_DIGITS);
+    SmartcarHal_DisplayStr(DEBUG_DISPLAY_PID_LABEL_X, DEBUG_DISPLAY_LEFT_PID_Y, "l_spd:");
+    SmartcarHal_DisplayStr(DEBUG_DISPLAY_PID_LABEL_X, DEBUG_DISPLAY_RIGHT_PID_Y, "r_spd:");
+    SmartcarHal_DisplayInt(DEBUG_DISPLAY_PID_VALUE_X, DEBUG_DISPLAY_LEFT_PID_Y,
+                           (int32_t)control_output.left_motor, DEBUG_DISPLAY_PID_DIGITS);
+    SmartcarHal_DisplayInt(DEBUG_DISPLAY_PID_VALUE_X, DEBUG_DISPLAY_RIGHT_PID_Y,
+                           (int32_t)control_output.right_motor, DEBUG_DISPLAY_PID_DIGITS);
 
-    Device_DisplayStr(DEBUG_DISPLAY_PID_LABEL_X, DEBUG_DISPLAY_ERROR_Y, "err:");
-    Device_DisplayInt(DEBUG_DISPLAY_PID_VALUE_X, DEBUG_DISPLAY_ERROR_Y,
-                      vision_snapshot.calculate_error, DEBUG_DISPLAY_ERROR_DIGITS);
+    SmartcarHal_DisplayStr(DEBUG_DISPLAY_PID_LABEL_X, DEBUG_DISPLAY_ERROR_Y, "err:");
+    SmartcarHal_DisplayInt(DEBUG_DISPLAY_PID_VALUE_X, DEBUG_DISPLAY_ERROR_Y,
+                           vision_snapshot.calculate_error, DEBUG_DISPLAY_ERROR_DIGITS);
 
-    Device_DisplayStr(DEBUG_DISPLAY_STATUS_LABEL_X, DEBUG_DISPLAY_GYRO_OVERFLOW_Y, "gof:");
-    Device_DisplayInt(DEBUG_DISPLAY_STATUS_VALUE_X, DEBUG_DISPLAY_GYRO_OVERFLOW_Y,
-                      Event_IsGyro10msOverflowLatched(), DEBUG_DISPLAY_STATUS_DIGITS);
+    SmartcarHal_DisplayStr(DEBUG_DISPLAY_STATUS_LABEL_X, DEBUG_DISPLAY_GYRO_OVERFLOW_Y, "gof:");
+    SmartcarHal_DisplayInt(DEBUG_DISPLAY_STATUS_VALUE_X, DEBUG_DISPLAY_GYRO_OVERFLOW_Y,
+                           Event_IsGyro10msOverflowLatched(), DEBUG_DISPLAY_STATUS_DIGITS);
 }
