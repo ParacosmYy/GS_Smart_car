@@ -27,11 +27,6 @@ void event_post_from_isr(event_mask_t events)
     SystemPort_IrqGlobalRestore(irq_state);
 }
 
-void event_set_isr(event_mask_t events)
-{
-    event_post_from_isr(events);
-}
-
 event_mask_t event_get(void)
 {
     event_mask_t pending = EVT_NONE;

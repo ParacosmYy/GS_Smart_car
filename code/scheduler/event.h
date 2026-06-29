@@ -20,20 +20,12 @@ typedef uint32_t event_mask_t;
 #define EVT_CAM_FRAME     (1U << 0)   /* 摄像头新一帧就绪           */
 #define EVT_ENCODER_50MS  (1U << 1)   /* 编码器 50ms 采样窗口完成   */
 #define EVT_GYRO_10MS     (1U << 2)   /* 陀螺仪 10ms 采样时刻       */
-#define EVT_UART1_RX      (1U << 3)   /* UART1 收到数据             */
-#define EVT_UART3_RX      (1U << 4)   /* UART3 收到数据             */
 
 /**
  * @brief ISR 中调用：设置事件标志（原子位或操作）
  * @param events 一个或多个 EVT_* 标志的位或
  */
 void event_post_from_isr(event_mask_t events);
-
-/**
- * @brief 兼容旧接口：ISR 中调用，设置事件标志
- * @param events 一个或多个 EVT_* 标志的位或
- */
-void event_set_isr(event_mask_t events);
 
 /**
  * @brief 主循环调用：获取并清除全部待处理事件
