@@ -14,7 +14,7 @@ SDK Entry -> Target <target> IRQ adapter -> Scheduler
 - `code/service/`: vision, sensor, control, diagnostics.
 - `code/bsp/`: board-level motor, servo, display, input, buzzer modules.
 - `code/platform/port_if.h`: neutral `SystemPort_*`, `McuIo_*`, and `Device_*` contracts.
-- `code/target/<target>/`: direct `McuIo_*` / `Device_*` / `SystemPort_*` implementations, board map, IRQ adapter.
+- `code/target/<target>/`: link-time OPS port implementations, target-local resource maps, IRQ adapter, IRQ priority policy.
 - `code/config/`: product parameters and board resources.
 - `code/system/board/`: product board startup.
 - `user/`: current SDK entry layer; keep interrupt handlers thin and forward to target IRQ entry points.

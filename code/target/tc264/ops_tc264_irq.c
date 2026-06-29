@@ -1,6 +1,6 @@
 /**
- * @file target_irq.c
- * @brief Target interrupt adapter, event posting, and encoder snapshot implementation for TC264.
+ * @file ops_tc264_irq.c
+ * @brief TC264 interrupt adapter, event posting, and encoder snapshot implementation.
  * @author GS_Mark
  *
  * @par 设计说明
@@ -8,7 +8,7 @@
  * 采样或 Vendor 回调，并直接投递对应事件或调度 tick。
  */
 
-#include "target_irq.h"
+#include "ops_tc264_irq.h"
 
 #include "config.h"
 #include "event.h"

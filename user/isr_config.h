@@ -3,9 +3,9 @@
 
 /**
  * @file isr_config.h
- * @brief SDK compatibility forwarding header for target IRQ configuration.
+ * @brief SDK compatibility forwarding header for TC264 IRQ priorities.
  */
 
-#include "target_irq_config.h"
+#include "irq_priorities.h"
 
 #endif /* USER_ISR_CONFIG_H_ */

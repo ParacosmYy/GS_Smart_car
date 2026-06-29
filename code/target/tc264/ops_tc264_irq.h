@@ -1,9 +1,9 @@
-#ifndef TARGET_IRQ_H_
-#define TARGET_IRQ_H_
+#ifndef TARGET_TC264_OPS_TC264_IRQ_H_
+#define TARGET_TC264_OPS_TC264_IRQ_H_
 
 /**
- * @file target_irq.h
- * @brief Stable target interrupt adapter entry points.
+ * @file ops_tc264_irq.h
+ * @brief TC264 interrupt adapter entry points.
  * @author GS_Mark
  */
 
@@ -45,4 +45,4 @@ void TargetIrq_Uart3Error(void);
 }
 #endif
 
-#endif /* TARGET_IRQ_H_ */
+#endif /* TARGET_TC264_OPS_TC264_IRQ_H_ */

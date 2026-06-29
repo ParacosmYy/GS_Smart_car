@@ -20,7 +20,7 @@ flowchart LR
     SERVICE["服务层<br/><b>Service</b><br/>vision / sensor / control"]
     BSP["设备层<br/><b>BSP / Driver</b><br/>motor / servo / display"]
     PLATFORM["平台契约<br/><b>Platform</b><br/>port_if.h"]
-    TARGET["目标适配<br/><b>Target</b><br/>port / board map / irq"]
+    TARGET["目标适配<br/><b>Target OPS</b><br/>ops_tc264 / irq priorities"]
     VENDOR["厂家底座<br/><b>Vendor</b><br/>SEEKFREE SDK + iLLD"]
 
     ENTRY --> SYSTEM --> APP --> SERVICE --> BSP --> PLATFORM --> TARGET --> VENDOR
@@ -52,7 +52,7 @@ flowchart LR
 | Service | 视觉、传感、控制、诊断策略 | 不包含 MCU/Vendor 头 |
 | BSP | 电机、舵机、显示、蜂鸣器、输入动作封装 | 只调用 `port_if.h` |
 | Platform | 稳定端口契约：`SystemPort_*`、`McuIo_*`、`Device_*`、`SensorHal_*` | 不出现芯片专有类型 |
-| Target | 当前 MCU 端口实现、资源映射、中断适配 | 唯一可调用 Vendor 的业务侧适配层 |
+| Target | 当前 MCU 链接期 OPS 端口、资源映射、中断适配、优先级策略 | 唯一可调用 Vendor 的业务侧适配层 |
 | Vendor | SEEKFREE SDK 与 Infineon iLLD | 默认只读 |
 
 当前 facade 状态：控制输出与行驶反馈已通过 `Actuator_*` BSP facade 收敛到 `Motor_*` / `Servo_*` / `Buzzer_*`，调试赛道线绘制通过 `Display_DrawTrackLines()` BSP facade 落到 `Device_DisplayPoint()`。摄像头帧、IMU、显示基础绘制和编码器窗口快照仍由 Service 调用稳定 Platform 契约（`Device_*` / `SensorHal_*`），不直接触碰 target 或 Vendor。
@@ -64,7 +64,7 @@ flowchart LR
 flowchart TB
     HW["硬件触发<br/><b>PIT / DMA / ERU / UART</b>"]
     ISR["入口转发<br/><b>user/isr.c</b>"]
-    IRQ["目标处理<br/><b>target_irq.c</b><br/>清标志 / 采样 / Vendor 回调"]
+    IRQ["目标处理<br/><b>ops_tc264_irq.c</b><br/>清标志 / 采样 / Vendor 回调"]
 
     subgraph SCHED["调度出口 · Scheduler"]
         direction LR
@@ -93,12 +93,12 @@ flowchart TB
     class TASK service
 ```
 
-ISR 只做短路径处理：清中断标志、必要采样、调用 Vendor 回调、投递事件或 tick。视觉、控制、显示等耗时逻辑全部回到主循环调度执行。`scheduler_run()` 采用分阶段执行：先处理传感事件，再处理 10ms 快速周期任务，随后处理摄像头帧等普通事件，最后处理慢速诊断任务，避免摄像头帧处理同轮阻塞控制输出。
+ISR 只做短路径处理：清中断标志、必要采样、调用 Vendor 回调、投递事件或 tick。`irq_priorities.h` 集中保存 TC264 产品级中断优先级策略，Vendor 驱动继续通过 `user/isr_config.h` 读取兼容宏。视觉、控制、显示等耗时逻辑全部回到主循环调度执行。`scheduler_run()` 采用分阶段执行：先处理传感事件，再处理 10ms 快速周期任务，随后处理摄像头帧等普通事件，最后处理慢速诊断任务，避免摄像头帧处理同轮阻塞控制输出。
 
 ## Data Flow
 
 ```text
-PIT encoder ISR -> target_irq.c accumulates encoder window
+PIT encoder ISR -> ops_tc264_irq.c accumulates encoder window
                 -> EVT_ENCODER_50MS
                 -> SensorService_ProcessEncoder50ms()
                 -> SensorHal_EncoderTakeSnapshot()
@@ -122,7 +122,7 @@ code/
   service/                vision / sensor / control / diagnostics
   bsp/                    motor / servo / display / input / buzzer
   platform/               port_if.h / sensor_hal.h，稳定平台契约
-  target/tc264/           当前目标端口、板级映射、中断适配
+  target/tc264/           TC264 链接期 OPS 端口与 IRQ 适配
   system/                 启动编排、板级初始化
   scheduler/              事件标志和协作式调度器
   config/                 产品参数和 SMARTCAR_* 资源 ID
@@ -142,22 +142,22 @@ AURIX Development Studio -> Open Projects -> Build Project
 
 ## MCU Porting
 
-更换 MCU 时只替换目标端口与 Vendor 工程配置，业务层保持不动。
+更换 MCU 时只替换目标 OPS 端口与 Vendor 工程配置，业务层保持不动。
 
 1. 新增 `code/target/<target>/`。
-2. 提供 `target_port.c`，实现 `port_if.h` 中的 `SystemPort_*`、`McuIo_*`、`Device_*`。
-3. 提供 `target_board_map.c/.h`，完成 `SMARTCAR_*` 到新 MCU 引脚、定时器、串口、DMA 的映射。
-4. 提供 `target_irq.c/.h` 与 `target_irq_config.h`，完成目标中断适配并直接投递 scheduler event/tick；需要目标中断侧采样窗口时，在这里实现对应 `SensorHal_*` 快照契约。
+2. 提供 `ops_<target>.c`，实现 `port_if.h` 中的 `SystemPort_*`、`McuIo_*`、`Device_*`，并把 `SMARTCAR_*` 资源映射表保持为文件内 `static const`。
+3. 提供 `ops_<target>_irq.c/.h`，完成目标中断适配并直接投递 scheduler event/tick；需要目标中断侧采样窗口时，在这里实现对应 `SensorHal_*` 快照契约。
+4. 提供 `irq_priorities.h`，集中定义该 target 的产品级中断优先级和 Vendor 兼容宏。
 5. 更新 IDE 工程，只编译当前 target 和对应 Vendor SDK，避免多个 target 同时定义端口符号。
 6. 保持 `app/`、`service/`、`bsp/`、`scheduler/`、`system/` 不包含 Vendor 头或 target 私有头。
 
-禁止回退到运行期 ops 注册、旧 PAL 兼容层、IRQ fact/router 或平台 dispatch 文件。
+禁止回退到独立 `target_board_map*`、`target_irq_config*`、运行期 ops 注册、旧 PAL 兼容层、IRQ fact/router 或平台 dispatch 文件。
 
 ## OPS Evolution Note
 
-运行期 vtable / ops 注册可以作为未来跨板型或多外设动态选择的设计方向，但当前仓库 guardrail 明确禁止 runtime ops registration 和 platform dispatch source files，因此本阶段不在代码中落地 runtime dispatch，也不新增注册表、dispatcher 或平台回环文件。
+本仓库里的 OPS 是文件命名和链接期替换口径，不是运行期 vtable。运行期 vtable / ops 注册可以作为未来跨板型或多外设动态选择的设计方向，但当前仓库 guardrail 明确禁止 runtime ops registration 和 platform dispatch source files，因此本阶段不在代码中落地 runtime dispatch，也不新增注册表、dispatcher 或平台回环文件。
 
-当前阶段继续采用 link-time ports + facades：`code/platform/port_if.h` 和 `code/platform/sensor_hal.h` 定义稳定契约，当前 target 在 `code/target/tc264/` 直接提供符号实现，Service 优先经 BSP facade 访问执行器和显示封装，未补齐 facade 的硬件快照继续通过稳定 Platform 契约访问。若未来要切换到 runtime vtable 方案，需先修改 AGENTS.md guardrail、补充 ADR/迁移计划，再实现 ops 表与生命周期注册。
+当前阶段继续采用 link-time OPS ports + facades：`code/platform/port_if.h` 和 `code/platform/sensor_hal.h` 定义稳定契约，当前 target 在 `code/target/tc264/ops_tc264.c` 与 `ops_tc264_irq.c` 直接提供符号实现，Service 优先经 BSP facade 访问执行器和显示封装，未补齐 facade 的硬件快照继续通过稳定 Platform 契约访问。若未来要切换到 runtime vtable 方案，需先修改 AGENTS.md guardrail、补充 ADR/迁移计划，再实现 ops 表与生命周期注册。
 
 ## Known Constraints
 

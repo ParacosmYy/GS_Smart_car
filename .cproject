@@ -182,6 +182,7 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/code/platform}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/code/target/tc264}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/code/scheduler}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/user}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/libraries/infineon_libraries/Configurations}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/libraries/infineon_libraries}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/libraries/infineon_libraries/Infra}&quot;"/>
@@ -333,6 +334,7 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/code/platform}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/code/target/tc264}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/code/scheduler}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/user}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/libraries/infineon_libraries/Configurations}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/libraries/infineon_libraries}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/libraries/infineon_libraries/Infra}&quot;"/>
@@ -535,6 +537,7 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/code/platform}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/code/target/tc264}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/code/scheduler}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/user}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/libraries/infineon_libraries/Configurations}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/libraries/infineon_libraries}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/libraries/infineon_libraries/Infra}&quot;"/>
@@ -693,6 +696,7 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/code/platform}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/code/target/tc264}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/code/scheduler}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/user}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/libraries/infineon_libraries/Configurations}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/libraries/infineon_libraries}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/libraries/infineon_libraries/Infra}&quot;"/>
@@ -896,6 +900,7 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/code/platform}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/code/target/tc264}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/code/scheduler}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/user}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/libraries/infineon_libraries/Configurations}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/libraries/infineon_libraries}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/libraries/infineon_libraries/Infra}&quot;"/>
@@ -1054,6 +1059,7 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/code/platform}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/code/target/tc264}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/code/scheduler}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/user}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/libraries/infineon_libraries/Configurations}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/libraries/infineon_libraries}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/libraries/infineon_libraries/Infra}&quot;"/>

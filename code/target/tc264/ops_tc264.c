@@ -1,17 +1,87 @@
 /**
- * @file target_port.c
- * @brief TC264 目标平台链接期端口实现。
+ * @file ops_tc264.c
+ * @brief TC264 目标平台链接期 OPS 端口实现。
  * @author GS_Mark
  *
  * @par 设计说明
- * 本文件直接实现 SystemPort_*、McuIo_* 和 Device_* 符号，把中性端口契约绑定到
- * TC264 / SEEKFREE / Infineon SDK。
+ * 本文件直接实现 SystemPort_*、McuIo_* 和 Device_* 符号，并把产品资源 ID
+ * 映射到 TC264 / SEEKFREE / Infineon SDK。切换 MCU 时替换本文件即可保持上层无感。
  */
 
 #include "platform/port_if.h"
 #include "smartcar_board_resources.h"
-#include "target_board_map.h"
 #include "zf_common_headfile.h"
+
+typedef struct
+{
+    uint32_t timer;
+    uint32_t ch1_pin;
+    uint32_t ch2_pin;
+} tc264_encoder_map_t;
+
+typedef struct
+{
+    uint32_t uart;
+    uint32_t tx;
+    uint32_t rx;
+} tc264_uart_map_t;
+
+/** @brief 产品 PWM 资源到 TC264 ATOM 通道的映射表。 */
+static const uint32_t s_tc264_pwm_map[SMARTCAR_PWM_ID_MAX] =
+{
+    [SMARTCAR_PWM_MOTOR_R_FWD] = ATOM0_CH1_P21_3,
+    [SMARTCAR_PWM_MOTOR_R_REV] = ATOM0_CH0_P21_2,
+    [SMARTCAR_PWM_MOTOR_L_FWD] = ATOM0_CH3_P21_5,
+    [SMARTCAR_PWM_MOTOR_L_REV] = ATOM0_CH2_P21_4,
+    [SMARTCAR_PWM_SERVO]       = ATOM1_CH1_P33_9,
+};
+
+/** @brief 产品 GPIO 资源到 TC264 端口引脚的映射表。 */
+static const uint32_t s_tc264_gpio_map[SMARTCAR_GPIO_ID_MAX] =
+{
+    [SMARTCAR_GPIO_BUZZER] = P11_11,
+    [SMARTCAR_GPIO_KEY1]   = P20_6,
+    [SMARTCAR_GPIO_KEY2]   = P20_7,
+    [SMARTCAR_GPIO_KEY3]   = P20_8,
+    [SMARTCAR_GPIO_KEY4]   = P20_9,
+    [SMARTCAR_GPIO_DIP1]   = P15_5,
+    [SMARTCAR_GPIO_DIP2]   = P15_6,
+    [SMARTCAR_GPIO_DIP3]   = P15_8,
+    [SMARTCAR_GPIO_DIP4]   = P15_9,
+};
+
+/** @brief 产品编码器资源到 TC264 TIM 编码器通道的映射表。 */
+static const tc264_encoder_map_t s_tc264_encoder_map[SMARTCAR_ENCODER_ID_MAX] =
+{
+    [SMARTCAR_ENCODER_LEFT] =
+    {
+        TIM2_ENCODER,
+        TIM2_ENCODER_CH1_P33_7,
+        TIM2_ENCODER_CH2_P33_6,
+    },
+    [SMARTCAR_ENCODER_RIGHT] =
+    {
+        TIM4_ENCODER,
+        TIM4_ENCODER_CH1_P02_8,
+        TIM4_ENCODER_CH2_P00_9,
+    },
+};
+
+/** @brief 产品 PIT 资源到 TC264 CCU6 通道的映射表。 */
+static const uint32_t s_tc264_pit_map[SMARTCAR_PIT_ID_MAX] =
+{
+    [SMARTCAR_PIT_ENCODER_SAMPLE] = CCU60_CH0,
+    [SMARTCAR_PIT_GYRO_TICK]      = CCU60_CH1,
+    [SMARTCAR_PIT_SPARE_2]        = CCU61_CH0,
+    [SMARTCAR_PIT_SPARE_3]        = CCU61_CH1,
+};
+
+/** @brief 产品 UART 资源到 TC264 UART 引脚组合的映射表。 */
+static const tc264_uart_map_t s_tc264_uart_map[SMARTCAR_UART_ID_MAX] =
+{
+    [SMARTCAR_UART_CAMERA] = { UART_1, UART1_TX_P02_2, UART1_RX_P02_3 },
+    [SMARTCAR_UART_BT]     = { UART_3, UART3_TX_P15_7, UART3_RX_P20_3 },
+};
 
 /**
  * @brief 初始化 TC264 系统时钟。
@@ -95,11 +165,11 @@ void McuIo_GpioInit(mcuio_gpio_id_t pin, uint8_t mode)
 
     if (mode == MCUIO_GPIO_OUTPUT)
     {
-        gpio_init(g_tc264_gpio_map[pin], GPO, GPIO_LOW, GPO_PUSH_PULL);
+        gpio_init(s_tc264_gpio_map[pin], GPO, GPIO_LOW, GPO_PUSH_PULL);
     }
     else
     {
-        gpio_init(g_tc264_gpio_map[pin], GPI, GPIO_HIGH, GPI_PULL_UP);
+        gpio_init(s_tc264_gpio_map[pin], GPI, GPIO_HIGH, GPI_PULL_UP);
     }
 }
 
@@ -113,7 +183,7 @@ void McuIo_GpioHigh(mcuio_gpio_id_t pin)
 {
     if (pin < SMARTCAR_GPIO_ID_MAX)
     {
-        gpio_high(g_tc264_gpio_map[pin]);
+        gpio_high(s_tc264_gpio_map[pin]);
     }
 }
 
@@ -127,7 +197,7 @@ void McuIo_GpioLow(mcuio_gpio_id_t pin)
 {
     if (pin < SMARTCAR_GPIO_ID_MAX)
     {
-        gpio_low(g_tc264_gpio_map[pin]);
+        gpio_low(s_tc264_gpio_map[pin]);
     }
 }
 
@@ -143,7 +213,7 @@ void McuIo_PwmInit(mcuio_pwm_id_t channel, uint32_t freq_hz, uint32_t duty)
 {
     if (channel < SMARTCAR_PWM_ID_MAX)
     {
-        pwm_init(g_tc264_pwm_map[channel], freq_hz, duty);
+        pwm_init(s_tc264_pwm_map[channel], freq_hz, duty);
     }
 }
 
@@ -158,7 +228,7 @@ void McuIo_PwmSetDuty(mcuio_pwm_id_t channel, uint32_t duty)
 {
     if (channel < SMARTCAR_PWM_ID_MAX)
     {
-        pwm_set_duty(g_tc264_pwm_map[channel], duty);
+        pwm_set_duty(s_tc264_pwm_map[channel], duty);
     }
 }
 
@@ -181,10 +251,10 @@ void McuIo_UartInit(mcuio_uart_id_t channel, uint32_t baud)
         return;
     }
 
-    uart_init(g_tc264_uart_map[channel].uart,
+    uart_init(s_tc264_uart_map[channel].uart,
               baud,
-              g_tc264_uart_map[channel].tx,
-              g_tc264_uart_map[channel].rx);
+              s_tc264_uart_map[channel].tx,
+              s_tc264_uart_map[channel].rx);
 }
 
 /**
@@ -200,9 +270,9 @@ void McuIo_EncoderInit(mcuio_encoder_id_t channel)
         return;
     }
 
-    encoder_dir_init(g_tc264_encoder_map[channel].timer,
-                     g_tc264_encoder_map[channel].ch1_pin,
-                     g_tc264_encoder_map[channel].ch2_pin);
+    encoder_dir_init(s_tc264_encoder_map[channel].timer,
+                     s_tc264_encoder_map[channel].ch1_pin,
+                     s_tc264_encoder_map[channel].ch2_pin);
 }
 
 /**
@@ -217,7 +287,7 @@ int32_t McuIo_EncoderGet(mcuio_encoder_id_t channel)
 
     if (channel < SMARTCAR_ENCODER_ID_MAX)
     {
-        count = encoder_get_count(g_tc264_encoder_map[channel].timer);
+        count = encoder_get_count(s_tc264_encoder_map[channel].timer);
     }
 
     return count;
@@ -233,7 +303,7 @@ void McuIo_EncoderClear(mcuio_encoder_id_t channel)
 {
     if (channel < SMARTCAR_ENCODER_ID_MAX)
     {
-        encoder_clear_count(g_tc264_encoder_map[channel].timer);
+        encoder_clear_count(s_tc264_encoder_map[channel].timer);
     }
 }
 
@@ -248,7 +318,7 @@ void McuIo_PitInit(mcuio_pit_id_t channel, uint32_t period_ms)
 {
     if (channel < SMARTCAR_PIT_ID_MAX)
     {
-        pit_ms_init(g_tc264_pit_map[channel], period_ms);
+        pit_ms_init(s_tc264_pit_map[channel], period_ms);
     }
 }
 
@@ -262,7 +332,7 @@ void McuIo_PitClearFlag(mcuio_pit_id_t channel)
 {
     if (channel < SMARTCAR_PIT_ID_MAX)
     {
-        pit_clear_flag(g_tc264_pit_map[channel]);
+        pit_clear_flag(s_tc264_pit_map[channel]);
     }
 }
 

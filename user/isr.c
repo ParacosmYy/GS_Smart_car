@@ -43,7 +43,7 @@
 
 #include "isr_config.h"
 #include "isr.h"
-#include "target_irq.h"
+#include "ops_tc264_irq.h"
 
 // SDK 中断入口受 IFX_INTERRUPT 宏约束保留在本文件，具体处理统一交给 TargetIrq。
 //----------------------------------------------------------------------

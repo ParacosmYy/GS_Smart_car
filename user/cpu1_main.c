@@ -58,7 +58,7 @@
  * 预留用途：把耗时的图像处理或通信协议解析迁移到此核，与 CPU0 并行运行。
  * 启动流程固定：关看门狗 → 开全局中断 → 等双核同步 → 进空循环。
  * 如需在此核跑任务，把代码写入 while 循环内，并通过 isr_config.h 把对应
- * 中断的 INT_SERVICE 改为 IfxSrc_Tos_cpu1。
+ * 中断的 INT_SERVICE 改为 TC264_IRQ_SERVICE_CPU1。
  *
  * @return void。
  */
