@@ -9,19 +9,12 @@
 #ifndef CODE_APP_SMARTCAR_APP_H_
 #define CODE_APP_SMARTCAR_APP_H_
 
-//******************************* Includes **********************************//
-#include <stdint.h>
-//******************************* Includes **********************************//
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /** @brief 应用层初始化，只注册业务任务 */
 void SmartcarApp_Init(void);
-
-/** @brief 获取应用任务注册失败次数 */
-uint8_t SmartcarApp_GetTaskRegisterFailCount(void);
 
 /** @brief 应用层单次循环 */
 void SmartcarApp_RunOnce(void);

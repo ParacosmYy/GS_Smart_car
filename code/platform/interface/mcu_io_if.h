@@ -20,7 +20,6 @@ extern "C" {
 void McuIo_GpioInit(uint16_t pin, uint8_t mode);
 void McuIo_GpioHigh(uint16_t pin);
 void McuIo_GpioLow(uint16_t pin);
-uint8_t McuIo_GpioRead(uint16_t pin);
 
 void McuIo_PwmInit(uint16_t ch, uint32_t freq_hz, uint32_t duty);
 void McuIo_PwmSetDuty(uint16_t ch, uint32_t duty);

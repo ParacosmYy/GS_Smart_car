@@ -2,6 +2,8 @@
  * Copyright (C) 2025 GS_Mark. All rights reserved.
  *
  * @file debug_display.c
+ * @brief 调试显示服务实现。
+ * @author GS_Mark
  *
  * @version V1.0 2026-06-29
  *
@@ -10,8 +12,8 @@
 #include <stdint.h>
 #include "debug_display.h"
 #include "control.h"
+#include "display.h"
 #include "platform/interface/device_if.h"
-#include "platform/interface/service_port_if.h"
 #include "sensor.h"
 #include "vision.h"
 
@@ -30,16 +32,35 @@
 #define DEBUG_DISPLAY_PID_DIGITS          6
 #define DEBUG_DISPLAY_ERROR_DIGITS        4
 
+/**
+ * @brief 绘制视觉边线和中线。
+ *
+ * Steps:
+ *   1. 读取视觉调试快照。
+ *   2. 通过 TrackDisplay 端口绘制三条赛道线。
+ *
+ * @return void。
+ */
 void DebugDisplayService_DrawVisionLines(void)
 {
     vision_debug_snapshot_t vision_snapshot = {0};
     Vision_GetDebugSnapshot(&vision_snapshot);
-    TrackDisplay_DrawLines(vision_snapshot.p_left_line,
+    Display_DrawTrackLines(vision_snapshot.p_left_line,
                            vision_snapshot.p_right_line,
                            vision_snapshot.p_mid_line,
                            vision_snapshot.line_count);
 }
 
+/**
+ * @brief 刷新调试显示信息。
+ *
+ * Steps:
+ *   1. 获取视觉调试快照和控制输出快照。
+ *   2. 显示压缩二值图像、编码器速度、PID 输出和视觉误差。
+ *
+ * @param[in] events 本轮调度事件掩码，当前仅保留给扩展显示使用。
+ * @return void。
+ */
 void DebugDisplayService_Update(uint32_t events)
 {
     vision_debug_snapshot_t vision_snapshot = {0};

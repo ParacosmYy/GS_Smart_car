@@ -1,152 +1,170 @@
-﻿/*
- * pid.c
+/**
+ * @file pid.c
+ * @brief PID 算法实现。
+ * @author Paracosm
  *
- * @brief PID algorithm implementation.
- *
- * This module provides positional PID, incremental PID, and bounded helper
- * controllers for steering servo and wheel motors.
- *
- *  Created on: 2025年10月19日
- *      Author: Paracosm
+ * @par 设计说明
+ * 本模块提供位置式 PID、增量式 PID，以及舵机和电机控制专用的限幅包装函数。
  */
+
 #include "pid.h"
 
-//******************************** Defines **********************************//
 #define SERVO_PID_OUTPUT_LIMIT  63.0f
 #define MOTOR_PID_OUTPUT_LIMIT  20.0f
-//******************************** Defines **********************************//
 
 /**
- * @brief 位置式PID参数初始化
- * @param pid   PID结构体指针
- * @param kp    比例系数 Kp
- * @param ki    积分系数 Ki
- * @param kd    微分系数 Kd
+ * @brief 初始化位置式 PID 参数。
+ *
+ * Steps:
+ *   1. 写入 Kp、Ki、Kd。
+ *   2. 清零积分项、上次误差和输出。
+ *
+ * @param[in,out] pid PID 结构体指针。
+ * @param[in] kp 比例系数。
+ * @param[in] ki 积分系数。
+ * @param[in] kd 微分系数。
+ * @return void。
  */
-void PosPID_Init(PosPID_t *pid, float kp, float ki, float kd) {
+void PosPID_Init(PosPID_t *pid, float kp, float ki, float kd)
+{
     pid->kp = kp;
     pid->ki = ki;
     pid->kd = kd;
-    pid->integral = 0;   // 积分项清零
-    pid->prev_err = 0;   // 上次偏差清零
-    pid->output = 0;     // 输出清零
+    pid->integral = 0.0f;
+    pid->prev_err = 0.0f;
+    pid->output = 0.0f;
 }
 
 /**
- * @brief 增量式PID参数初始化
- * @param pid   PID结构体指针
- * @param kp    比例系数 Kp
- * @param ki    积分系数 Ki
- * @param kd    微分系数 Kd
+ * @brief 初始化增量式 PID 参数。
+ *
+ * Steps:
+ *   1. 写入 Kp、Ki、Kd。
+ *   2. 清零两级历史误差和累计输出。
+ *
+ * @param[in,out] pid PID 结构体指针。
+ * @param[in] kp 比例系数。
+ * @param[in] ki 积分系数。
+ * @param[in] kd 微分系数。
+ * @return void。
  */
-void IncPID_Init(IncPID_t *pid, float kp, float ki, float kd) {
+void IncPID_Init(IncPID_t *pid, float kp, float ki, float kd)
+{
     pid->kp = kp;
     pid->ki = ki;
     pid->kd = kd;
-    pid->prev_err = 0;       // 上次偏差清零
-    pid->prev_prev_err = 0;  // 上上次偏差清零
-    pid->output = 0;         // 累计输出清零
+    pid->prev_err = 0.0f;
+    pid->prev_prev_err = 0.0f;
+    pid->output = 0.0f;
 }
 
 /**
- * @brief 位置式PID计算
- *        输出 = Kp*err + Ki*积分 + Kd*微分，每次输出为绝对值
- * @param pid       PID结构体指针
- * @param target    目标值
- * @param feedback  反馈值（实测）
- * @return          PID输出
+ * @brief 执行位置式 PID 计算。
+ *
+ * Steps:
+ *   1. 计算目标值与反馈值的当前误差。
+ *   2. 累加积分项。
+ *   3. 根据上次误差计算微分项。
+ *   4. 计算并保存本次输出。
+ *
+ * @param[in,out] pid PID 结构体指针。
+ * @param[in] target 目标值。
+ * @param[in] feedback 反馈值。
+ * @return PID 输出值。
  */
-float PosPID_Calc(PosPID_t *pid, float target, float feedback) {
-    // 当前偏差
+float PosPID_Calc(PosPID_t *pid, float target, float feedback)
+{
     float err = target - feedback;
-    // 积分项：累加历史偏差
+    float derivative = 0.0f;
+
     pid->integral += err;
-    // 微分项：当前偏差与上次偏差之差
-    float derivative = err - pid->prev_err;
-    // PID输出 = 比例项 + 积分项 + 微分项
+    derivative = err - pid->prev_err;
     pid->output = pid->kp * err + pid->ki * pid->integral + pid->kd * derivative;
-    // 保存本次偏差供下次微分使用
     pid->prev_err = err;
+
     return pid->output;
 }
 
 /**
- * @brief 增量式PID计算
- *        输出 = 上次输出 + 本次增量 Δu
- *        Δu = Kp*(err-prev_err) + Ki*err + Kd*(err-2*prev_err+prev_prev_err)
- * @param pid       PID结构体指针
- * @param target    目标值
- * @param feedback  反馈值（实测）
- * @return          PID累计输出
+ * @brief 执行增量式 PID 计算。
+ *
+ * Steps:
+ *   1. 计算当前误差。
+ *   2. 根据 err、prev_err、prev_prev_err 计算输出增量。
+ *   3. 将增量累加到输出。
+ *   4. 滚动更新历史误差。
+ *
+ * @param[in,out] pid PID 结构体指针。
+ * @param[in] target 目标值。
+ * @param[in] feedback 反馈值。
+ * @return PID 累计输出值。
  */
-float IncPID_Calc(IncPID_t *pid, float target, float feedback) {
-    // 当前偏差
+float IncPID_Calc(IncPID_t *pid, float target, float feedback)
+{
     float err = target - feedback;
-    // 计算增量 Δu = Kp*(err-prev_err) + Ki*err + Kd*(err-2*prev_err+prev_prev_err)
     float delta_output = pid->kp * (err - pid->prev_err)
-                      + pid->ki * err
-                      + pid->kd * (err - 2 * pid->prev_err + pid->prev_prev_err);
-    // 累加到上次输出得到本次输出
+                       + pid->ki * err
+                       + pid->kd * (err - 2.0f * pid->prev_err + pid->prev_prev_err);
+
     pid->output += delta_output;
-    // 偏差历史滚动：prev_err -> prev_prev_err，err -> prev_err
     pid->prev_prev_err = pid->prev_err;
     pid->prev_err = err;
+
     return pid->output;
 }
 
 /**
- * @brief 舵机PID控制
- *        位置式PID，根据中线偏差计算舵机转角输出
- * @param pid            PID结构体指针
- * @param steer_target   目标值（0=居中）
- * @param steer_feedback 反馈值（视觉中线偏差 calculate_error）
- * @return 舵机PID输出（限幅 ±63）
+ * @brief 计算舵机位置式 PID 输出并限幅。
  *
- * 限幅说明：±63 对应 SERVO_RANGE，舵机PWM增量的最大允许范围，
- * 超过此值会导致舵机打到机械极限并可能损坏。
+ * Steps:
+ *   1. 使用位置式 PID 计算原始舵机输出。
+ *   2. 将输出限制在 SERVO_PID_OUTPUT_LIMIT 范围内。
+ *
+ * @param[in,out] steer_pid 舵机 PID 结构体指针。
+ * @param[in] steer_target 舵机目标值。
+ * @param[in] steer_feedback 舵机反馈值，通常为视觉中线误差。
+ * @return 限幅后的舵机输出。
  */
 float ServoPid_Control(PosPID_t *steer_pid, float steer_target, float steer_feedback)
 {
-    // 位置式PID计算原始输出
     float servo_output = PosPID_Calc(steer_pid, steer_target, steer_feedback);
-    // 输出限幅上限（防止舵机右转超过机械极限）
-    if(servo_output >= SERVO_PID_OUTPUT_LIMIT)
+
+    if (servo_output >= SERVO_PID_OUTPUT_LIMIT)
     {
         servo_output = SERVO_PID_OUTPUT_LIMIT;
     }
-    // 输出限幅下限（防止舵机左转超过机械极限）
-    else if(servo_output <= -SERVO_PID_OUTPUT_LIMIT)
+    else if (servo_output <= -SERVO_PID_OUTPUT_LIMIT)
     {
-        servo_output  = -SERVO_PID_OUTPUT_LIMIT;
+        servo_output = -SERVO_PID_OUTPUT_LIMIT;
     }
-    return servo_output ;
+
+    return servo_output;
 }
 
 /**
- * @brief 电机速度环PID控制（增量式）
- *        根据速度偏差计算电机PWM增量输出
- * @param motor_pid     PID结构体指针
- * @param speed_target  目标速度
- * @param speed_feedback 反馈速度（编码器实测）
- * @return 电机PID输出（限幅 ±20）
+ * @brief 计算电机增量式 PID 输出并限幅。
  *
- * 限幅说明：±20 为单次控制周期内电机PWM调整上限，
- * 防止单步加速过猛导致车轮打滑或车体失稳。
+ * Steps:
+ *   1. 使用增量式 PID 计算累计电机输出。
+ *   2. 将输出限制在 MOTOR_PID_OUTPUT_LIMIT 范围内。
+ *
+ * @param[in,out] motor_pid 电机 PID 结构体指针。
+ * @param[in] speed_target 目标速度。
+ * @param[in] speed_feedback 编码器反馈速度。
+ * @return 限幅后的电机输出。
  */
 float MotorPid_Control(IncPID_t *motor_pid, float speed_target, float speed_feedback)
 {
-    // 增量式PID计算累计输出
     float motor_output = IncPID_Calc(motor_pid, speed_target, speed_feedback);
 
-    // 输出限幅上限（防止单周期加速过猛）
-    if(motor_output >= MOTOR_PID_OUTPUT_LIMIT)
+    if (motor_output >= MOTOR_PID_OUTPUT_LIMIT)
     {
         motor_output = MOTOR_PID_OUTPUT_LIMIT;
     }
-    // 输出限幅下限（防止单周期减速/反转过猛）
-    else if(motor_output <= -MOTOR_PID_OUTPUT_LIMIT)
+    else if (motor_output <= -MOTOR_PID_OUTPUT_LIMIT)
     {
         motor_output = -MOTOR_PID_OUTPUT_LIMIT;
     }
+
     return motor_output;
 }

@@ -12,6 +12,9 @@
  *
  * @version V1.0 2026-06-29
  *
+ * @par 设计说明
+ * Sensor service 将 IMU 与编码器采样转换为控制层可读的速度和航向快照。
+ *
  *****************************************************************************/
 
 //******************************** Includes *********************************//
@@ -70,9 +73,24 @@ static void SensorService_UpdateEncoderSpeed(sensor_encoder_context_t *p_encoder
 //******************************** Declaring ********************************//
 
 //******************************** Implement ********************************//
+/**
+ * @brief 更新陀螺仪静止零偏估计。
+ *
+ * Steps:
+ *   1. 校验陀螺仪上下文指针。
+ *   2. 仅在角速度接近静止阈值时更新滑动窗口。
+ *   3. 用窗口平均值刷新 Z 轴零偏。
+ *
+ * @param[in,out] p_gyro_ctx 陀螺仪上下文。
+ * @return void。
+ */
 static void SensorService_UpdateGyroOffset(sensor_gyro_context_t *p_gyro_ctx)
 {
-    if (p_gyro_ctx == 0) { return; }
+    if (p_gyro_ctx == 0)
+    {
+        return;
+    }
+
     if (fabsf(p_gyro_ctx->raw_z) < GYRO_IDLE_THRESHOLD)
     {
         p_gyro_ctx->z_offset_sum -= p_gyro_ctx->z_offset_buf[p_gyro_ctx->z_offset_idx];
@@ -87,14 +105,41 @@ static void SensorService_UpdateGyroOffset(sensor_gyro_context_t *p_gyro_ctx)
     }
 }
 
+/**
+ * @brief 根据编码器窗口累加值更新平均速度。
+ *
+ * Steps:
+ *   1. 校验编码器上下文和采样次数。
+ *   2. 用左右累加值除以采样次数，得到窗口平均速度。
+ *
+ * @param[in,out] p_encoder_ctx 编码器上下文。
+ * @param[in] left_sum 左编码器计数累加值。
+ * @param[in] right_sum 右编码器计数累加值。
+ * @param[in] sample_count 采样次数。
+ * @return void。
+ */
 static void SensorService_UpdateEncoderSpeed(sensor_encoder_context_t *p_encoder_ctx,
                                              int left_sum, int right_sum, int sample_count)
 {
-    if ((p_encoder_ctx == 0) || (sample_count <= 0)) { return; }
+    if ((p_encoder_ctx == 0) || (sample_count <= 0))
+    {
+        return;
+    }
+
     p_encoder_ctx->left_speed = left_sum / sample_count;
     p_encoder_ctx->right_speed = right_sum / sample_count;
 }
 
+/**
+ * @brief 处理 10ms 陀螺仪采样。
+ *
+ * Steps:
+ *   1. 读取 IMU 当前 Z 轴角速度。
+ *   2. 更新静止零偏估计。
+ *   3. 积分得到航向角增量。
+ *
+ * @return void。
+ */
 void SensorService_ProcessGyro10ms(void)
 {
     sensor_gyro_context_t *p_gyro_ctx = &s_sensor_service_ctx.gyro;
@@ -108,6 +153,15 @@ void SensorService_ProcessGyro10ms(void)
     p_gyro_ctx->heading_angle += z_angle_speed * p_gyro_ctx->sample_period_s;
 }
 
+/**
+ * @brief 处理 50ms 编码器采样窗口。
+ *
+ * Steps:
+ *   1. 从 ISR adapter 获取编码器窗口快照。
+ *   2. 更新左右轮平均速度。
+ *
+ * @return void。
+ */
 void SensorService_ProcessEncoder50ms(void)
 {
     sensor_encoder_context_t *p_encoder_ctx = &s_sensor_service_ctx.encoder;
@@ -122,31 +176,24 @@ void SensorService_ProcessEncoder50ms(void)
                                      sample_count_snapshot);
 }
 
+/**
+ * @brief 获取左轮编码器速度。
+ *
+ * @return 左轮窗口平均速度。
+ */
 int SensorService_GetLeftEncoderSpeed(void)
 {
     return s_sensor_service_ctx.encoder.left_speed;
 }
 
+/**
+ * @brief 获取右轮编码器速度。
+ *
+ * @return 右轮窗口平均速度。
+ */
 int SensorService_GetRightEncoderSpeed(void)
 {
     return s_sensor_service_ctx.encoder.right_speed;
 }
 
-float SensorService_GetHeadingAngle(void)
-{
-    return s_sensor_service_ctx.gyro.heading_angle;
-}
-
-void SensorService_ResetHeadingAngle(void)
-{
-    s_sensor_service_ctx.gyro.heading_angle = 0.0f;
-}
-
-void SensorService_SetGyroSamplePeriod(float sample_period_s)
-{
-    if (sample_period_s > 0.0f)
-    {
-        s_sensor_service_ctx.gyro.sample_period_s = sample_period_s;
-    }
-}
 //******************************** Implement ********************************//

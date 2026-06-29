@@ -1,12 +1,9 @@
-/*
- * vision.c
- *
- *  Created on: 2025年10月20日
- *      Author: Paracosm
- *
+/**
+ * @file vision.c
  * @brief Vision service implementation.
+ * @author Paracosm
  *
- * Processing flow:
+ * @par Processing flow
  * Raw grayscale frame → OTSU threshold → binary image → downsampled image
  * → noise filtering → track edge detection → weighted midline → PID error.
  * Frame geometry comes from Device_Camera. The internal compressed frame is
@@ -427,7 +424,7 @@ void Vision_Process(void)
  *
  * @return void : 无返回值。
  *
- * */
+ */
 void Vision_GetControlSnapshot(vision_control_snapshot_t *p_snapshot)
 {
     if (p_snapshot == 0)
@@ -453,7 +450,7 @@ void Vision_GetControlSnapshot(vision_control_snapshot_t *p_snapshot)
  *
  * @return void : 无返回值。
  *
- * */
+ */
 void Vision_GetDebugSnapshot(vision_debug_snapshot_t *p_snapshot)
 {
     if (p_snapshot == 0)
