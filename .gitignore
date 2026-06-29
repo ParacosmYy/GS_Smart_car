@@ -9,6 +9,7 @@ Release/
 *.map
 *.mdf
 *.opt
+build/
 
 # Local IDE and OS noise
 .metadata/
@@ -19,6 +20,3 @@ desktop.ini
 # Local worktrees
 .worktrees/
 worktrees/
-
-# Host test output
-tests/*.exe
