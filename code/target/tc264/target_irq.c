@@ -1,6 +1,6 @@
 /**
- * @file tc264_isr.c
- * @brief TC264 中断适配与事件投递实现。
+ * @file target_irq.c
+ * @brief Target interrupt adapter and event posting implementation for TC264.
  * @author GS_Mark
  *
  * @par 设计说明
@@ -8,12 +8,11 @@
  * 采样或 Vendor 回调，并直接投递对应事件或调度 tick。
  */
 
-#include "tc264_isr.h"
+#include "target_irq.h"
 
 #include "config.h"
 #include "event.h"
-#include "platform/interface/mcu_io_if.h"
-#include "platform/system/system_port.h"
+#include "platform/port_if.h"
 #include "scheduler.h"
 #include "smartcar_board_resources.h"
 #include "zf_common_headfile.h"
@@ -40,7 +39,7 @@ static encoder_window_t s_encoder_window = {0, 0, 0, 0U};
  * @param[in] pit 产品 PIT 资源 ID。
  * @return void。
  */
-static void Tc264Isr_PreparePit(uint16_t pit)
+static void TargetIrq_PreparePit(uint16_t pit)
 {
     SystemPort_IrqGlobalCtrl(0);
     McuIo_PitClearFlag(pit);
@@ -56,7 +55,7 @@ static void Tc264Isr_PreparePit(uint16_t pit)
  *
  * @return void。
  */
-static void Tc264Isr_SampleEncoder(void)
+static void TargetIrq_SampleEncoder(void)
 {
     s_encoder_window.left_sum += (int)McuIo_EncoderGet(SMARTCAR_ENCODER_LEFT);
     s_encoder_window.right_sum += (int)McuIo_EncoderGet(SMARTCAR_ENCODER_RIGHT);
@@ -76,7 +75,7 @@ static void Tc264Isr_SampleEncoder(void)
  * @param[in,out] p_handle ASCLIN 句柄。
  * @return void。
  */
-static void Tc264Isr_UartError(IfxAsclin_Asc *p_handle)
+static void TargetIrq_UartError(IfxAsclin_Asc *p_handle)
 {
     SystemPort_IrqGlobalCtrl(0);
     IfxAsclin_Asc_isrError(p_handle);
@@ -92,10 +91,10 @@ static void Tc264Isr_UartError(IfxAsclin_Asc *p_handle)
  *
  * @return void。
  */
-void Tc264Isr_Ccu60PitCh0(void)
+void TargetIrq_EncoderPit(void)
 {
-    Tc264Isr_PreparePit(SMARTCAR_PIT_ENCODER_SAMPLE);
-    Tc264Isr_SampleEncoder();
+    TargetIrq_PreparePit(SMARTCAR_PIT_ENCODER_SAMPLE);
+    TargetIrq_SampleEncoder();
 
     if ((s_encoder_window.samples >= ENCODER_WINDOW_SAMPLES) && (s_encoder_window.ready == 0U))
     {
@@ -114,9 +113,9 @@ void Tc264Isr_Ccu60PitCh0(void)
  *
  * @return void。
  */
-void Tc264Isr_Ccu60PitCh1(void)
+void TargetIrq_GyroPit(void)
 {
-    Tc264Isr_PreparePit(SMARTCAR_PIT_GYRO_TICK);
+    TargetIrq_PreparePit(SMARTCAR_PIT_GYRO_TICK);
     Scheduler_AddTickFromIsr(PIT_PERIOD_MS);
     event_post_from_isr(EVT_GYRO_10MS);
 }
@@ -131,7 +130,7 @@ void Tc264Isr_Ccu60PitCh1(void)
  *
  * @return void。
  */
-void Tc264Isr_ExtiCh3Ch7(void)
+void TargetIrq_CameraVsync(void)
 {
     SystemPort_IrqGlobalCtrl(0);
 
@@ -156,7 +155,7 @@ void Tc264Isr_ExtiCh3Ch7(void)
  *
  * @return void。
  */
-void Tc264Isr_DmaCh5(void)
+void TargetIrq_CameraDma(void)
 {
     SystemPort_IrqGlobalCtrl(0);
     camera_dma_handler();
@@ -172,7 +171,7 @@ void Tc264Isr_DmaCh5(void)
  *
  * @return void。
  */
-void Tc264Isr_Uart0Rx(void)
+void TargetIrq_Uart0Rx(void)
 {
     SystemPort_IrqGlobalCtrl(0);
 
@@ -189,7 +188,7 @@ void Tc264Isr_Uart0Rx(void)
  *
  * @return void。
  */
-void Tc264Isr_Uart1Rx(void)
+void TargetIrq_Uart1Rx(void)
 {
     SystemPort_IrqGlobalCtrl(0);
     camera_uart_handler();
@@ -203,7 +202,7 @@ void Tc264Isr_Uart1Rx(void)
  *
  * @return void。
  */
-void Tc264Isr_Uart3Rx(void)
+void TargetIrq_Uart3Rx(void)
 {
     SystemPort_IrqGlobalCtrl(0);
     wireless_module_uart_handler();
@@ -214,9 +213,9 @@ void Tc264Isr_Uart3Rx(void)
  *
  * @return void。
  */
-void Tc264Isr_Uart0Error(void)
+void TargetIrq_Uart0Error(void)
 {
-    Tc264Isr_UartError(&uart0_handle);
+    TargetIrq_UartError(&uart0_handle);
 }
 
 /**
@@ -224,9 +223,9 @@ void Tc264Isr_Uart0Error(void)
  *
  * @return void。
  */
-void Tc264Isr_Uart1Error(void)
+void TargetIrq_Uart1Error(void)
 {
-    Tc264Isr_UartError(&uart1_handle);
+    TargetIrq_UartError(&uart1_handle);
 }
 
 /**
@@ -234,9 +233,9 @@ void Tc264Isr_Uart1Error(void)
  *
  * @return void。
  */
-void Tc264Isr_Uart3Error(void)
+void TargetIrq_Uart3Error(void)
 {
-    Tc264Isr_UartError(&uart3_handle);
+    TargetIrq_UartError(&uart3_handle);
 }
 
 /**

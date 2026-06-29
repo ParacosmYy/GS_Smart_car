@@ -1,5 +1,5 @@
 /**
- * @file tc264_port.c
+ * @file target_port.c
  * @brief TC264 目标平台链接期端口实现。
  * @author GS_Mark
  *
@@ -8,11 +8,9 @@
  * TC264 / SEEKFREE / Infineon SDK。
  */
 
-#include "platform/interface/device_if.h"
-#include "platform/interface/mcu_io_if.h"
-#include "platform/system/system_port.h"
+#include "platform/port_if.h"
 #include "smartcar_board_resources.h"
-#include "tc264_board_map.h"
+#include "target_board_map.h"
 #include "zf_common_headfile.h"
 
 /**

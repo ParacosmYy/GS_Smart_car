@@ -13,7 +13,7 @@
 #include "debug_display.h"
 #include "control.h"
 #include "display.h"
-#include "platform/interface/device_if.h"
+#include "platform/port_if.h"
 #include "sensor.h"
 #include "vision.h"
 

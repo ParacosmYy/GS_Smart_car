@@ -1,5 +1,5 @@
 /**
- * @file tc264_board_map.c
+ * @file target_board_map.c
  * @brief TC264 板级引脚/通道物理映射表。
  * @author GS_Mark
  *
@@ -7,7 +7,7 @@
  * 产品资源 ID 在 code/config 中定义，本文件只负责把资源 ID 映射为 TC264 Vendor 常量。
  */
 
-#include "tc264_board_map.h"
+#include "target_board_map.h"
 
 #include "smartcar_board_resources.h"
 #include "zf_common_headfile.h"

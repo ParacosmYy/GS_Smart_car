@@ -9,6 +9,7 @@
 
 #include "smartcar_board.h"
 #include "config.h"
+#include "platform/port_if.h"
 #include "smartcar_board_resources.h"
 #include "motor.h"
 #include "servo.h"

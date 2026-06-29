@@ -8,7 +8,7 @@
  * 避免主循环偶发延迟时丢失连续 tick。
  */
 #include "event.h"
-#include "platform/system/system_port.h"
+#include "platform/port_if.h"
 
 static volatile event_mask_t s_events = 0;
 static volatile uint32_t s_gyro_10ms_pending = 0;

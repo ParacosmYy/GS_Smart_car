@@ -11,7 +11,7 @@
 
 #include "config.h"
 #include "smartcar_board_resources.h"
-#include "platform/interface/mcu_io_if.h"
+#include "platform/port_if.h"
 
 typedef struct
 {

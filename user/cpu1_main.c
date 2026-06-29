@@ -41,7 +41,7 @@
  * CPU1 当前只完成基础中断和多核同步，作为后续视觉或通信任务迁移预留入口。
  */
 
-#include "platform/system/system_port.h"
+#include "platform/port_if.h"
 #pragma section all "cpu1_dsram"
 // 将本语句与#pragma section all restore语句之间的全局变量都放在CPU1的RAM中
 

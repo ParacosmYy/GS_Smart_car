@@ -22,8 +22,7 @@
 #include <stdint.h>
 #include "sensor.h"
 #include "config.h"
-#include "platform/interface/device_if.h"
-#include "platform/system/system_port.h"
+#include "platform/port_if.h"
 //******************************** Includes *********************************//
 
 //******************************** Defines **********************************//

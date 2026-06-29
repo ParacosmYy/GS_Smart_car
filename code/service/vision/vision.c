@@ -12,7 +12,7 @@
 
 #include "vision.h"
 #include "config.h"     /* ELEM_* 元素检测参数 */
-#include "platform/interface/device_if.h"
+#include "platform/port_if.h"
 
 #define GrayScale 256    // OTSU 使用的灰度级数量（0-255）
 ////////////////////大津法二值化//////////////////////

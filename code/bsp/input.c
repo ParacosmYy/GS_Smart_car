@@ -9,7 +9,7 @@
 #include "input.h"
 
 #include "smartcar_board_resources.h"
-#include "platform/interface/mcu_io_if.h"
+#include "platform/port_if.h"
 
 #define INPUT_KEY_COUNT 4U
 

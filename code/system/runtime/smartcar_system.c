@@ -10,7 +10,7 @@
 #include "smartcar_system.h"
 
 #include "control.h"
-#include "platform/system/system_port.h"
+#include "platform/port_if.h"
 #include "scheduler.h"
 #include "smartcar_app.h"
 #include "smartcar_board.h"

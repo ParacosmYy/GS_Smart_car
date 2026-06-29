@@ -34,18 +34,18 @@
 ********************************************************************************************************************/
 /**
  * @file isr.c
- * @brief TC264 SDK 中断入口转发层。
+ * @brief Target SDK interrupt entry forwarding layer.
  * @author GS_Mark
  *
  * @par 设计说明
- * IFX_INTERRUPT 宏约束入口必须保留在 user 层；具体硬件处理统一转发给 TC264 ISR 端口。
+ * IFX_INTERRUPT 宏约束入口必须保留在 user 层；具体硬件处理统一转发给目标 IRQ 端口。
  */
 
 #include "isr_config.h"
 #include "isr.h"
-#include "target/tc264/tc264_isr.h"
+#include "target_irq.h"
 
-// TC264 中断入口受 IFX_INTERRUPT 宏约束保留在本文件，具体处理统一交给 Tc264Isr。
+// SDK 中断入口受 IFX_INTERRUPT 宏约束保留在本文件，具体处理统一交给 TargetIrq。
 //----------------------------------------------------------------------
 // **************************** PIT Interrupt Handlers ****************************
 
@@ -57,7 +57,7 @@
  */
 IFX_INTERRUPT(cc60_pit_ch0_isr, 0, CCU6_0_CH0_ISR_PRIORITY)
 {
-    Tc264Isr_Ccu60PitCh0();
+    TargetIrq_EncoderPit();
 }
 
 
@@ -69,7 +69,7 @@ IFX_INTERRUPT(cc60_pit_ch0_isr, 0, CCU6_0_CH0_ISR_PRIORITY)
  */
 IFX_INTERRUPT(cc60_pit_ch1_isr, 0, CCU6_0_CH1_ISR_PRIORITY)
 {
-    Tc264Isr_Ccu60PitCh1();
+    TargetIrq_GyroPit();
 }
 
 // **************************** PIT Interrupt Handlers ****************************
@@ -85,7 +85,7 @@ IFX_INTERRUPT(cc60_pit_ch1_isr, 0, CCU6_0_CH1_ISR_PRIORITY)
  */
 IFX_INTERRUPT(exti_ch3_ch7_isr, 0, EXTI_CH3_CH7_INT_PRIO)
 {
-    Tc264Isr_ExtiCh3Ch7();
+    TargetIrq_CameraVsync();
 }
 // **************************** External Interrupt Handlers ****************************
 
@@ -99,7 +99,7 @@ IFX_INTERRUPT(exti_ch3_ch7_isr, 0, EXTI_CH3_CH7_INT_PRIO)
  */
 IFX_INTERRUPT(dma_ch5_isr, 0, DMA_INT_PRIO)
 {
-    Tc264Isr_DmaCh5();
+    TargetIrq_CameraDma();
 }
 // **************************** DMA Interrupt Handlers ****************************
 
@@ -114,7 +114,7 @@ IFX_INTERRUPT(dma_ch5_isr, 0, DMA_INT_PRIO)
  */
 IFX_INTERRUPT(uart0_rx_isr, 0, UART0_RX_INT_PRIO)
 {
-    Tc264Isr_Uart0Rx();
+    TargetIrq_Uart0Rx();
 }
 
 
@@ -127,7 +127,7 @@ IFX_INTERRUPT(uart0_rx_isr, 0, UART0_RX_INT_PRIO)
  */
 IFX_INTERRUPT(uart1_rx_isr, 0, UART1_RX_INT_PRIO)
 {
-    Tc264Isr_Uart1Rx();
+    TargetIrq_Uart1Rx();
 }
 
 /**
@@ -138,7 +138,7 @@ IFX_INTERRUPT(uart1_rx_isr, 0, UART1_RX_INT_PRIO)
  */
 IFX_INTERRUPT(uart3_rx_isr, 0, UART3_RX_INT_PRIO)
 {
-    Tc264Isr_Uart3Rx();
+    TargetIrq_Uart3Rx();
 }
 
 // 串口通讯错误中断
@@ -149,7 +149,7 @@ IFX_INTERRUPT(uart3_rx_isr, 0, UART3_RX_INT_PRIO)
  */
 IFX_INTERRUPT(uart0_er_isr, 0, UART0_ER_INT_PRIO)
 {
-    Tc264Isr_Uart0Error();
+    TargetIrq_Uart0Error();
 }
 /**
  * @brief 串口1 通讯错误中断。
@@ -158,7 +158,7 @@ IFX_INTERRUPT(uart0_er_isr, 0, UART0_ER_INT_PRIO)
  */
 IFX_INTERRUPT(uart1_er_isr, 0, UART1_ER_INT_PRIO)
 {
-    Tc264Isr_Uart1Error();
+    TargetIrq_Uart1Error();
 }
 /**
  * @brief 串口3 通讯错误中断。
@@ -167,5 +167,5 @@ IFX_INTERRUPT(uart1_er_isr, 0, UART1_ER_INT_PRIO)
  */
 IFX_INTERRUPT(uart3_er_isr, 0, UART3_ER_INT_PRIO)
 {
-    Tc264Isr_Uart3Error();
+    TargetIrq_Uart3Error();
 }

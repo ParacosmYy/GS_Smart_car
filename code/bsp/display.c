@@ -8,7 +8,7 @@
  */
 
 #include "display.h"
-#include "platform/interface/device_if.h"
+#include "platform/port_if.h"
 
 #define DISPLAY_TRACK_BLIND_ROWS  10U
 

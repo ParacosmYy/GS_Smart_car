@@ -14,7 +14,7 @@
 #include "debug_display.h"
 #include "event.h"
 #include "feedback_service.h"
-#include "platform/interface/device_if.h"
+#include "platform/port_if.h"
 #include "scheduler.h"
 #include "sensor.h"
 #include "vision.h"
