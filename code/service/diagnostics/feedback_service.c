@@ -4,37 +4,24 @@
  * @author GS_Mark
  *
  * @par 设计说明
- * 反馈服务屏蔽元素到提示音的映射，Service 任务只关心何时 tick。
+ * 反馈服务作为诊断入口，仅向执行器 BSP facade 转发元素事件和周期 tick。
  */
 
 #include "feedback_service.h"
-#include "buzzer.h"
+#include "actuator.h"
 
 /**
  * @brief 通知赛道元素检测结果。
  *
  * Steps:
- *   1. 忽略空元素。
- *   2. 转发元素事件，由蜂鸣器 BSP 保持非阻塞排队语义。
+ *   1. 转发元素事件，由执行器 BSP facade 保持反馈映射与非阻塞排队语义。
  *
  * @param[in] element 视觉元素 ID。
  * @return void。
  */
 void FeedbackService_NotifyTrackElement(uint8_t element)
 {
-    if (element == 0U)
-    {
-        return;
-    }
-
-    if (element == 1U)
-    {
-        Buzzer_Trigger(BUZZER_EVENT_RING);
-    }
-    else if (element == 2U)
-    {
-        Buzzer_Trigger(BUZZER_EVENT_CROSSROAD);
-    }
+    Actuator_NotifyTrackElement(element);
 }
 
 /**
@@ -44,5 +31,5 @@ void FeedbackService_NotifyTrackElement(uint8_t element)
  */
 void FeedbackService_Tick(void)
 {
-    Buzzer_Tick();
+    Actuator_TickFeedback();
 }

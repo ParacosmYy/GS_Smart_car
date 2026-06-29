@@ -10,11 +10,10 @@
 #include <stdint.h>
 
 #include "control.h"
+#include "actuator.h"
 #include "config.h"
-#include "motor.h"
 #include "pid.h"
 #include "sensor.h"
-#include "servo.h"
 #include "vision.h"
 
 typedef struct
@@ -148,13 +147,13 @@ void Control_ApplyActuator(void)
 {
     if (s_control_handler.is_lost_line != 0U)
     {
-        Servo_SetAngle(0);
+        Actuator_SetServo(0);
         return;
     }
 
-    Servo_SetAngle((int32_t)s_control_handler.output.servo);
-    Motor_SetLeft((int32_t)s_control_handler.output.left_motor);
-    Motor_SetRight((int32_t)s_control_handler.output.right_motor);
+    Actuator_SetServo((int32_t)s_control_handler.output.servo);
+    Actuator_SetMotorLeft((int32_t)s_control_handler.output.left_motor);
+    Actuator_SetMotorRight((int32_t)s_control_handler.output.right_motor);
 }
 
 /**
