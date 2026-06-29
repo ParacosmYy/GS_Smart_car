@@ -32,7 +32,7 @@
 												<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/code/service/control}&quot;"/>
 												<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/code/service/sensor}&quot;"/>
 												<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/code/service/diagnostics}&quot;"/>
-												<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/code/platform}&quot;"/>
+												<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/code/hal}&quot;"/>
 												<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/code/target/tc264}&quot;"/>
 												<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/code/scheduler}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/${ProjName}/libraries}&quot;"/>
@@ -179,7 +179,7 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/code/service/control}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/code/service/sensor}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/code/service/diagnostics}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/code/platform}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/code/hal}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/code/target/tc264}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/code/scheduler}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/user}&quot;"/>
@@ -331,7 +331,7 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/code/service/control}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/code/service/sensor}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/code/service/diagnostics}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/code/platform}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/code/hal}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/code/target/tc264}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/code/scheduler}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/user}&quot;"/>
@@ -534,7 +534,7 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/code/service/control}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/code/service/sensor}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/code/service/diagnostics}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/code/platform}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/code/hal}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/code/target/tc264}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/code/scheduler}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/user}&quot;"/>
@@ -693,7 +693,7 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/code/service/control}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/code/service/sensor}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/code/service/diagnostics}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/code/platform}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/code/hal}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/code/target/tc264}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/code/scheduler}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/user}&quot;"/>
@@ -897,7 +897,7 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/code/service/control}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/code/service/sensor}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/code/service/diagnostics}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/code/platform}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/code/hal}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/code/target/tc264}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/code/scheduler}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/user}&quot;"/>
@@ -1056,7 +1056,7 @@
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/code/service/control}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/code/service/sensor}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/code/service/diagnostics}&quot;"/>
-									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/code/platform}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/code/hal}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/code/target/tc264}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/code/scheduler}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/GS_Smart_car/user}&quot;"/>
