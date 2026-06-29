@@ -2,23 +2,22 @@
 
 ## Architecture
 
-This is an AURIX TC264 smart car firmware project with link-time MCU ports.
+This is a smart car firmware project with link-time MCU ports. The current target is AURIX TC264.
 
 ```text
-SDK Entry -> System Runtime -> App task table -> Services -> BSP -> Platform Interfaces
-                                                             \-> Target TC264 port -> Vendor SDK
-SDK Entry -> Target TC264 ISR adapter -> Scheduler
+SDK Entry -> System Runtime -> App task table -> Services -> BSP -> Platform Port
+                                                             \-> Target <target> port -> Vendor SDK
+SDK Entry -> Target <target> IRQ adapter -> Scheduler
 ```
 
 - `code/app/`: lifecycle facade and application task table.
 - `code/service/`: vision, sensor, control, diagnostics.
 - `code/bsp/`: board-level motor, servo, display, input, buzzer modules.
-- `code/platform/interface/`: neutral contracts: `mcu_io_if.h`, `device_if.h`.
-- `code/platform/system/`: neutral system contracts: `system_port.h`.
-- `code/target/tc264/`: direct `McuIo_*` / `Device_*` / `SystemPort_*` implementations, board map, ISR adapter.
+- `code/platform/port_if.h`: neutral `SystemPort_*`, `McuIo_*`, and `Device_*` contracts.
+- `code/target/<target>/`: direct `McuIo_*` / `Device_*` / `SystemPort_*` implementations, board map, IRQ adapter.
 - `code/config/`: product parameters and board resources.
 - `code/system/board/`: product board startup.
-- `user/`: TC264 SDK entry layer; keep `IFX_INTERRUPT` handlers thin.
+- `user/`: current SDK entry layer; keep interrupt handlers thin and forward to target IRQ entry points.
 - `libraries/`: SEEKFREE/iLLD vendor code; treat as read-only.
 
 ## Build
@@ -47,8 +46,8 @@ Do not reintroduce:
 - runtime ops registration or platform dispatch source files;
 - old PAL aliases or compatibility resource headers;
 - duplicate IRQ fact headers, IRQ routers, or route tables;
-- direct System/App/Service dependency on `target/tc264`;
+- direct System/App/Service dependency on `code/target/<target>`;
 - `tests/`, `tests/smoke/`, smoke guards, host unit tests, or test runner scripts;
 - broad host test suites or root Makefile wrappers.
 
-MCU porting is done by replacing link-time port implementations under `code/target/<target>/` and letting that target's ISR adapter post scheduler events/ticks directly.
+MCU porting is done by replacing link-time port implementations under `code/target/<target>/`, switching vendor/project configuration, and letting that target's IRQ adapter post scheduler events/ticks directly.
