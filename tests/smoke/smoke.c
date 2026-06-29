@@ -100,13 +100,13 @@ static irq_fact_t smoke_gyro_irq(void)
     return IRQ_FACT_GYRO_TICK;
 }
 
-static const target_irq_route_t s_smoke_routes[] =
+static const smartcar_irq_target_route_t s_smoke_routes[] =
 {
-    {SMARTCAR_IRQ_SOURCE_DMA_CH5, smoke_camera_irq, IRQ_FACT_CAMERA_FRAME, EVT_CAM_FRAME, 0U},
-    {SMARTCAR_IRQ_SOURCE_CCU60_PIT_CH1, smoke_gyro_irq, IRQ_FACT_GYRO_TICK, EVT_GYRO_10MS, 10U},
+    {SMARTCAR_IRQ_SOURCE_DMA_CH5, smoke_camera_irq},
+    {SMARTCAR_IRQ_SOURCE_CCU60_PIT_CH1, smoke_gyro_irq},
 };
 
-const target_irq_route_t *TargetPlatform_GetIrqRoutes(uint16_t *p_count)
+const smartcar_irq_target_route_t *TargetPlatform_GetIrqRoutes(uint16_t *p_count)
 {
     if (p_count != 0)
     {

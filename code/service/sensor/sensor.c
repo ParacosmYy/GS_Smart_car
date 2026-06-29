@@ -20,7 +20,7 @@
 #include "sensor.h"
 #include "config.h"
 #include "platform/interface/device_if.h"
-#include "platform/system/encoder_sample.h"
+#include "platform/system/system_port.h"
 //******************************** Includes *********************************//
 
 //******************************** Defines **********************************//
@@ -57,7 +57,7 @@ typedef struct
 static sensor_service_context_t s_sensor_service_ctx =
 {
     {0, 0},
-    {{0.0f}, 0.0f, 0.0f, 0.0f, ((float)10 / 1000.0f), 0.0f, 0U}
+    {{0.0f}, 0.0f, 0.0f, 0.0f, ((float)PIT_PERIOD_MS / 1000.0f), 0.0f, 0U}
 };
 //******************************** Variables ********************************//
 

@@ -4,8 +4,8 @@
 #include "servo.h"
 
 #include "config.h"
+#include "smartcar_board_resources.h"
 #include "platform/interface/mcu_io_if.h"
-#include "system/board/smartcar_board_resources.h"
 
 typedef struct
 {

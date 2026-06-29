@@ -4,7 +4,7 @@
  */
 
 #include "tc264_board_map.h"
-#include "system/board/smartcar_board_resources.h"
+#include "smartcar_board_resources.h"
 #include "zf_common_headfile.h"
 
 const uint32_t g_tc264_pwm_map[SMARTCAR_PWM_ID_MAX] = {

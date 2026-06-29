@@ -30,6 +30,9 @@ void SystemPort_IrqGlobalRestore(uint32_t state);
 /** @brief 设置全局中断开关状态 */
 void SystemPort_IrqGlobalCtrl(uint8_t state);
 
+/** @brief 读取并清零编码器窗口采样 */
+void EncoderSample_TakeSnapshot(int *p_left_sum, int *p_right_sum, int *p_sample_count);
+
 #ifdef __cplusplus
 }
 #endif

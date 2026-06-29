@@ -1,9 +1,8 @@
 #include "isr_adapter.h"
 
 #include "platform/interface/mcu_io_if.h"
-#include "platform/system/encoder_sample.h"
+#include "smartcar_board_resources.h"
 #include "platform/system/system_port.h"
-#include "system/board/smartcar_board_resources.h"
 #include "zf_common_headfile.h"
 
 #define ENCODER_WINDOW_SAMPLES 5

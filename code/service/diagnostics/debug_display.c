@@ -11,15 +11,12 @@
 #include "debug_display.h"
 #include "control.h"
 #include "platform/interface/device_if.h"
-#include "platform/interface/mcu_io_if.h"
 #include "platform/interface/service_port_if.h"
 #include "sensor.h"
 #include "vision.h"
 
 #define DEBUG_DISPLAY_IMAGE_X             0
 #define DEBUG_DISPLAY_IMAGE_Y             0
-#define DEBUG_DISPLAY_IMAGE_WIDTH         94
-#define DEBUG_DISPLAY_IMAGE_HEIGHT        60
 #define DEBUG_DISPLAY_ENCODER_LABEL_X     0
 #define DEBUG_DISPLAY_ENCODER_VALUE_X     50
 #define DEBUG_DISPLAY_LEFT_ENCODER_Y      80

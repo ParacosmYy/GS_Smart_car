@@ -1,11 +1,31 @@
 #include "smartcar_irq_router.h"
 
+#include "config.h"
 #include "event.h"
 #include "scheduler.h"
 
+static void SmartcarIrq_PostFacts(irq_fact_t facts)
+{
+    if ((facts & IRQ_FACT_ENCODER_WINDOW) != 0U)
+    {
+        event_post_from_isr(EVT_ENCODER_50MS);
+    }
+
+    if ((facts & IRQ_FACT_GYRO_TICK) != 0U)
+    {
+        Scheduler_AddTickFromIsr(PIT_PERIOD_MS);
+        event_post_from_isr(EVT_GYRO_10MS);
+    }
+
+    if ((facts & IRQ_FACT_CAMERA_FRAME) != 0U)
+    {
+        event_post_from_isr(EVT_CAM_FRAME);
+    }
+}
+
 void SmartcarIrq_Dispatch(smartcar_irq_source_t source)
 {
-    const target_irq_route_t *p_routes;
+    const smartcar_irq_target_route_t *p_routes;
     uint16_t route_count = 0U;
     uint16_t i;
 
@@ -17,7 +37,7 @@ void SmartcarIrq_Dispatch(smartcar_irq_source_t source)
 
     for (i = 0U; i < route_count; i++)
     {
-        const target_irq_route_t *p_route = &p_routes[i];
+        const smartcar_irq_target_route_t *p_route = &p_routes[i];
         irq_fact_t facts = IRQ_FACT_NONE;
 
         if (p_route->source == source)
@@ -27,21 +47,7 @@ void SmartcarIrq_Dispatch(smartcar_irq_source_t source)
                 facts = p_route->handler();
             }
 
-            if ((p_route->fact_mask != IRQ_FACT_NONE) && ((facts & p_route->fact_mask) == 0U))
-            {
-                return;
-            }
-
-            if (p_route->tick_ms != 0U)
-            {
-                Scheduler_AddTickFromIsr(p_route->tick_ms);
-            }
-
-            if (p_route->event != EVT_NONE)
-            {
-                event_post_from_isr((event_mask_t)p_route->event);
-            }
-
+            SmartcarIrq_PostFacts(facts);
             return;
         }
     }

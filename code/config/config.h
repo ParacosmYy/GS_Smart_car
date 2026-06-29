@@ -49,11 +49,10 @@
 #define PIT_PERIOD_MS           10      /* 周期中断节拍，单位 ms；传感器积分周期默认由此换算               */
 
 /* ===== Buzzer Parameters ===== */
-/* GPIO 有源蜂鸣器，通过开关时序产生不同提示音                    */
-/* 1 帧 ≈ 33ms（30fps），帧数 × 33 ≈ 实际毫秒数                  */
-#define BUZZER_BEEP_SHORT_F    3       /* 短声持续帧数（~100ms），用于圆环提示       */
-#define BUZZER_BEEP_LONG_F     12      /* 长声持续帧数（~400ms），用于十字路口提示   */
-#define BUZZER_GAP_F           2       /* 声间间隔帧数（~66ms），区分连续短声        */
+/* GPIO 有源蜂鸣器，由 10ms feedback tick 驱动开关时序              */
+#define BUZZER_BEEP_SHORT_TICKS 10      /* 短声持续 tick 数（~100ms），用于圆环提示     */
+#define BUZZER_BEEP_LONG_TICKS  40      /* 长声持续 tick 数（~400ms），用于十字路口提示 */
+#define BUZZER_GAP_TICKS        7       /* 声间间隔 tick 数（~70ms），区分连续短声      */
 
 /* ===== Element Detection ===== */
 /* 基于边线数据的启发式检测，行索引范围对应图像中下部              */

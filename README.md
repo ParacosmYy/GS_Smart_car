@@ -27,12 +27,12 @@ flowchart LR
 
     subgraph L2["应用层 · App"]
         direction TB
-        APP["smartcar_app.c<br/>task table only"]
+        APP["smartcar_app.c<br/>lifecycle facade"]
     end
 
     subgraph L3["服务层 · Service"]
         direction TB
-        TASKS["smartcar_tasks.c<br/>task facade"]
+        TASKS["smartcar_tasks.c<br/>task registry"]
         SERVICE["vision / sensor / control<br/>diagnostics"]
     end
 
@@ -94,7 +94,7 @@ flowchart LR
 
 | Layer | Responsibility |
 |:--|:--|
-| App | 只注册调度任务，不编排视觉、控制、反馈细节 |
+| App | 只保留 Init/RunOnce/GetFailCount 入口 |
 | Service | 持有业务状态与算法流水线 |
 | BSP | 板级动作封装，只面向平台接口 |
 | Platform Interface | `McuIo_*`、`Device_*`、`service_port_if.h` 契约 |
@@ -120,8 +120,9 @@ flowchart LR
     subgraph R["路由决策 · System IRQ"]
         direction TB
         ROUTER["SmartcarIrq_Dispatch"]
-        ROUTES["Target IRQ Routes<br/>tc264_board_bind.c"]
-        FACT{"fact_mask<br/>gate"}
+        ROUTES["IRQ target routes<br/>source -> handler"]
+        FACT{"IRQ facts<br/>adapter result"}
+        MAP["System mapping<br/>fact -> event / tick"]
     end
 
     subgraph I["目标处理 · TC264 Impl"]
@@ -142,13 +143,13 @@ flowchart LR
     IO --> ISR
     ISR --> ROUTER
     ROUTER --> ROUTES --> ADAPTER --> FACT
-    FACT --> ROUTER
-    ROUTER --> EVENT --> SCHED --> TASK
-    ROUTER --> TICK --> SCHED
+    FACT --> MAP
+    MAP --> EVENT --> SCHED --> TASK
+    MAP --> TICK --> SCHED
 
     class PIT,DMA,IO hardware
     class ISR entry
-    class ROUTER,ROUTES,FACT system
+    class ROUTER,ROUTES,FACT,MAP system
     class ADAPTER impl
     class EVENT,TICK,SCHED,TASK service
 
@@ -178,18 +179,17 @@ flowchart LR
 
 ```text
 code/
-  app/                    task table and main-loop handoff
-  service/                task facade plus vision/sensor/control/diagnostics
+  app/                    lifecycle facade and main-loop handoff
+  service/                task registry plus vision/sensor/control/diagnostics
   bsp/                    motor, servo, display, input, buzzer
   platform/interface/     mcu_io_if, device_if, service_port_if
-  platform/system/        system_port, encoder_sample, irq_fact
-  platform/target/        target IRQ route contract
+  platform/system/        system_port, irq_fact
   impl/tc264/             TC264 link-time ports, board map, IRQ adapter
   system/board/           board init and product contract binding
   system/irq/             source -> fact/event/tick router
   system/runtime/         boot composition root
   scheduler/              event flags and cooperative scheduler
-  config/                 product parameters
+  config/                 product parameters and board resources
 user/                     TC264 SDK entry layer
 libraries/                SEEKFREE and Infineon vendor code
 scripts/                  host smoke guard
@@ -218,7 +218,7 @@ To add another MCU target:
 
 1. Add `code/impl/<target>/` with direct `McuIo_*` and `Device_*` implementations.
 2. Add a target board map and IRQ adapter.
-3. Provide `TargetPlatform_GetIrqRoutes()` for that target.
+3. Provide `TargetPlatform_GetIrqRoutes()` for that target using the System IRQ route contract.
 4. Keep App, Service, BSP public headers free of Vendor, board-resource, and `impl/*` includes.
 5. Do not reintroduce runtime ops registration, platform dispatch files, old PAL aliases, or duplicate IRQ fact headers.
 

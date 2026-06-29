@@ -3,8 +3,8 @@
  */
 #include "input.h"
 
+#include "smartcar_board_resources.h"
 #include "platform/interface/mcu_io_if.h"
-#include "system/board/smartcar_board_resources.h"
 
 #define INPUT_KEY_COUNT 4U
 

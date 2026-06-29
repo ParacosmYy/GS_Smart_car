@@ -10,15 +10,15 @@ SDK Entry -> System Runtime -> App -> Service Tasks -> Services -> Platform Inte
 System Runtime -> Board Contract -> BSP -> Platform Interfaces
 ```
 
-- `code/app/`: task table only.
-- `code/service/`: service task facade plus vision, sensor, control, diagnostics.
+- `code/app/`: lifecycle facade only.
+- `code/service/`: task registry plus vision, sensor, control, diagnostics.
 - `code/bsp/`: board-level motor, servo, display, input, buzzer modules.
 - `code/platform/interface/`: neutral contracts: `mcu_io_if.h`, `device_if.h`, `service_port_if.h`.
-- `code/platform/system/`: neutral system contracts: `system_port.h`, `encoder_sample.h`, `irq_fact.h`.
-- `code/platform/target/`: target IRQ route contract only.
+- `code/platform/system/`: neutral system contracts: `system_port.h`, `irq_fact.h`.
 - `code/impl/tc264/`: direct `McuIo_*` / `Device_*` implementations, board map, IRQ routes, ISR adapter.
+- `code/config/`: product parameters and board resources.
 - `code/system/board/`: product board startup and service-port binding.
-- `code/system/irq/`: target route consumer and event/tick posting.
+- `code/system/irq/`: target route contract plus IRQ fact -> event/tick posting.
 - `user/`: TC264 SDK entry layer; keep `IFX_INTERRUPT` handlers thin.
 - `libraries/`: SEEKFREE/iLLD vendor code; treat as read-only.
 
@@ -56,4 +56,4 @@ Do not reintroduce:
 - direct System/App/Service dependency on `impl/tc264`;
 - broad host test suites or root Makefile wrappers.
 
-MCU porting is done by replacing link-time port implementations under `code/impl/<target>/` and providing that target's IRQ route table.
+MCU porting is done by replacing link-time port implementations under `code/impl/<target>/` and providing that target's IRQ route table for the System IRQ router.

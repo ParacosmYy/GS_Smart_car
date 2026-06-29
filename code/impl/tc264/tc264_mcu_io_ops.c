@@ -4,8 +4,8 @@
  */
 
 #include "platform/interface/mcu_io_if.h"
+#include "smartcar_board_resources.h"
 #include "platform/system/system_port.h"
-#include "system/board/smartcar_board_resources.h"
 #include "tc264_board_map.h"
 #include "zf_common_headfile.h"
 
