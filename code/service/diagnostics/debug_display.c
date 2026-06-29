@@ -101,5 +101,5 @@ void DebugDisplayService_Update(uint32_t events)
 
     Device_DisplayStr(DEBUG_DISPLAY_STATUS_LABEL_X, DEBUG_DISPLAY_GYRO_OVERFLOW_Y, "gof:");
     Device_DisplayInt(DEBUG_DISPLAY_STATUS_VALUE_X, DEBUG_DISPLAY_GYRO_OVERFLOW_Y,
-                      event_is_gyro_10ms_overflow_latched(), DEBUG_DISPLAY_STATUS_DIGITS);
+                      Event_IsGyro10msOverflowLatched(), DEBUG_DISPLAY_STATUS_DIGITS);
 }

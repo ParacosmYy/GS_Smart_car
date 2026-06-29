@@ -27,7 +27,7 @@ static volatile uint8_t s_gyro_10ms_overflow_latched = 0U;
  * @param[in] events 待投递事件掩码。
  * @return void。
  */
-void event_post_from_isr(event_mask_t events)
+void Event_PostFromIsr(event_mask_t events)
 {
     event_mask_t normal_events = EVT_NONE;
     uint32_t irq_state = 0;
@@ -61,7 +61,7 @@ void event_post_from_isr(event_mask_t events)
  *
  * @return 本轮调度要处理的事件掩码。
  */
-event_mask_t event_get(void)
+event_mask_t Event_Get(void)
 {
     event_mask_t pending = EVT_NONE;
     uint32_t irq_state = 0;
@@ -85,7 +85,7 @@ event_mask_t event_get(void)
  *
  * @return 1 表示曾发生计数饱和；0 表示未发生。
  */
-uint8_t event_is_gyro_10ms_overflow_latched(void)
+uint8_t Event_IsGyro10msOverflowLatched(void)
 {
     uint8_t overflow_latched = 0U;
     uint32_t irq_state = 0U;

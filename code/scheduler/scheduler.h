@@ -2,16 +2,16 @@
  * @file scheduler.h
  * @brief Lightweight cooperative task scheduler.
  *
- *        无抢占、无堆栈切换——主循环调用 scheduler_run() 驱动全部任务。
+ *        无抢占、无堆栈切换——主循环调用 Scheduler_Run() 驱动全部任务。
  *        每个任务可由「事件触发」或「周期触发」或两者兼有。
  *
  *        典型用法：
- *          scheduler_init();
- *          scheduler_add_ex(SmartcarApp_TaskVision,  0,  EVT_CAM_FRAME,
+ *          Scheduler_Init();
+ *          Scheduler_AddEx(SmartcarApp_TaskVision,  0,  EVT_CAM_FRAME,
  *                           SCHEDULER_TASK_PHASE_NORMAL_EVENT);
- *          scheduler_add_ex(SmartcarApp_TaskControl, 10, 0,
+ *          Scheduler_AddEx(SmartcarApp_TaskControl, 10, 0,
  *                           SCHEDULER_TASK_PHASE_FAST_PERIODIC);
- *          while (1) { scheduler_run(); }
+ *          while (1) { Scheduler_Run(); }
  */
 #ifndef CODE_SCHEDULER_SCHEDULER_H_
 #define CODE_SCHEDULER_SCHEDULER_H_
@@ -48,17 +48,19 @@ typedef struct
 /**
  * @brief 初始化调度器，清空任务表
  */
-void scheduler_init(void);
+void Scheduler_Init(void);
 
 /**
  * @brief 从 ISR 上下文推进调度器时间基
  * @param elapsed_ms 本次中断经过的毫秒数
+ * @note 时间戳为 uint32_t 毫秒计数，周期判断使用无符号减法，支持自然回绕。
  */
 void Scheduler_AddTickFromIsr(uint32_t elapsed_ms);
 
 /**
  * @brief 获取当前调度器时间戳
  * @return 当前系统毫秒数
+ * @note 调用方不要用绝对大小比较时间戳，应使用 `(now - then) >= interval` 形式处理回绕。
  */
 uint32_t Scheduler_GetNowMs(void);
 
@@ -69,7 +71,7 @@ uint32_t Scheduler_GetNowMs(void);
  * @param trigger   触发事件（0=纯周期触发）
  * @return 任务槽位索引（>=0），-1=参数非法或表满
  */
-int8_t scheduler_add(task_fn_t fn, uint32_t period_ms, event_mask_t trigger);
+int8_t Scheduler_Add(task_fn_t fn, uint32_t period_ms, event_mask_t trigger);
 
 /**
  * @brief 注册一个指定调度阶段的任务
@@ -79,15 +81,15 @@ int8_t scheduler_add(task_fn_t fn, uint32_t period_ms, event_mask_t trigger);
  * @param phase     调度阶段
  * @return 任务槽位索引（>=0），-1=参数非法或表满
  */
-int8_t scheduler_add_ex(task_fn_t fn,
-                        uint32_t period_ms,
-                        event_mask_t trigger,
-                        scheduler_task_phase_t phase);
+int8_t Scheduler_AddEx(task_fn_t fn,
+                       uint32_t period_ms,
+                       event_mask_t trigger,
+                       scheduler_task_phase_t phase);
 
 /**
  * @brief 调度器主循环：获取事件 → 遍历任务 → 到期/命中则执行
  *        在 while(1) 中反复调用
  */
-void scheduler_run(void);
+void Scheduler_Run(void);
 
 #endif /* CODE_SCHEDULER_SCHEDULER_H_ */

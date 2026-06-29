@@ -113,7 +113,7 @@ void TargetIrq_EncoderPit(void)
     if ((s_encoder_window.samples >= ENCODER_WINDOW_SAMPLES) && (s_encoder_window.ready == 0U))
     {
         s_encoder_window.ready = 1U;
-        event_post_from_isr(EVT_ENCODER_50MS);
+        Event_PostFromIsr(EVT_ENCODER_50MS);
     }
 }
 
@@ -131,7 +131,7 @@ void TargetIrq_GyroPit(void)
 {
     TargetIrq_PreparePit(SMARTCAR_PIT_GYRO_TICK);
     Scheduler_AddTickFromIsr(PIT_PERIOD_MS);
-    event_post_from_isr(EVT_GYRO_10MS);
+    Event_PostFromIsr(EVT_GYRO_10MS);
 }
 
 /**
@@ -173,7 +173,7 @@ void TargetIrq_CameraDma(void)
 {
     SystemPort_IrqGlobalCtrl(0);
     camera_dma_handler();
-    event_post_from_isr(EVT_CAM_FRAME);
+    Event_PostFromIsr(EVT_CAM_FRAME);
 }
 
 /**

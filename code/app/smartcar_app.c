@@ -193,9 +193,9 @@ void SmartcarApp_RegisterTasks(void)
 
     for (i = 0U; i < s_smartcar_task_count; i++)
     {
-        (void)scheduler_add_ex(s_smartcar_tasks[i].handler,
-                               s_smartcar_tasks[i].period_ms,
-                               s_smartcar_tasks[i].trigger,
-                               s_smartcar_tasks[i].phase);
+        (void)Scheduler_AddEx(s_smartcar_tasks[i].handler,
+                              s_smartcar_tasks[i].period_ms,
+                              s_smartcar_tasks[i].trigger,
+                              s_smartcar_tasks[i].phase);
     }
 }

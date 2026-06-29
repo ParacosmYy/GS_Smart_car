@@ -1,5 +1,5 @@
-#ifndef CODE_DISPLAY_H_
-#define CODE_DISPLAY_H_
+#ifndef CODE_BSP_DISPLAY_H_
+#define CODE_BSP_DISPLAY_H_
 
 #include <stdint.h>
 
@@ -13,4 +13,4 @@
 void Display_DrawTrackLines(const uint8_t *p_left_line, const uint8_t *p_right_line,
                             const uint8_t *p_mid_line, uint8_t line_count);
 
-#endif /* CODE_DISPLAY_H_ */
+#endif /* CODE_BSP_DISPLAY_H_ */

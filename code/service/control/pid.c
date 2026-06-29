@@ -9,10 +9,52 @@
 
 #include "pid.h"
 
+#include <float.h>
+#include <stdint.h>
+
 #define POS_PID_INTEGRAL_LIMIT  1000.0f
 #define SERVO_PID_OUTPUT_LIMIT  63.0f
 #define MOTOR_PID_OUTPUT_LIMIT  20.0f
 #define INC_PID_OUTPUT_LIMIT    MOTOR_PID_OUTPUT_LIMIT
+
+/**
+ * @brief 判断控制链路浮点值是否仍可参与闭环计算。
+ *
+ * @param[in] value 待检查浮点值。
+ * @return 1 表示有限值；0 表示 NaN 或 Inf。
+ */
+static uint8_t pid_is_finite_value(float value)
+{
+    return ((value == value) &&
+            (value <= FLT_MAX) &&
+            (value >= -FLT_MAX)) ? 1U : 0U;
+}
+
+/**
+ * @brief 清除位置式 PID 的运行态。
+ *
+ * @param[in,out] pid PID 结构体指针。
+ * @return void。
+ */
+static void PosPID_ResetRuntimeState(PosPID_t *pid)
+{
+    pid->integral = 0.0f;
+    pid->prev_err = 0.0f;
+    pid->output = 0.0f;
+}
+
+/**
+ * @brief 清除增量式 PID 的运行态。
+ *
+ * @param[in,out] pid PID 结构体指针。
+ * @return void。
+ */
+static void IncPID_ResetRuntimeState(IncPID_t *pid)
+{
+    pid->prev_err = 0.0f;
+    pid->prev_prev_err = 0.0f;
+    pid->output = 0.0f;
+}
 
 /**
  * @brief 对浮点控制量做对称限幅。
@@ -107,10 +149,34 @@ float PosPID_Calc(PosPID_t *pid, float target, float feedback)
     float err = target - feedback;
     float derivative = 0.0f;
 
+    if (pid == 0)
+    {
+        return 0.0f;
+    }
+
+    if ((pid_is_finite_value(target) == 0U) ||
+        (pid_is_finite_value(feedback) == 0U) ||
+        (pid_is_finite_value(err) == 0U) ||
+        (pid_is_finite_value(pid->kp) == 0U) ||
+        (pid_is_finite_value(pid->ki) == 0U) ||
+        (pid_is_finite_value(pid->kd) == 0U) ||
+        (pid_is_finite_value(pid->integral) == 0U) ||
+        (pid_is_finite_value(pid->prev_err) == 0U))
+    {
+        PosPID_ResetRuntimeState(pid);
+        return 0.0f;
+    }
+
     pid->integral += err;
     pid->integral = pid_clamp_symmetric(pid->integral, POS_PID_INTEGRAL_LIMIT);
     derivative = err - pid->prev_err;
     pid->output = pid->kp * err + pid->ki * pid->integral + pid->kd * derivative;
+    if (pid_is_finite_value(pid->output) == 0U)
+    {
+        PosPID_ResetRuntimeState(pid);
+        return 0.0f;
+    }
+
     pid->prev_err = err;
 
     return pid->output;
@@ -133,12 +199,44 @@ float PosPID_Calc(PosPID_t *pid, float target, float feedback)
 float IncPID_Calc(IncPID_t *pid, float target, float feedback)
 {
     float err = target - feedback;
-    float delta_output = pid->kp * (err - pid->prev_err)
-                       + pid->ki * err
-                       + pid->kd * (err - 2.0f * pid->prev_err + pid->prev_prev_err);
+    float delta_output = 0.0f;
+
+    if (pid == 0)
+    {
+        return 0.0f;
+    }
+
+    if ((pid_is_finite_value(target) == 0U) ||
+        (pid_is_finite_value(feedback) == 0U) ||
+        (pid_is_finite_value(err) == 0U) ||
+        (pid_is_finite_value(pid->kp) == 0U) ||
+        (pid_is_finite_value(pid->ki) == 0U) ||
+        (pid_is_finite_value(pid->kd) == 0U) ||
+        (pid_is_finite_value(pid->prev_err) == 0U) ||
+        (pid_is_finite_value(pid->prev_prev_err) == 0U) ||
+        (pid_is_finite_value(pid->output) == 0U))
+    {
+        IncPID_ResetRuntimeState(pid);
+        return 0.0f;
+    }
+
+    delta_output = pid->kp * (err - pid->prev_err)
+                 + pid->ki * err
+                 + pid->kd * (err - 2.0f * pid->prev_err + pid->prev_prev_err);
+    if (pid_is_finite_value(delta_output) == 0U)
+    {
+        IncPID_ResetRuntimeState(pid);
+        return 0.0f;
+    }
 
     pid->output += delta_output;
     pid->output = pid_clamp_symmetric(pid->output, INC_PID_OUTPUT_LIMIT);
+    if (pid_is_finite_value(pid->output) == 0U)
+    {
+        IncPID_ResetRuntimeState(pid);
+        return 0.0f;
+    }
+
     pid->prev_prev_err = pid->prev_err;
     pid->prev_err = err;
 

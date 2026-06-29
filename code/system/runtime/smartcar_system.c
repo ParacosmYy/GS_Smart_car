@@ -33,7 +33,7 @@ void SmartcarSystem_Boot(void)
 
     SmartcarBoard_InitDevices();
     Control_Init();
-    scheduler_init();
+    Scheduler_Init();
     SmartcarApp_RegisterTasks();
     SmartcarBoard_StartPeriodicIrq();
 
@@ -50,5 +50,5 @@ void SmartcarSystem_Boot(void)
  */
 void SmartcarSystem_RunOnce(void)
 {
-    scheduler_run();
+    Scheduler_Run();
 }

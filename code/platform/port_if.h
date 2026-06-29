@@ -1,5 +1,5 @@
-#ifndef PLATFORM_PORT_IF_H_
-#define PLATFORM_PORT_IF_H_
+#ifndef CODE_PLATFORM_PORT_IF_H_
+#define CODE_PLATFORM_PORT_IF_H_
 
 /**
  * @file port_if.h
@@ -106,4 +106,4 @@ void Device_WirelessInit(void);
 }
 #endif
 
-#endif /* PLATFORM_PORT_IF_H_ */
+#endif /* CODE_PLATFORM_PORT_IF_H_ */

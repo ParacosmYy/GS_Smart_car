@@ -2,7 +2,7 @@
 
 **智能车固件（当前目标：AURIX TC264D）**
 
-本工程面向四轮舵机镜头车，当前目标平台为 Infineon AURIX TC264D，底层使用逐飞 SEEKFREE SDK 与 Infineon iLLD。工程采用事件驱动协作调度与链接期端口替换：业务层不包含 Vendor 头文件，不依赖具体 MCU，也不引入运行期 ops 注册或平台 dispatch 回环。
+本工程面向四轮舵机镜头车，当前目标平台为 Infineon AURIX TC264D，底层使用逐飞 SEEKFREE SDK 与 Infineon iLLD。工程采用事件驱动协作调度与默认链接期端口替换：业务层不包含 Vendor 头文件，不依赖具体 MCU；如未来需要运行期 ops/dispatch，必须按 `AGENTS.md` 的准入条件进行架构演进。
 
 ![Platform](https://img.shields.io/badge/Platform-AURIX%20TC264D-blue?style=flat-square)
 ![Language](https://img.shields.io/badge/Language-C99-orange?style=flat-square)
@@ -68,9 +68,9 @@ flowchart TB
 
     subgraph SCHED["调度出口 · Scheduler"]
         direction LR
-        EVENT["event_post_from_isr"]
+        EVENT["Event_PostFromIsr"]
         TICK["Scheduler_AddTickFromIsr"]
-        LOOP["scheduler_run"]
+        LOOP["Scheduler_Run"]
     end
 
     TASK["服务任务<br/><b>Vision / Sensor / Control</b>"]
@@ -93,7 +93,7 @@ flowchart TB
     class TASK service
 ```
 
-ISR 只做短路径处理：清中断标志、必要采样、调用 Vendor 回调、投递事件或 tick。`irq_priorities.h` 集中保存 TC264 产品级中断优先级策略，Vendor 驱动继续通过 `user/isr_config.h` 读取兼容宏。视觉、控制、显示等耗时逻辑全部回到主循环调度执行。`scheduler_run()` 采用分阶段执行：先处理传感事件，再处理 10ms 快速周期任务，随后处理摄像头帧等普通事件，最后处理慢速诊断任务，避免摄像头帧处理同轮阻塞控制输出。
+ISR 只做短路径处理：清中断标志、必要采样、调用 Vendor 回调、投递事件或 tick。`irq_priorities.h` 集中保存 TC264 产品级中断优先级策略，Vendor 驱动继续通过 `user/isr_config.h` 读取兼容宏。视觉、控制、显示等耗时逻辑全部回到主循环调度执行。`Scheduler_Run()` 采用分阶段执行：先处理传感事件，再处理 10ms 快速周期任务，随后处理摄像头帧等普通事件，最后处理慢速诊断任务，避免摄像头帧处理同轮阻塞控制输出。
 
 ## Data Flow
 
@@ -151,13 +151,13 @@ AURIX Development Studio -> Open Projects -> Build Project
 5. 更新 IDE 工程，只编译当前 target 和对应 Vendor SDK，避免多个 target 同时定义端口符号。
 6. 保持 `app/`、`service/`、`bsp/`、`scheduler/`、`system/` 不包含 Vendor 头或 target 私有头。
 
-禁止回退到独立 `target_board_map*`、`target_irq_config*`、运行期 ops 注册、旧 PAL 兼容层、IRQ fact/router 或平台 dispatch 文件。
+禁止回退到独立 `target_board_map*`、`target_irq_config*`、旧 PAL 兼容层、IRQ fact/router。运行期 ops 注册或平台 dispatch 不是当前默认路径；只有在多硬件版本同镜像、运行期板型识别、模拟后端注入等场景确实需要时，才按 `AGENTS.md` 的准入条件引入。
 
 ## OPS Evolution Note
 
-本仓库里的 OPS 是文件命名和链接期替换口径，不是运行期 vtable。运行期 vtable / ops 注册可以作为未来跨板型或多外设动态选择的设计方向，但当前仓库 guardrail 明确禁止 runtime ops registration 和 platform dispatch source files，因此本阶段不在代码中落地 runtime dispatch，也不新增注册表、dispatcher 或平台回环文件。
+本仓库里的 OPS 当前是文件命名和链接期替换口径，不是运行期 vtable。运行期 vtable / ops 注册可以作为未来跨板型或多外设动态选择的设计方向，但必须先证明 link-time ports 无法满足需求，并按 `AGENTS.md` 约束补充 ADR/README、单一 composition root、静态 ops 表、启动期校验和构建验证。
 
-当前阶段继续采用 link-time OPS ports + facades：`code/platform/port_if.h` 和 `code/platform/sensor_hal.h` 定义稳定契约，当前 target 在 `code/target/tc264/ops_tc264.c` 与 `ops_tc264_irq.c` 直接提供符号实现，Service 优先经 BSP facade 访问执行器和显示封装，未补齐 facade 的硬件快照继续通过稳定 Platform 契约访问。若未来要切换到 runtime vtable 方案，需先修改 AGENTS.md guardrail、补充 ADR/迁移计划，再实现 ops 表与生命周期注册。
+当前阶段继续采用 link-time OPS ports + facades：`code/platform/port_if.h` 和 `code/platform/sensor_hal.h` 定义稳定契约，当前 target 在 `code/target/tc264/ops_tc264.c` 与 `ops_tc264_irq.c` 直接提供符号实现，Service 优先经 BSP facade 访问执行器和显示封装，未补齐 facade 的硬件快照继续通过稳定 Platform 契约访问。若未来切换到 runtime vtable 方案，Platform 仍只定义契约与调度边界，Target 负责绑定 Vendor，上层目录不感知具体 MCU。
 
 ## Known Constraints
 
