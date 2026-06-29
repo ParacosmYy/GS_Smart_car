@@ -12,6 +12,7 @@
 #define POS_PID_INTEGRAL_LIMIT  1000.0f
 #define SERVO_PID_OUTPUT_LIMIT  63.0f
 #define MOTOR_PID_OUTPUT_LIMIT  20.0f
+#define INC_PID_OUTPUT_LIMIT    MOTOR_PID_OUTPUT_LIMIT
 
 /**
  * @brief 对浮点控制量做对称限幅。
@@ -121,13 +122,13 @@ float PosPID_Calc(PosPID_t *pid, float target, float feedback)
  * Steps:
  *   1. 计算当前误差。
  *   2. 根据 err、prev_err、prev_prev_err 计算输出增量。
- *   3. 将增量累加到输出。
+ *   3. 将增量累加到输出，并对累计状态做限幅，避免 windup。
  *   4. 滚动更新历史误差。
  *
  * @param[in,out] pid PID 结构体指针。
  * @param[in] target 目标值。
  * @param[in] feedback 反馈值。
- * @return PID 累计输出值。
+ * @return 已限幅的 PID 累计输出值。
  */
 float IncPID_Calc(IncPID_t *pid, float target, float feedback)
 {
@@ -137,6 +138,7 @@ float IncPID_Calc(IncPID_t *pid, float target, float feedback)
                        + pid->kd * (err - 2.0f * pid->prev_err + pid->prev_prev_err);
 
     pid->output += delta_output;
+    pid->output = pid_clamp_symmetric(pid->output, INC_PID_OUTPUT_LIMIT);
     pid->prev_prev_err = pid->prev_err;
     pid->prev_err = err;
 
