@@ -51,7 +51,7 @@ flowchart LR
 | App | 注册应用任务，描述产品运行节奏 | 不直接访问 BSP/Vendor |
 | Service | 视觉、传感、控制、诊断策略 | 不包含 MCU/Vendor 头 |
 | BSP | 电机、舵机、显示、蜂鸣器、输入动作封装 | 只调用 `port_if.h` |
-| Platform | 稳定端口契约：`SystemPort_*`、`McuIo_*`、`Device_*` | 不出现芯片专有类型 |
+| Platform | 稳定端口契约：`SystemPort_*`、`McuIo_*`、`Device_*`、`SensorHal_*` | 不出现芯片专有类型 |
 | Target | 当前 MCU 端口实现、资源映射、中断适配 | 唯一可调用 Vendor 的业务侧适配层 |
 | Vendor | SEEKFREE SDK 与 Infineon iLLD | 默认只读 |
 
@@ -91,7 +91,26 @@ flowchart TB
     class TASK service
 ```
 
-ISR 只做短路径处理：清中断标志、必要采样、调用 Vendor 回调、投递事件或 tick。视觉、控制、显示等耗时逻辑全部回到主循环调度执行。
+ISR 只做短路径处理：清中断标志、必要采样、调用 Vendor 回调、投递事件或 tick。视觉、控制、显示等耗时逻辑全部回到主循环调度执行。`scheduler_run()` 采用分阶段执行：先处理传感事件，再处理 10ms 快速周期任务，随后处理摄像头帧等普通事件，最后处理慢速诊断任务，避免摄像头帧处理同轮阻塞控制输出。
+
+## Data Flow
+
+```text
+PIT encoder ISR -> target_irq.c accumulates encoder window
+                -> EVT_ENCODER_50MS
+                -> SensorService_ProcessEncoder50ms()
+                -> SensorHal_EncoderTakeSnapshot()
+
+Camera DMA ISR  -> EVT_CAM_FRAME
+                -> Vision task updates vision snapshots
+                -> Control 10ms task reads latest snapshot on its next period
+
+Gyro PIT ISR    -> Scheduler_AddTickFromIsr()
+                -> EVT_GYRO_10MS counted event
+                -> SensorService_ProcessGyro10ms()
+```
+
+Service 层只能通过 Platform 契约读取硬件采样快照。编码器窗口由当前 target 在中断侧维护，并以 `SensorHal_EncoderTakeSnapshot()` 暴露给传感服务；Scheduler 只负责事件与任务调度，不再承载编码器窗口接口。
 
 ## Repository Map
 
@@ -100,7 +119,7 @@ code/
   app/                    应用任务表和任务注册
   service/                vision / sensor / control / diagnostics
   bsp/                    motor / servo / display / input / buzzer
-  platform/               port_if.h，稳定平台契约
+  platform/               port_if.h / sensor_hal.h，稳定平台契约
   target/tc264/           当前目标端口、板级映射、中断适配
   system/                 启动编排、板级初始化
   scheduler/              事件标志和协作式调度器
@@ -131,6 +150,13 @@ AURIX Development Studio -> Open Projects -> Build Project
 6. 保持 `app/`、`service/`、`bsp/`、`scheduler/`、`system/` 不包含 Vendor 头或 target 私有头。
 
 禁止回退到运行期 ops 注册、旧 PAL 兼容层、IRQ fact/router 或平台 dispatch 文件。
+
+## Known Constraints
+
+- `libraries/` 为 Vendor SDK，默认只读。
+- Service、App、System、Scheduler 公共头不包含 `target/*`、`zf_common_headfile.h` 或 `Ifx*` 头。
+- 中断适配层可以调用 Vendor 和 Platform，但只向 Scheduler 投递事件或 tick，不承载业务控制逻辑。
+- 本仓库不维护 host smoke/unit test runner；语法检查仅作为本地临时验证命令执行，不新增测试目录或脚本。
 
 ## Documentation
 
