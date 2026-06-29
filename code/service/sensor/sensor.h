@@ -16,11 +16,14 @@
 #ifndef CODE_SERVICE_SENSOR_SENSOR_H_
 #define CODE_SERVICE_SENSOR_SENSOR_H_
 
+#include <stdint.h>
+
 typedef struct
 {
     float heading_angle;
     int left_encoder_speed;
     int right_encoder_speed;
+    uint32_t version; /* Monotonic service stamp for snapshot comparisons. */
 } sensor_service_snapshot_t;
 
 /**

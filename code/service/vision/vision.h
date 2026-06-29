@@ -19,6 +19,7 @@ typedef struct
     uint8_t mid_line;
     uint8_t image_mid;
     uint8_t image_threshold;
+    uint32_t version; /* Monotonic service stamp for snapshot comparisons. */
 } vision_control_snapshot_t;
 
 typedef struct
@@ -31,6 +32,7 @@ typedef struct
     uint16_t image_height;
     uint8_t line_count;
     int16_t calculate_error;
+    uint32_t version; /* Monotonic service stamp for snapshot comparisons. */
 } vision_debug_snapshot_t;
 
 /* Public API */

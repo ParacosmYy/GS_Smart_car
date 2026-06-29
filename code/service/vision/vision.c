@@ -35,6 +35,7 @@ typedef struct
     uint8_t lost_count;
     uint8_t image_threshold;
     uint8_t element_cooldown;
+    uint32_t version;
 } vision_context_t;
 
 static vision_context_t s_vision_ctx = {
@@ -445,6 +446,8 @@ void Vision_Process(void)
     find_mid_line();
     // 步骤 6：行加权平均得到最终中线 s_vision_ctx.mid_line 与偏差 s_vision_ctx.calculate_error
     find_mid_line_weight();
+    /* Bump after all frame outputs are refreshed; snapshots copy this stamp. */
+    s_vision_ctx.version++;
 }
 
 /**
@@ -508,6 +511,7 @@ void Vision_GetControlSnapshot(vision_control_snapshot_t *p_snapshot)
     p_snapshot->mid_line = s_vision_ctx.mid_line;
     p_snapshot->image_mid = s_vision_ctx.image_mid;
     p_snapshot->image_threshold = s_vision_ctx.image_threshold;
+    p_snapshot->version = s_vision_ctx.version;
 }
 
 /**
@@ -537,6 +541,7 @@ void Vision_GetDebugSnapshot(vision_debug_snapshot_t *p_snapshot)
     p_snapshot->image_height = VISION_ZIP_IMAGE_H;
     p_snapshot->line_count = VISION_ZIP_IMAGE_H;
     p_snapshot->calculate_error = s_vision_ctx.calculate_error;
+    p_snapshot->version = s_vision_ctx.version;
 }
 
 /* ===== 特殊元素检测 ===== */

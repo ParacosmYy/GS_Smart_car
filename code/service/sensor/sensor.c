@@ -55,6 +55,7 @@ typedef struct
 {
     sensor_encoder_context_t encoder;
     sensor_gyro_context_t    gyro;
+    uint32_t                 version;
 } sensor_service_context_t;
 //******************************** Types ************************************//
 
@@ -62,7 +63,8 @@ typedef struct
 static sensor_service_context_t s_sensor_service_ctx =
 {
     {0, 0},
-    {{0.0f}, 0.0f, 0.0f, 0.0f, ((float)PIT_PERIOD_MS / GYRO_MS_PER_SECOND), 0.0f, 0U}
+    {{0.0f}, 0.0f, 0.0f, 0.0f, ((float)PIT_PERIOD_MS / GYRO_MS_PER_SECOND), 0.0f, 0U},
+    0U
 };
 //******************************** Variables ********************************//
 
@@ -153,6 +155,8 @@ void SensorService_ProcessGyro10ms(void)
 
     z_angle_speed = p_gyro_ctx->raw_z - p_gyro_ctx->z_offset;
     p_gyro_ctx->heading_angle += z_angle_speed * p_gyro_ctx->sample_period_s;
+    /* Bump after service state changes; snapshots copy this lightweight stamp. */
+    s_sensor_service_ctx.version++;
 }
 
 /**
@@ -185,6 +189,7 @@ void SensorService_GetSnapshot(sensor_service_snapshot_t *p_snapshot)
     p_snapshot->heading_angle = s_sensor_service_ctx.gyro.heading_angle;
     p_snapshot->left_encoder_speed = s_sensor_service_ctx.encoder.left_speed;
     p_snapshot->right_encoder_speed = s_sensor_service_ctx.encoder.right_speed;
+    p_snapshot->version = s_sensor_service_ctx.version;
 }
 
 /**
@@ -208,6 +213,10 @@ void SensorService_ProcessEncoder50ms(void)
                                      left_sum_snapshot,
                                      right_sum_snapshot,
                                      sample_count_snapshot);
+    if (sample_count_snapshot > 0)
+    {
+        s_sensor_service_ctx.version++;
+    }
 }
 
 /**
