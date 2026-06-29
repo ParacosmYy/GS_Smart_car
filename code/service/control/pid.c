@@ -9,8 +9,37 @@
 
 #include "pid.h"
 
+#define POS_PID_INTEGRAL_LIMIT  1000.0f
 #define SERVO_PID_OUTPUT_LIMIT  63.0f
 #define MOTOR_PID_OUTPUT_LIMIT  20.0f
+
+/**
+ * @brief 对浮点控制量做对称限幅。
+ *
+ * Steps:
+ *   1. 将正向值限制在 limit 以内。
+ *   2. 将反向值限制在 -limit 以内。
+ *   3. 未越界时保持原值。
+ *
+ * @param[in] value 输入控制量。
+ * @param[in] limit 控制量绝对值上限。
+ * @return 限幅后的控制量。
+ */
+static float pid_clamp_symmetric(float value, float limit)
+{
+    float clamped = value;
+
+    if (value > limit)
+    {
+        clamped = limit;
+    }
+    else if (value < -limit)
+    {
+        clamped = -limit;
+    }
+
+    return clamped;
+}
 
 /**
  * @brief 初始化位置式 PID 参数。
@@ -63,7 +92,7 @@ void IncPID_Init(IncPID_t *pid, float kp, float ki, float kd)
  *
  * Steps:
  *   1. 计算目标值与反馈值的当前误差。
- *   2. 累加积分项。
+ *   2. 累加积分项并做 anti-windup 限幅。
  *   3. 根据上次误差计算微分项。
  *   4. 计算并保存本次输出。
  *
@@ -78,6 +107,7 @@ float PosPID_Calc(PosPID_t *pid, float target, float feedback)
     float derivative = 0.0f;
 
     pid->integral += err;
+    pid->integral = pid_clamp_symmetric(pid->integral, POS_PID_INTEGRAL_LIMIT);
     derivative = err - pid->prev_err;
     pid->output = pid->kp * err + pid->ki * pid->integral + pid->kd * derivative;
     pid->prev_err = err;
@@ -129,14 +159,7 @@ float ServoPid_Control(PosPID_t *steer_pid, float steer_target, float steer_feed
 {
     float servo_output = PosPID_Calc(steer_pid, steer_target, steer_feedback);
 
-    if (servo_output >= SERVO_PID_OUTPUT_LIMIT)
-    {
-        servo_output = SERVO_PID_OUTPUT_LIMIT;
-    }
-    else if (servo_output <= -SERVO_PID_OUTPUT_LIMIT)
-    {
-        servo_output = -SERVO_PID_OUTPUT_LIMIT;
-    }
+    servo_output = pid_clamp_symmetric(servo_output, SERVO_PID_OUTPUT_LIMIT);
 
     return servo_output;
 }
@@ -157,14 +180,7 @@ float MotorPid_Control(IncPID_t *motor_pid, float speed_target, float speed_feed
 {
     float motor_output = IncPID_Calc(motor_pid, speed_target, speed_feedback);
 
-    if (motor_output >= MOTOR_PID_OUTPUT_LIMIT)
-    {
-        motor_output = MOTOR_PID_OUTPUT_LIMIT;
-    }
-    else if (motor_output <= -MOTOR_PID_OUTPUT_LIMIT)
-    {
-        motor_output = -MOTOR_PID_OUTPUT_LIMIT;
-    }
+    motor_output = pid_clamp_symmetric(motor_output, MOTOR_PID_OUTPUT_LIMIT);
 
     return motor_output;
 }
