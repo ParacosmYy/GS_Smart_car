@@ -12,81 +12,36 @@
 ## Architecture
 
 ```mermaid
+%%{init: {"theme": "base", "themeVariables": {"fontFamily": "Inter, Microsoft YaHei, Arial", "primaryBorderColor": "#CBD5E1", "lineColor": "#64748B", "tertiaryColor": "#F8FAFC"}}}%%
 flowchart LR
-    subgraph ENTRY["入口层 SDK Entry"]
-        CPU["cpu0_main.c"]
-        ISR["user/isr.c"]
-    end
+    ENTRY["入口层<br/><b>SDK Entry</b><br/>cpu0_main / user/isr"]
+    SYSTEM["系统层<br/><b>System</b><br/>boot / board / scheduler"]
+    APP["应用层<br/><b>App</b><br/>task table"]
+    SERVICE["服务层<br/><b>Service</b><br/>vision / sensor / control"]
+    BSP["设备层<br/><b>BSP / Driver</b><br/>motor / servo / display"]
+    PLATFORM["平台契约<br/><b>Platform</b><br/>port_if.h"]
+    TARGET["目标适配<br/><b>Target</b><br/>port / board map / irq"]
+    VENDOR["厂家底座<br/><b>Vendor</b><br/>SEEKFREE SDK + iLLD"]
 
-    subgraph SYSTEM["系统层 System"]
-        BOOT["smartcar_system.c<br/>启动编排"]
-        BOARD["smartcar_board.c<br/>板级初始化"]
-        SCHED["scheduler.c / event.c<br/>协作调度"]
-    end
+    ENTRY --> SYSTEM --> APP --> SERVICE --> BSP --> PLATFORM --> TARGET --> VENDOR
 
-    subgraph APP["应用层 App"]
-        TASKS["smartcar_app.c<br/>任务表"]
-    end
+    classDef entry fill:#F8FAFC,stroke:#64748B,color:#0F172A,stroke-width:1.2px;
+    classDef system fill:#EFF6FF,stroke:#2563EB,color:#1E3A8A,stroke-width:1.4px;
+    classDef app fill:#ECFDF5,stroke:#059669,color:#064E3B,stroke-width:1.4px;
+    classDef service fill:#FFF7ED,stroke:#EA580C,color:#7C2D12,stroke-width:1.4px;
+    classDef bsp fill:#F0FDFA,stroke:#0D9488,color:#134E4A,stroke-width:1.4px;
+    classDef platform fill:#F5F3FF,stroke:#7C3AED,color:#4C1D95,stroke-width:1.4px;
+    classDef target fill:#FEF2F2,stroke:#DC2626,color:#7F1D1D,stroke-width:1.4px;
+    classDef vendor fill:#F9FAFB,stroke:#6B7280,color:#111827,stroke-width:1.2px;
 
-    subgraph SERVICE["服务层 Service"]
-        VISION["vision"]
-        SENSOR["sensor"]
-        CONTROL["control"]
-        DIAG["diagnostics"]
-    end
-
-    subgraph BSP["板级动作 BSP"]
-        ACT["motor / servo"]
-        IO["display / input / buzzer"]
-    end
-
-    subgraph PLATFORM["平台契约 Platform"]
-        PORT["port_if.h<br/>SystemPort / McuIo / Device"]
-    end
-
-    subgraph TARGET["目标端口 Target"]
-        TPORT["target_port.c"]
-        TMAP["target_board_map.c"]
-        TIRQ["target_irq.c"]
-    end
-
-    subgraph VENDOR["厂家底座 Vendor"]
-        SDK["SEEKFREE SDK + iLLD"]
-    end
-
-    CPU --> BOOT --> BOARD --> PORT
-    BOOT --> TASKS --> SCHED --> VISION
-    SCHED --> SENSOR
-    SCHED --> CONTROL
-    SCHED --> DIAG
-    VISION --> IO
-    SENSOR --> PORT
-    CONTROL --> ACT
-    DIAG --> IO
-    ACT --> PORT
-    IO --> PORT
-    PORT -. "link-time symbols" .-> TPORT --> SDK
-    TPORT --> TMAP
-    ISR --> TIRQ --> SCHED
-    TIRQ --> SDK
-
-    classDef entry fill:#f8fafc,stroke:#64748b,color:#0f172a;
-    classDef system fill:#eff6ff,stroke:#2563eb,color:#1e3a8a;
-    classDef app fill:#ecfdf5,stroke:#059669,color:#064e3b;
-    classDef service fill:#fff7ed,stroke:#ea580c,color:#7c2d12;
-    classDef bsp fill:#f0fdfa,stroke:#0d9488,color:#134e4a;
-    classDef platform fill:#f5f3ff,stroke:#7c3aed,color:#4c1d95;
-    classDef target fill:#fef2f2,stroke:#dc2626,color:#7f1d1d;
-    classDef vendor fill:#f9fafb,stroke:#6b7280,color:#111827;
-
-    class CPU,ISR entry
-    class BOOT,BOARD,SCHED system
-    class TASKS app
-    class VISION,SENSOR,CONTROL,DIAG service
-    class ACT,IO bsp
-    class PORT platform
-    class TPORT,TMAP,TIRQ target
-    class SDK vendor
+    class ENTRY entry
+    class SYSTEM system
+    class APP app
+    class SERVICE service
+    class BSP bsp
+    class PLATFORM platform
+    class TARGET target
+    class VENDOR vendor
 ```
 
 ## Layer Rules
@@ -103,18 +58,37 @@ flowchart LR
 ## IRQ Flow
 
 ```mermaid
-flowchart LR
-    HW["硬件中断<br/>PIT / DMA / ERU / UART"]
-    ENTRY_ISR["user/isr.c<br/>薄入口"]
-    TARGET_IRQ["target_irq.c<br/>清标志 / 采样 / Vendor 回调"]
-    EVENT["event_post_from_isr"]
-    TICK["Scheduler_AddTickFromIsr"]
-    LOOP["scheduler_run"]
-    TASK["Service task"]
+%%{init: {"theme": "base", "themeVariables": {"fontFamily": "Inter, Microsoft YaHei, Arial", "primaryBorderColor": "#CBD5E1", "lineColor": "#64748B", "tertiaryColor": "#F8FAFC"}}}%%
+flowchart TB
+    HW["硬件触发<br/><b>PIT / DMA / ERU / UART</b>"]
+    ISR["入口转发<br/><b>user/isr.c</b>"]
+    IRQ["目标处理<br/><b>target_irq.c</b><br/>清标志 / 采样 / Vendor 回调"]
 
-    HW --> ENTRY_ISR --> TARGET_IRQ
-    TARGET_IRQ --> EVENT --> LOOP --> TASK
-    TARGET_IRQ --> TICK --> LOOP
+    subgraph SCHED["调度出口 · Scheduler"]
+        direction LR
+        EVENT["event_post_from_isr"]
+        TICK["Scheduler_AddTickFromIsr"]
+        LOOP["scheduler_run"]
+    end
+
+    TASK["服务任务<br/><b>Vision / Sensor / Control</b>"]
+
+    HW --> ISR --> IRQ
+    IRQ --> EVENT --> LOOP
+    IRQ --> TICK --> LOOP
+    LOOP --> TASK
+
+    classDef hardware fill:#F8FAFC,stroke:#64748B,color:#0F172A,stroke-width:1.2px;
+    classDef entry fill:#EFF6FF,stroke:#2563EB,color:#1E3A8A,stroke-width:1.4px;
+    classDef target fill:#FEF2F2,stroke:#DC2626,color:#7F1D1D,stroke-width:1.4px;
+    classDef scheduler fill:#F5F3FF,stroke:#7C3AED,color:#4C1D95,stroke-width:1.4px;
+    classDef service fill:#ECFDF5,stroke:#059669,color:#064E3B,stroke-width:1.4px;
+
+    class HW hardware
+    class ISR entry
+    class IRQ target
+    class EVENT,TICK,LOOP scheduler
+    class TASK service
 ```
 
 ISR 只做短路径处理：清中断标志、必要采样、调用 Vendor 回调、投递事件或 tick。视觉、控制、显示等耗时逻辑全部回到主循环调度执行。
