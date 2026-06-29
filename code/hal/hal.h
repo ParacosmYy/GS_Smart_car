@@ -16,23 +16,8 @@
 extern "C" {
 #endif
 
-//******************************** System HAL *************************************//
-void SmartcarHal_ClockInit(void);
-void SmartcarHal_DebugInit(void);
-void SmartcarHal_CoreSync(void);
-uint32_t SmartcarHal_IrqDisable(void);
-void SmartcarHal_IrqRestore(uint32_t state);
-/**
- * @brief Control global interrupts using the target restore parameter.
- *
- * @param[in] restore_state Target-specific restore parameter; 0U requests
- *                          global interrupt enable.
- */
-void SmartcarHal_IrqCtrl(uint8_t restore_state);
-
-//******************************** MCU IO HAL *************************************//
-#define SMARTCAR_HAL_GPIO_OUTPUT 0
-#define SMARTCAR_HAL_GPIO_INPUT  1
+#define SMARTCAR_HAL_GPIO_OUTPUT 0U
+#define SMARTCAR_HAL_GPIO_INPUT  1U
 
 typedef enum
 {
@@ -59,6 +44,18 @@ typedef enum
     SMARTCAR_HAL_PIT_ID_RESERVED = 0
 } smartcar_hal_pit_id_t;
 
+typedef struct
+{
+    uint16_t width;
+    uint16_t height;
+} smartcar_hal_camera_desc_t;
+
+void SmartcarHal_ClockInit(void);
+void SmartcarHal_DebugInit(void);
+void SmartcarHal_CoreSync(void);
+uint32_t SmartcarHal_IrqDisable(void);
+void SmartcarHal_IrqRestore(uint32_t state);
+
 void SmartcarHal_GpioInit(smartcar_hal_gpio_id_t pin, uint8_t mode);
 void SmartcarHal_GpioHigh(smartcar_hal_gpio_id_t pin);
 void SmartcarHal_GpioLow(smartcar_hal_gpio_id_t pin);
@@ -75,14 +72,6 @@ void SmartcarHal_EncoderTakeSnapshot(int *p_left_sum, int *p_right_sum, int *p_s
 
 void SmartcarHal_PitInit(smartcar_hal_pit_id_t channel, uint32_t period_ms);
 void SmartcarHal_PitClearFlag(smartcar_hal_pit_id_t channel);
-
-//******************************** Device HAL *************************************//
-typedef struct
-{
-    uint16_t width;
-    uint16_t height;
-    uint16_t stride;
-} smartcar_hal_camera_desc_t;
 
 void     SmartcarHal_CameraInit(void);
 bool     SmartcarHal_CameraReady(void);

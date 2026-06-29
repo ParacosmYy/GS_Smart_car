@@ -9,6 +9,7 @@
  */
 
 #include "hal/hal.h"
+#include "ops_tc264_irq.h"
 #include "smartcar_board_resources.h"
 #include "zf_common_headfile.h"
 
@@ -132,17 +133,6 @@ uint32_t SmartcarHal_IrqDisable(void)
 void SmartcarHal_IrqRestore(uint32_t state)
 {
     interrupt_global_enable(state);
-}
-
-/**
- * @brief 按 Vendor 恢复参数控制全局中断。
- *
- * @param[in] restore_state TC264 Vendor 恢复参数；0U 表示打开全局中断，非 0U 保持关闭状态。
- * @return void。
- */
-void SmartcarHal_IrqCtrl(uint8_t restore_state)
-{
-    interrupt_global_enable(restore_state);
 }
 
 /**
@@ -337,36 +327,6 @@ void SmartcarHal_PitClearFlag(smartcar_hal_pit_id_t channel)
 }
 
 /**
- * @brief 查询 TC264 摄像头帧完成标志。
- *
- * @return true 表示有新帧；false 表示暂无新帧。
- */
-static bool Tc264Camera_IsFrameReady(void)
-{
-    return (mt9v03x_finish_flag == 1);
-}
-
-/**
- * @brief 清除 TC264 摄像头帧完成标志。
- *
- * @return void。
- */
-static void Tc264Camera_ClearFrameReady(void)
-{
-    mt9v03x_finish_flag = 0;
-}
-
-/**
- * @brief 获取 TC264 摄像头灰度图像缓冲区。
- *
- * @return Vendor 摄像头图像缓冲区首地址。
- */
-static uint8_t *Tc264Camera_GetFrameData(void)
-{
-    return (uint8_t *)mt9v03x_image;
-}
-
-/**
  * @brief 初始化 MT9V03X 摄像头。
  *
  * @return void。
@@ -383,7 +343,7 @@ void SmartcarHal_CameraInit(void)
  */
 bool SmartcarHal_CameraReady(void)
 {
-    return Tc264Camera_IsFrameReady();
+    return (mt9v03x_finish_flag == 1);
 }
 
 /**
@@ -393,7 +353,7 @@ bool SmartcarHal_CameraReady(void)
  */
 void SmartcarHal_CameraClear(void)
 {
-    Tc264Camera_ClearFrameReady();
+    mt9v03x_finish_flag = 0;
 }
 
 /**
@@ -403,7 +363,7 @@ void SmartcarHal_CameraClear(void)
  */
 uint8_t *SmartcarHal_CameraData(void)
 {
-    return Tc264Camera_GetFrameData();
+    return (uint8_t *)mt9v03x_image;
 }
 
 /**
@@ -418,7 +378,6 @@ void SmartcarHal_CameraGetDesc(smartcar_hal_camera_desc_t *p_desc)
     {
         p_desc->width = (uint16_t)MT9V03X_W;
         p_desc->height = (uint16_t)MT9V03X_H;
-        p_desc->stride = (uint16_t)MT9V03X_W;
     }
 }
 

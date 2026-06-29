@@ -30,6 +30,16 @@ typedef struct
 static encoder_window_t s_encoder_window = {0, 0, 0, 0U};
 
 /**
+ * @brief 打开 TC264 全局中断。
+ *
+ * @return void。
+ */
+static void TargetIrq_EnableGlobal(void)
+{
+    interrupt_global_enable(0);
+}
+
+/**
  * @brief 清理 PIT 中断前置状态。
  *
  * Steps:
@@ -41,7 +51,7 @@ static encoder_window_t s_encoder_window = {0, 0, 0, 0U};
  */
 static void TargetIrq_PreparePit(smartcar_hal_pit_id_t pit)
 {
-    SmartcarHal_IrqCtrl(0);
+    TargetIrq_EnableGlobal();
     SmartcarHal_PitClearFlag(pit);
 }
 
@@ -69,13 +79,13 @@ static void TargetIrq_SampleEncoder(void)
  * @brief 准备处理 UART 中断。
  *
  * Steps:
- *   1. 按 TC264 Vendor 约定传入 0，打开全局中断。
+ *   1. 打开全局中断。
  *
  * @return void。
  */
 static void TargetIrq_PrepareUart(void)
 {
-    SmartcarHal_IrqCtrl(0);
+    TargetIrq_EnableGlobal();
 }
 
 /**
@@ -145,7 +155,7 @@ void TargetIrq_GyroPit(void)
  */
 void TargetIrq_CameraVsync(void)
 {
-    SmartcarHal_IrqCtrl(0);
+    TargetIrq_EnableGlobal();
 
     if (exti_flag_get(ERU_CH3_REQ6_P02_0))
     {
@@ -170,7 +180,7 @@ void TargetIrq_CameraVsync(void)
  */
 void TargetIrq_CameraDma(void)
 {
-    SmartcarHal_IrqCtrl(0);
+    TargetIrq_EnableGlobal();
     camera_dma_handler();
     Event_PostFromIsr(EVT_CAM_FRAME);
 }

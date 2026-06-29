@@ -4,7 +4,7 @@
  * @author GS_Mark
  *
  * @par 设计说明
- * Runtime 是启动组合根，负责把 SmartcarHal、Board、Service、App 任务表和调度器装配起来。
+ * Runtime 负责按产品顺序装配 Board、Service、App 任务表和调度器。
  */
 
 #include "smartcar_system.h"
