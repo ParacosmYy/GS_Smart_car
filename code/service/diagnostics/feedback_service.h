@@ -1,5 +1,5 @@
-#ifndef FEEDBACK_SERVICE_H_
-#define FEEDBACK_SERVICE_H_
+#ifndef CODE_SERVICE_DIAGNOSTICS_FEEDBACK_SERVICE_H_
+#define CODE_SERVICE_DIAGNOSTICS_FEEDBACK_SERVICE_H_
 
 /**
  * @file feedback_service.h
@@ -14,4 +14,4 @@ void FeedbackService_NotifyTrackElement(uint8_t element);
 /** @brief 推进非阻塞反馈时序 */
 void FeedbackService_Tick(void);
 
-#endif /* FEEDBACK_SERVICE_H_ */
+#endif /* CODE_SERVICE_DIAGNOSTICS_FEEDBACK_SERVICE_H_ */

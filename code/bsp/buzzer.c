@@ -23,6 +23,7 @@ typedef struct
 typedef struct
 {
     buzzer_pattern_t pattern;
+    buzzer_event_t pending_event;
     uint8_t remaining;
     uint8_t tick_count;
     uint8_t is_beeping;
@@ -37,6 +38,37 @@ static const buzzer_pattern_t s_patterns[] =
 };
 
 static buzzer_t s_buzzer = {0};
+
+/**
+ * @brief 判断新事件是否应覆盖等待中的蜂鸣事件。
+ *
+ * Steps:
+ *   1. 空事件不覆盖任何等待事件。
+ *   2. 现有等待为空时接收新事件。
+ *   3. 枚举值越大优先级越高，高优先级覆盖低优先级。
+ *
+ * @param[in] pending_event 当前等待事件。
+ * @param[in] event 新输入事件。
+ * @return 1 表示应覆盖；0 表示保持原等待事件。
+ */
+static uint8_t should_replace_pending(buzzer_event_t pending_event, buzzer_event_t event)
+{
+    uint8_t should_replace = 0U;
+
+    if (event != BUZZER_EVENT_NONE)
+    {
+        if (pending_event == BUZZER_EVENT_NONE)
+        {
+            should_replace = 1U;
+        }
+        else if (event > pending_event)
+        {
+            should_replace = 1U;
+        }
+    }
+
+    return should_replace;
+}
 
 /**
  * @brief 启动当前蜂鸣阶段。
@@ -90,6 +122,7 @@ static void finish_beep(buzzer_t *p_buzzer)
     McuIo_GpioLow(SMARTCAR_GPIO_BUZZER);
     p_buzzer->active = 0U;
     p_buzzer->is_beeping = 0U;
+    p_buzzer->tick_count = 0U;
 }
 
 /**
@@ -125,8 +158,17 @@ static void fire_pattern(buzzer_t *p_buzzer, buzzer_event_t event)
  */
 static void step_pattern(buzzer_t *p_buzzer)
 {
+    buzzer_event_t pending_event = BUZZER_EVENT_NONE;
+
     if (p_buzzer->active == 0U)
     {
+        if (p_buzzer->pending_event != BUZZER_EVENT_NONE)
+        {
+            pending_event = p_buzzer->pending_event;
+            p_buzzer->pending_event = BUZZER_EVENT_NONE;
+            fire_pattern(p_buzzer, pending_event);
+        }
+
         return;
     }
 
@@ -141,6 +183,12 @@ static void step_pattern(buzzer_t *p_buzzer)
         else
         {
             finish_beep(p_buzzer);
+            if (p_buzzer->pending_event != BUZZER_EVENT_NONE)
+            {
+                pending_event = p_buzzer->pending_event;
+                p_buzzer->pending_event = BUZZER_EVENT_NONE;
+                fire_pattern(p_buzzer, pending_event);
+            }
         }
     }
     else if ((p_buzzer->is_beeping == 0U) && (p_buzzer->tick_count >= p_buzzer->pattern.off_ticks))
@@ -157,9 +205,10 @@ static void step_pattern(buzzer_t *p_buzzer)
  *
  * @return void。
  */
-void buzzer_init(void)
+void Buzzer_Init(void)
 {
     McuIo_GpioInit(SMARTCAR_GPIO_BUZZER, MCUIO_GPIO_OUTPUT);
+    s_buzzer.pending_event = BUZZER_EVENT_NONE;
 }
 
 /**
@@ -175,9 +224,18 @@ void buzzer_init(void)
  */
 void Buzzer_Trigger(buzzer_event_t event)
 {
-    if ((event != BUZZER_EVENT_NONE) && (s_buzzer.active == 0U))
+    if (event == BUZZER_EVENT_NONE)
+    {
+        return;
+    }
+
+    if (s_buzzer.active == 0U)
     {
         fire_pattern(&s_buzzer, event);
+    }
+    else if (should_replace_pending(s_buzzer.pending_event, event) != 0U)
+    {
+        s_buzzer.pending_event = event;
     }
 }
 

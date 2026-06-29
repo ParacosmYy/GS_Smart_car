@@ -90,7 +90,7 @@ static const smartcar_board_init_step_t s_device_init_steps[] =
     },
     {
         .type = SMARTCAR_BOARD_INIT_CALLBACK,
-        .param = { .pf_init = buzzer_init },
+        .param = { .pf_init = Buzzer_Init },
     },
     {
         .type = SMARTCAR_BOARD_INIT_CALLBACK,
