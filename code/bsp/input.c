@@ -13,7 +13,7 @@
 
 #define INPUT_KEY_COUNT 4U
 
-static const uint16_t s_keys[INPUT_KEY_COUNT] =
+static const mcuio_gpio_id_t s_keys[INPUT_KEY_COUNT] =
 {
     SMARTCAR_GPIO_KEY1,
     SMARTCAR_GPIO_KEY2,
@@ -21,7 +21,7 @@ static const uint16_t s_keys[INPUT_KEY_COUNT] =
     SMARTCAR_GPIO_KEY4,
 };
 
-static const uint16_t s_dips[INPUT_KEY_COUNT] =
+static const mcuio_gpio_id_t s_dips[INPUT_KEY_COUNT] =
 {
     SMARTCAR_GPIO_DIP1,
     SMARTCAR_GPIO_DIP2,

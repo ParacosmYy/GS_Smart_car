@@ -23,6 +23,7 @@
 #include "sensor.h"
 #include "config.h"
 #include "platform/port_if.h"
+#include "scheduler/encoder_sample.h"
 //******************************** Includes *********************************//
 
 //******************************** Defines **********************************//

@@ -1,6 +1,6 @@
 /**
  * @file target_irq.c
- * @brief Target interrupt adapter and event posting implementation for TC264.
+ * @brief Target interrupt adapter, event posting, and encoder snapshot implementation for TC264.
  * @author GS_Mark
  *
  * @par 设计说明
@@ -11,6 +11,7 @@
 #include "target_irq.h"
 
 #include "config.h"
+#include "scheduler/encoder_sample.h"
 #include "event.h"
 #include "platform/port_if.h"
 #include "scheduler.h"
@@ -39,7 +40,7 @@ static encoder_window_t s_encoder_window = {0, 0, 0, 0U};
  * @param[in] pit 产品 PIT 资源 ID。
  * @return void。
  */
-static void TargetIrq_PreparePit(uint16_t pit)
+static void TargetIrq_PreparePit(mcuio_pit_id_t pit)
 {
     SystemPort_IrqGlobalCtrl(0);
     McuIo_PitClearFlag(pit);

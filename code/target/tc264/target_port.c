@@ -86,7 +86,7 @@ void SystemPort_IrqGlobalCtrl(uint8_t state)
  * @param[in] mode MCUIO_GPIO_OUTPUT 或输入模式。
  * @return void。
  */
-void McuIo_GpioInit(uint16_t pin, uint8_t mode)
+void McuIo_GpioInit(mcuio_gpio_id_t pin, uint8_t mode)
 {
     if (pin >= SMARTCAR_GPIO_ID_MAX)
     {
@@ -109,7 +109,7 @@ void McuIo_GpioInit(uint16_t pin, uint8_t mode)
  * @param[in] pin 产品 GPIO 资源 ID。
  * @return void。
  */
-void McuIo_GpioHigh(uint16_t pin)
+void McuIo_GpioHigh(mcuio_gpio_id_t pin)
 {
     if (pin < SMARTCAR_GPIO_ID_MAX)
     {
@@ -123,7 +123,7 @@ void McuIo_GpioHigh(uint16_t pin)
  * @param[in] pin 产品 GPIO 资源 ID。
  * @return void。
  */
-void McuIo_GpioLow(uint16_t pin)
+void McuIo_GpioLow(mcuio_gpio_id_t pin)
 {
     if (pin < SMARTCAR_GPIO_ID_MAX)
     {
@@ -139,7 +139,7 @@ void McuIo_GpioLow(uint16_t pin)
  * @param[in] duty 初始占空比。
  * @return void。
  */
-void McuIo_PwmInit(uint16_t channel, uint32_t freq_hz, uint32_t duty)
+void McuIo_PwmInit(mcuio_pwm_id_t channel, uint32_t freq_hz, uint32_t duty)
 {
     if (channel < SMARTCAR_PWM_ID_MAX)
     {
@@ -154,7 +154,7 @@ void McuIo_PwmInit(uint16_t channel, uint32_t freq_hz, uint32_t duty)
  * @param[in] duty 目标占空比。
  * @return void。
  */
-void McuIo_PwmSetDuty(uint16_t channel, uint32_t duty)
+void McuIo_PwmSetDuty(mcuio_pwm_id_t channel, uint32_t duty)
 {
     if (channel < SMARTCAR_PWM_ID_MAX)
     {
@@ -174,7 +174,7 @@ void McuIo_PwmSetDuty(uint16_t channel, uint32_t duty)
  * @param[in] baud 波特率。
  * @return void。
  */
-void McuIo_UartInit(uint16_t channel, uint32_t baud)
+void McuIo_UartInit(mcuio_uart_id_t channel, uint32_t baud)
 {
     if (channel >= SMARTCAR_UART_ID_MAX)
     {
@@ -193,7 +193,7 @@ void McuIo_UartInit(uint16_t channel, uint32_t baud)
  * @param[in] channel 产品编码器资源 ID。
  * @return void。
  */
-void McuIo_EncoderInit(uint16_t channel)
+void McuIo_EncoderInit(mcuio_encoder_id_t channel)
 {
     if (channel >= SMARTCAR_ENCODER_ID_MAX)
     {
@@ -211,7 +211,7 @@ void McuIo_EncoderInit(uint16_t channel)
  * @param[in] channel 产品编码器资源 ID。
  * @return 编码器计数；资源 ID 无效时返回 0。
  */
-int32_t McuIo_EncoderGet(uint16_t channel)
+int32_t McuIo_EncoderGet(mcuio_encoder_id_t channel)
 {
     int32_t count = 0;
 
@@ -229,7 +229,7 @@ int32_t McuIo_EncoderGet(uint16_t channel)
  * @param[in] channel 产品编码器资源 ID。
  * @return void。
  */
-void McuIo_EncoderClear(uint16_t channel)
+void McuIo_EncoderClear(mcuio_encoder_id_t channel)
 {
     if (channel < SMARTCAR_ENCODER_ID_MAX)
     {
@@ -244,7 +244,7 @@ void McuIo_EncoderClear(uint16_t channel)
  * @param[in] period_ms 周期，单位 ms。
  * @return void。
  */
-void McuIo_PitInit(uint16_t channel, uint32_t period_ms)
+void McuIo_PitInit(mcuio_pit_id_t channel, uint32_t period_ms)
 {
     if (channel < SMARTCAR_PIT_ID_MAX)
     {
@@ -258,12 +258,42 @@ void McuIo_PitInit(uint16_t channel, uint32_t period_ms)
  * @param[in] channel 产品 PIT 资源 ID。
  * @return void。
  */
-void McuIo_PitClearFlag(uint16_t channel)
+void McuIo_PitClearFlag(mcuio_pit_id_t channel)
 {
     if (channel < SMARTCAR_PIT_ID_MAX)
     {
         pit_clear_flag(g_tc264_pit_map[channel]);
     }
+}
+
+/**
+ * @brief 查询 TC264 摄像头帧完成标志。
+ *
+ * @return true 表示有新帧；false 表示暂无新帧。
+ */
+static bool Tc264Camera_IsFrameReady(void)
+{
+    return (mt9v03x_finish_flag == 1);
+}
+
+/**
+ * @brief 清除 TC264 摄像头帧完成标志。
+ *
+ * @return void。
+ */
+static void Tc264Camera_ClearFrameReady(void)
+{
+    mt9v03x_finish_flag = 0;
+}
+
+/**
+ * @brief 获取 TC264 摄像头灰度图像缓冲区。
+ *
+ * @return Vendor 摄像头图像缓冲区首地址。
+ */
+static uint8_t *Tc264Camera_GetFrameData(void)
+{
+    return (uint8_t *)mt9v03x_image;
 }
 
 /**
@@ -283,7 +313,7 @@ void Device_CameraInit(void)
  */
 bool Device_CameraReady(void)
 {
-    return (mt9v03x_finish_flag == 1);
+    return Tc264Camera_IsFrameReady();
 }
 
 /**
@@ -293,17 +323,17 @@ bool Device_CameraReady(void)
  */
 void Device_CameraClear(void)
 {
-    mt9v03x_finish_flag = 0;
+    Tc264Camera_ClearFrameReady();
 }
 
 /**
  * @brief 获取摄像头灰度图像缓冲区。
  *
- * @return Vendor 摄像头图像缓冲区首地址。
+ * @return 摄像头图像缓冲区首地址。
  */
 uint8_t *Device_CameraData(void)
 {
-    return (uint8_t *)mt9v03x_image;
+    return Tc264Camera_GetFrameData();
 }
 
 /**
@@ -316,9 +346,9 @@ void Device_CameraGetFrameDesc(camera_frame_desc_t *p_desc)
 {
     if (p_desc != 0)
     {
-        p_desc->width = 188U;
-        p_desc->height = 120U;
-        p_desc->stride = 188U;
+        p_desc->width = (uint16_t)MT9V03X_W;
+        p_desc->height = (uint16_t)MT9V03X_H;
+        p_desc->stride = (uint16_t)MT9V03X_W;
     }
 }
 

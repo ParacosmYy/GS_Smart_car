@@ -24,27 +24,50 @@ uint32_t SystemPort_IrqGlobalDisable(void);
 void SystemPort_IrqGlobalRestore(uint32_t state);
 void SystemPort_IrqGlobalCtrl(uint8_t state);
 
-void EncoderSample_TakeSnapshot(int *p_left_sum, int *p_right_sum, int *p_sample_count);
-
 //******************************** MCU IO Port *************************************//
 #define MCUIO_GPIO_OUTPUT 0
 #define MCUIO_GPIO_INPUT  1
 
-void McuIo_GpioInit(uint16_t pin, uint8_t mode);
-void McuIo_GpioHigh(uint16_t pin);
-void McuIo_GpioLow(uint16_t pin);
+typedef enum
+{
+    MCUIO_GPIO_ID_RESERVED = 0
+} mcuio_gpio_id_t;
 
-void McuIo_PwmInit(uint16_t ch, uint32_t freq_hz, uint32_t duty);
-void McuIo_PwmSetDuty(uint16_t ch, uint32_t duty);
+typedef enum
+{
+    MCUIO_PWM_ID_RESERVED = 0
+} mcuio_pwm_id_t;
 
-void McuIo_UartInit(uint16_t ch, uint32_t baud);
+typedef enum
+{
+    MCUIO_UART_ID_RESERVED = 0
+} mcuio_uart_id_t;
 
-void McuIo_EncoderInit(uint16_t ch);
-int32_t McuIo_EncoderGet(uint16_t ch);
-void McuIo_EncoderClear(uint16_t ch);
+typedef enum
+{
+    MCUIO_ENCODER_ID_RESERVED = 0
+} mcuio_encoder_id_t;
 
-void McuIo_PitInit(uint16_t ch, uint32_t period_ms);
-void McuIo_PitClearFlag(uint16_t ch);
+typedef enum
+{
+    MCUIO_PIT_ID_RESERVED = 0
+} mcuio_pit_id_t;
+
+void McuIo_GpioInit(mcuio_gpio_id_t pin, uint8_t mode);
+void McuIo_GpioHigh(mcuio_gpio_id_t pin);
+void McuIo_GpioLow(mcuio_gpio_id_t pin);
+
+void McuIo_PwmInit(mcuio_pwm_id_t ch, uint32_t freq_hz, uint32_t duty);
+void McuIo_PwmSetDuty(mcuio_pwm_id_t ch, uint32_t duty);
+
+void McuIo_UartInit(mcuio_uart_id_t ch, uint32_t baud);
+
+void McuIo_EncoderInit(mcuio_encoder_id_t ch);
+int32_t McuIo_EncoderGet(mcuio_encoder_id_t ch);
+void McuIo_EncoderClear(mcuio_encoder_id_t ch);
+
+void McuIo_PitInit(mcuio_pit_id_t ch, uint32_t period_ms);
+void McuIo_PitClearFlag(mcuio_pit_id_t ch);
 
 //******************************** Device Port *************************************//
 typedef struct
