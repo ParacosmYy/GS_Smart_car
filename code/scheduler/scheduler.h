@@ -7,8 +7,10 @@
  *
  *        典型用法：
  *          scheduler_init();
- *          scheduler_add(SmartcarApp_TaskVision,  0,  EVT_CAM_FRAME);  // 事件触发
- *          scheduler_add(SmartcarApp_TaskControl, 10, 0);              // 10ms 周期
+ *          scheduler_add_ex(SmartcarApp_TaskVision,  0,  EVT_CAM_FRAME,
+ *                           SCHEDULER_TASK_PHASE_NORMAL_EVENT);
+ *          scheduler_add_ex(SmartcarApp_TaskControl, 10, 0,
+ *                           SCHEDULER_TASK_PHASE_FAST_PERIODIC);
  *          while (1) { scheduler_run(); }
  */
 #ifndef CODE_SCHEDULER_SCHEDULER_H_
@@ -22,14 +24,25 @@
 /* 任务函数原型：接收当前事件掩码，任务自行判断是否需要处理 */
 typedef void (*task_fn_t)(event_mask_t events);
 
+/* 调度阶段，枚举顺序即任务执行优先级 */
+typedef enum
+{
+    SCHEDULER_TASK_PHASE_SENSOR_EVENT = 0,
+    SCHEDULER_TASK_PHASE_FAST_PERIODIC,
+    SCHEDULER_TASK_PHASE_NORMAL_EVENT,
+    SCHEDULER_TASK_PHASE_SLOW_PERIODIC,
+    SCHEDULER_TASK_PHASE_COUNT
+} scheduler_task_phase_t;
+
 /* 任务描述符 */
 typedef struct
 {
-    task_fn_t     fn;          /* 任务函数指针                    */
-    uint32_t      period_ms;   /* 执行周期（ms），0=仅事件触发    */
-    uint32_t      last_run;    /* 上次执行时间戳（ms）            */
-    event_mask_t  trigger;     /* 触发事件掩码，0=纯周期触发      */
-    uint8_t       active;      /* 1=激活，0=暂停                  */
+    task_fn_t              fn;          /* 任务函数指针                 */
+    uint32_t               period_ms;   /* 执行周期（ms），0=仅事件触发 */
+    uint32_t               last_run;    /* 上次执行时间戳（ms）         */
+    event_mask_t           trigger;     /* 触发事件掩码，0=纯周期触发   */
+    scheduler_task_phase_t phase;       /* 显式调度阶段                 */
+    uint8_t                active;      /* 1=激活，0=暂停               */
 } sch_task_t;
 
 /**
@@ -57,6 +70,19 @@ uint32_t Scheduler_GetNowMs(void);
  * @return 任务槽位索引（>=0），-1=参数非法或表满
  */
 int8_t scheduler_add(task_fn_t fn, uint32_t period_ms, event_mask_t trigger);
+
+/**
+ * @brief 注册一个指定调度阶段的任务
+ * @param fn        任务函数
+ * @param period_ms 执行周期（0=仅事件触发）
+ * @param trigger   触发事件（0=纯周期触发）
+ * @param phase     调度阶段
+ * @return 任务槽位索引（>=0），-1=参数非法或表满
+ */
+int8_t scheduler_add_ex(task_fn_t fn,
+                        uint32_t period_ms,
+                        event_mask_t trigger,
+                        scheduler_task_phase_t phase);
 
 /**
  * @brief 调度器主循环：获取事件 → 遍历任务 → 到期/命中则执行

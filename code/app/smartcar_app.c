@@ -20,9 +20,10 @@
 
 typedef struct
 {
-    task_fn_t    handler;
-    uint32_t     period_ms;
-    event_mask_t trigger;
+    task_fn_t              handler;
+    uint32_t               period_ms;
+    event_mask_t           trigger;
+    scheduler_task_phase_t phase;
 } smartcar_task_desc_t;
 
 static void SensorTask_Gyro10ms(event_mask_t events);
@@ -34,12 +35,42 @@ static void DiagnosticsTask_100ms(event_mask_t events);
 
 static const smartcar_task_desc_t s_smartcar_tasks[] =
 {
-    { .handler = SensorTask_Gyro10ms,    .period_ms = 0U,   .trigger = EVT_GYRO_10MS },
-    { .handler = SensorTask_Encoder50ms, .period_ms = 0U,   .trigger = EVT_ENCODER_50MS },
-    { .handler = VisionTask_OnFrame,     .period_ms = 0U,   .trigger = EVT_CAM_FRAME },
-    { .handler = ControlTask_10ms,       .period_ms = 10U,  .trigger = EVT_NONE },
-    { .handler = FeedbackTask_10ms,      .period_ms = 10U,  .trigger = EVT_NONE },
-    { .handler = DiagnosticsTask_100ms,  .period_ms = 100U, .trigger = EVT_NONE },
+    {
+        .handler = SensorTask_Gyro10ms,
+        .period_ms = 0U,
+        .trigger = EVT_GYRO_10MS,
+        .phase = SCHEDULER_TASK_PHASE_SENSOR_EVENT
+    },
+    {
+        .handler = SensorTask_Encoder50ms,
+        .period_ms = 0U,
+        .trigger = EVT_ENCODER_50MS,
+        .phase = SCHEDULER_TASK_PHASE_SENSOR_EVENT
+    },
+    {
+        .handler = VisionTask_OnFrame,
+        .period_ms = 0U,
+        .trigger = EVT_CAM_FRAME,
+        .phase = SCHEDULER_TASK_PHASE_NORMAL_EVENT
+    },
+    {
+        .handler = ControlTask_10ms,
+        .period_ms = 10U,
+        .trigger = EVT_NONE,
+        .phase = SCHEDULER_TASK_PHASE_FAST_PERIODIC
+    },
+    {
+        .handler = FeedbackTask_10ms,
+        .period_ms = 10U,
+        .trigger = EVT_NONE,
+        .phase = SCHEDULER_TASK_PHASE_FAST_PERIODIC
+    },
+    {
+        .handler = DiagnosticsTask_100ms,
+        .period_ms = 100U,
+        .trigger = EVT_NONE,
+        .phase = SCHEDULER_TASK_PHASE_SLOW_PERIODIC
+    },
 };
 
 static const uint8_t s_smartcar_task_count =
@@ -162,8 +193,9 @@ void SmartcarApp_RegisterTasks(void)
 
     for (i = 0U; i < s_smartcar_task_count; i++)
     {
-        (void)scheduler_add(s_smartcar_tasks[i].handler,
-                            s_smartcar_tasks[i].period_ms,
-                            s_smartcar_tasks[i].trigger);
+        (void)scheduler_add_ex(s_smartcar_tasks[i].handler,
+                               s_smartcar_tasks[i].period_ms,
+                               s_smartcar_tasks[i].trigger,
+                               s_smartcar_tasks[i].phase);
     }
 }

@@ -8,9 +8,6 @@
  */
 #include "scheduler.h"
 
-#define SCHEDULER_FAST_PERIOD_MS        10U
-#define SCHEDULER_HIGH_PRIORITY_EVENTS  (EVT_GYRO_10MS | EVT_ENCODER_50MS)
-
 /* 系统毫秒计数器（由 PIT ISR 通过调度器 API 递增）*/
 static volatile uint32_t g_system_ms = 0;
 
@@ -19,59 +16,82 @@ static sch_task_t s_tasks[SCH_MAX_TASKS];
 static uint8_t    s_count = 0;
 
 /**
- * @brief 尝试执行一个指定速度等级的周期任务。
+ * @brief 检查调度阶段是否有效。
+ *
+ * @param[in] phase 调度阶段。
+ * @return 1 表示有效；0 表示非法。
+ */
+static uint8_t Scheduler_IsValidPhase(scheduler_task_phase_t phase)
+{
+    uint8_t is_valid = 0U;
+
+    if ((phase >= SCHEDULER_TASK_PHASE_SENSOR_EVENT) &&
+        (phase < SCHEDULER_TASK_PHASE_COUNT))
+    {
+        is_valid = 1U;
+    }
+
+    return is_valid;
+}
+
+/**
+ * @brief 检查任务事件触发条件是否命中。
+ *
+ * @param[in] p_task 任务描述符。
+ * @param[in] events 本轮事件快照。
+ * @return 1 表示事件命中；0 表示未命中。
+ */
+static uint8_t Scheduler_IsEventReady(const sch_task_t *p_task,
+                                      event_mask_t events)
+{
+    uint8_t is_ready = 0U;
+
+    if ((p_task->trigger != EVT_NONE) &&
+        ((events & p_task->trigger) != EVT_NONE))
+    {
+        is_ready = 1U;
+    }
+
+    return is_ready;
+}
+
+/**
+ * @brief 尝试执行已进入当前阶段的任务。
+ *
+ * Steps:
+ *   1. 检查事件触发条件。
+ *   2. 检查周期触发条件，周期到期时刷新 last_run。
+ *   3. 若事件或周期任一命中，则只调用一次任务函数。
  *
  * @param[in,out] p_task 任务描述符。
  * @param[in] events 本轮事件快照。
  * @param[in] now 当前调度时间。
- * @param[in] run_fast 1 表示执行快速周期任务；0 表示执行慢速周期任务。
  * @return 1 表示任务已执行；0 表示未执行。
  */
-static uint8_t Scheduler_RunPeriodicTask(sch_task_t *p_task,
-                                         event_mask_t events,
-                                         uint32_t now,
-                                         uint8_t run_fast)
+static uint8_t Scheduler_RunTaskIfReady(sch_task_t *p_task,
+                                        event_mask_t events,
+                                        uint32_t now)
 {
-    uint8_t is_fast = 0U;
+    uint8_t event_ready = 0U;
+    uint8_t period_ready = 0U;
     uint8_t did_run = 0U;
 
-    if (p_task->period_ms != 0U)
-    {
-        is_fast = (p_task->period_ms <= SCHEDULER_FAST_PERIOD_MS) ? 1U : 0U;
-    }
-
+    event_ready = Scheduler_IsEventReady(p_task, events);
     if ((p_task->period_ms != 0U) &&
-        (is_fast == run_fast) &&
         ((now - p_task->last_run) >= p_task->period_ms))
     {
+        period_ready = 1U;
         p_task->last_run = now;
-        p_task->fn(events);
-        did_run = 1U;
     }
 
-    return did_run;
-}
-
-/**
- * @brief 尝试执行一个指定事件集合中的事件任务。
- *
- * @param[in] p_task 任务描述符。
- * @param[in] events 本轮事件快照。
- * @param[in] phase_events 当前阶段允许执行的事件集合。
- * @return 1 表示任务已执行；0 表示未执行。
- */
-static uint8_t Scheduler_RunEventTask(const sch_task_t *p_task,
-                                      event_mask_t events,
-                                      event_mask_t phase_events)
-{
-    event_mask_t matched_events = EVT_NONE;
-    uint8_t did_run = 0U;
-
-    matched_events = events & p_task->trigger & phase_events;
-    if ((p_task->trigger != EVT_NONE) && (matched_events != EVT_NONE))
+    if ((event_ready != 0U) || (period_ready != 0U))
     {
         p_task->fn(events);
         did_run = 1U;
+    }
+    else
+    {
+        did_run = 0U;
     }
 
     return did_run;
@@ -88,13 +108,19 @@ static uint8_t Scheduler_RunEventTask(const sch_task_t *p_task,
  */
 void scheduler_init(void)
 {
-    s_count = 0;
-    g_system_ms = 0;
+    uint8_t i = 0U;
 
-    uint8_t i;
-    for (i = 0; i < SCH_MAX_TASKS; i++)
+    s_count = 0U;
+    g_system_ms = 0U;
+
+    for (i = 0U; i < SCH_MAX_TASKS; i++)
     {
-        s_tasks[i].active = 0;
+        s_tasks[i].fn = 0;
+        s_tasks[i].period_ms = 0U;
+        s_tasks[i].last_run = 0U;
+        s_tasks[i].trigger = EVT_NONE;
+        s_tasks[i].phase = SCHEDULER_TASK_PHASE_NORMAL_EVENT;
+        s_tasks[i].active = 0U;
     }
 }
 
@@ -120,12 +146,11 @@ uint32_t Scheduler_GetNowMs(void)
 }
 
 /**
- * @brief 注册一个协作任务。
+ * @brief 注册一个兼容默认阶段的协作任务。
  *
  * Steps:
- *   1. 校验任务函数和任务表容量。
- *   2. 写入周期、事件触发掩码和初始状态。
- *   3. 返回任务索引。
+ *   1. 使用普通事件阶段作为兼容默认值。
+ *   2. 调用 scheduler_add_ex 完成实际注册。
  *
  * @param[in] fn 任务函数。
  * @param[in] period_ms 周期任务间隔；0 表示非周期。
@@ -134,6 +159,34 @@ uint32_t Scheduler_GetNowMs(void)
  */
 int8_t scheduler_add(task_fn_t fn, uint32_t period_ms, event_mask_t trigger)
 {
+    return scheduler_add_ex(fn,
+                            period_ms,
+                            trigger,
+                            SCHEDULER_TASK_PHASE_NORMAL_EVENT);
+}
+
+/**
+ * @brief 注册一个指定调度阶段的协作任务。
+ *
+ * Steps:
+ *   1. 校验任务函数、任务表容量和调度阶段。
+ *   2. 写入周期、事件触发掩码、显式阶段和初始状态。
+ *   3. 返回任务索引。
+ *
+ * @param[in] fn 任务函数。
+ * @param[in] period_ms 周期任务间隔；0 表示非周期。
+ * @param[in] trigger 事件触发掩码；EVT_NONE 表示非事件触发。
+ * @param[in] phase 显式调度阶段。
+ * @return 任务索引；失败返回 -1。
+ */
+int8_t scheduler_add_ex(task_fn_t fn,
+                        uint32_t period_ms,
+                        event_mask_t trigger,
+                        scheduler_task_phase_t phase)
+{
+    sch_task_t *p_task = 0;
+    int8_t task_index = -1;
+
     if (fn == 0)
     {
         return -1;
@@ -144,14 +197,23 @@ int8_t scheduler_add(task_fn_t fn, uint32_t period_ms, event_mask_t trigger)
         return -1;
     }
 
-    sch_task_t *t      = &s_tasks[s_count];
-    t->fn              = fn;
-    t->period_ms       = period_ms;
-    t->last_run        = 0;
-    t->trigger         = trigger;
-    t->active          = 1;
+    if (Scheduler_IsValidPhase(phase) == 0U)
+    {
+        return -1;
+    }
 
-    return (int8_t)s_count++;
+    p_task = &s_tasks[s_count];
+    p_task->fn = fn;
+    p_task->period_ms = period_ms;
+    p_task->last_run = 0U;
+    p_task->trigger = trigger;
+    p_task->phase = phase;
+    p_task->active = 1U;
+
+    task_index = (int8_t)s_count;
+    s_count++;
+
+    return task_index;
 }
 
 /**
@@ -159,10 +221,8 @@ int8_t scheduler_add(task_fn_t fn, uint32_t period_ms, event_mask_t trigger)
  *
  * Steps:
  *   1. 获取并消费本轮事件。
- *   2. 第一阶段执行传感器采样事件，先刷新控制输入。
- *   3. 第二阶段执行快速周期任务，避免视觉处理阻塞 10ms 控制。
- *   4. 第三阶段执行普通事件任务，例如摄像头帧处理。
- *   5. 第四阶段执行慢速周期任务，例如诊断显示。
+ *   2. 按 scheduler_task_phase_t 枚举顺序遍历显式阶段。
+ *   3. 每个阶段内按注册顺序执行到期或事件命中的任务。
  *
  * @return void。
  */
@@ -170,54 +230,26 @@ void scheduler_run(void)
 {
     event_mask_t events = event_get();
     uint32_t now = Scheduler_GetNowMs();
-    uint8_t ran[SCH_MAX_TASKS] = {0U};
+    uint8_t phase = 0U;
+    uint8_t i = 0U;
 
-    uint8_t i;
-    for (i = 0; i < s_count; i++)
+    for (phase = 0U; phase < (uint8_t)SCHEDULER_TASK_PHASE_COUNT; phase++)
     {
-        sch_task_t *t = &s_tasks[i];
-
-        if (!t->active)
+        for (i = 0U; i < s_count; i++)
         {
-            continue;
+            sch_task_t *p_task = &s_tasks[i];
+
+            if (p_task->active == 0U)
+            {
+                continue;
+            }
+
+            if (p_task->phase != (scheduler_task_phase_t)phase)
+            {
+                continue;
+            }
+
+            (void)Scheduler_RunTaskIfReady(p_task, events, now);
         }
-
-        ran[i] = Scheduler_RunEventTask(t, events, SCHEDULER_HIGH_PRIORITY_EVENTS);
-    }
-
-    for (i = 0; i < s_count; i++)
-    {
-        sch_task_t *t = &s_tasks[i];
-
-        if ((!t->active) || (ran[i] != 0U))
-        {
-            continue;
-        }
-
-        ran[i] = Scheduler_RunPeriodicTask(t, events, now, 1U);
-    }
-
-    for (i = 0; i < s_count; i++)
-    {
-        sch_task_t *t = &s_tasks[i];
-
-        if ((!t->active) || (ran[i] != 0U))
-        {
-            continue;
-        }
-
-        ran[i] = Scheduler_RunEventTask(t, events, ~SCHEDULER_HIGH_PRIORITY_EVENTS);
-    }
-
-    for (i = 0; i < s_count; i++)
-    {
-        sch_task_t *t = &s_tasks[i];
-
-        if ((!t->active) || (ran[i] != 0U))
-        {
-            continue;
-        }
-
-        ran[i] = Scheduler_RunPeriodicTask(t, events, now, 0U);
     }
 }
