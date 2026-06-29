@@ -55,6 +55,8 @@ flowchart LR
 | Target | 当前 MCU 端口实现、资源映射、中断适配 | 唯一可调用 Vendor 的业务侧适配层 |
 | Vendor | SEEKFREE SDK 与 Infineon iLLD | 默认只读 |
 
+当前 facade 状态：控制输出与行驶反馈已通过 `Actuator_*` BSP facade 收敛到 `Motor_*` / `Servo_*` / `Buzzer_*`，调试赛道线绘制通过 `Display_DrawTrackLines()` BSP facade 落到 `Device_DisplayPoint()`。摄像头帧、IMU、显示基础绘制和编码器窗口快照仍由 Service 调用稳定 Platform 契约（`Device_*` / `SensorHal_*`），不直接触碰 target 或 Vendor。
+
 ## IRQ Flow
 
 ```mermaid
@@ -110,7 +112,7 @@ Gyro PIT ISR    -> Scheduler_AddTickFromIsr()
                 -> SensorService_ProcessGyro10ms()
 ```
 
-Service 层只能通过 Platform 契约读取硬件采样快照。编码器窗口由当前 target 在中断侧维护，并以 `SensorHal_EncoderTakeSnapshot()` 暴露给传感服务；Scheduler 只负责事件与任务调度，不再承载编码器窗口接口。
+Service 层只能通过 BSP facade 或稳定 Platform 契约读取硬件采样快照。编码器窗口由当前 target 在中断侧维护，并以 `SensorHal_EncoderTakeSnapshot()` 暴露给传感服务；Scheduler 只负责事件与任务调度，不再承载编码器窗口接口。
 
 ## Repository Map
 
@@ -145,11 +147,17 @@ AURIX Development Studio -> Open Projects -> Build Project
 1. 新增 `code/target/<target>/`。
 2. 提供 `target_port.c`，实现 `port_if.h` 中的 `SystemPort_*`、`McuIo_*`、`Device_*`。
 3. 提供 `target_board_map.c/.h`，完成 `SMARTCAR_*` 到新 MCU 引脚、定时器、串口、DMA 的映射。
-4. 提供 `target_irq.c/.h` 与 `target_irq_config.h`，完成目标中断适配并直接投递 scheduler event/tick。
+4. 提供 `target_irq.c/.h` 与 `target_irq_config.h`，完成目标中断适配并直接投递 scheduler event/tick；需要目标中断侧采样窗口时，在这里实现对应 `SensorHal_*` 快照契约。
 5. 更新 IDE 工程，只编译当前 target 和对应 Vendor SDK，避免多个 target 同时定义端口符号。
 6. 保持 `app/`、`service/`、`bsp/`、`scheduler/`、`system/` 不包含 Vendor 头或 target 私有头。
 
 禁止回退到运行期 ops 注册、旧 PAL 兼容层、IRQ fact/router 或平台 dispatch 文件。
+
+## OPS Evolution Note
+
+运行期 vtable / ops 注册可以作为未来跨板型或多外设动态选择的设计方向，但当前仓库 guardrail 明确禁止 runtime ops registration 和 platform dispatch source files，因此本阶段不在代码中落地 runtime dispatch，也不新增注册表、dispatcher 或平台回环文件。
+
+当前阶段继续采用 link-time ports + facades：`code/platform/port_if.h` 和 `code/platform/sensor_hal.h` 定义稳定契约，当前 target 在 `code/target/tc264/` 直接提供符号实现，Service 优先经 BSP facade 访问执行器和显示封装，未补齐 facade 的硬件快照继续通过稳定 Platform 契约访问。若未来要切换到 runtime vtable 方案，需先修改 AGENTS.md guardrail、补充 ADR/迁移计划，再实现 ops 表与生命周期注册。
 
 ## Known Constraints
 
