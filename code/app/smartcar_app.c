@@ -121,7 +121,7 @@ static void SensorTask_Encoder50ms(event_mask_t events)
  */
 static void VisionTask_OnFrame(event_mask_t events)
 {
-    uint8_t element = 0U;
+    vision_track_element_t element = VISION_TRACK_ELEMENT_NONE;
 
     if ((events & EVT_CAM_FRAME) == 0U)
     {

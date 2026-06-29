@@ -6,13 +6,13 @@
  * @par Processing flow
  * Raw grayscale frame → OTSU threshold → binary image → downsampled image
  * → noise filtering → track edge detection → weighted midline → PID error.
- * Frame geometry comes from Device_Camera. The internal compressed frame is
+ * Frame geometry comes from SmartcarHal_Camera. The internal compressed frame is
  * fixed by VISION_ZIP_IMAGE_W/H.
  */
 
 #include "vision.h"
 #include "config.h"     /* ELEM_* 元素检测参数 */
-#include "platform/port_if.h"
+#include "hal/hal.h"
 
 #define OTSU_GRAY_LEVELS                         256U
 #define VISION_BINARY_BLACK                      0U
@@ -73,7 +73,7 @@ static const uint8_t s_mid_weight_list[VISION_ZIP_IMAGE_H] = {
 static void set_image_grayscale_to_binary(uint8_t value) //灰度转二值化
 {
     uint8_t temp = 0;
-    uint8_t (*cam_img)[VISION_RAW_W] = (uint8_t(*)[VISION_RAW_W])Device_CameraData();
+    uint8_t (*cam_img)[VISION_RAW_W] = (uint8_t(*)[VISION_RAW_W])SmartcarHal_CameraData();
     for(uint8_t i = 0 ; i < VISION_RAW_H ; i++)
     {
         for(uint8_t j = 0 ; j < VISION_RAW_W ; j++)
@@ -425,17 +425,17 @@ static void find_mid_line_weight(void)//图像中值 与 补线中值差 然后 
  */
 void Vision_Process(void)
 {
-    camera_frame_desc_t frame_desc = {0};
+    smartcar_hal_camera_desc_t frame_desc = {0};
 
     // 步骤 1：OTSU 自适应阈值，图像尺寸由帧描述提供
-    Device_CameraGetFrameDesc(&frame_desc);
+    SmartcarHal_CameraGetDesc(&frame_desc);
     if ((frame_desc.width == 0U) || (frame_desc.height == 0U))
     {
         frame_desc.width = VISION_RAW_W;
         frame_desc.height = VISION_RAW_H;
     }
 
-    s_vision_ctx.image_threshold = otsu(Device_CameraData(), frame_desc.width, frame_desc.height);
+    s_vision_ctx.image_threshold = otsu(SmartcarHal_CameraData(), frame_desc.width, frame_desc.height);
     // 步骤 2：按阈值二值化
     set_image_grayscale_to_binary(s_vision_ctx.image_threshold);
     // 步骤 3：隔行隔列压缩到内部视觉工作尺寸
@@ -455,7 +455,7 @@ void Vision_Process(void)
  *
  * 处理步骤：
  *  1. 通过平台端口读取摄像头 ready 状态。
- *  2. 向 App 层隐藏 Device_CameraReady 硬件契约。
+ *  2. 向 App 层隐藏 SmartcarHal_CameraReady 硬件契约。
  *
  * @return 1: 有新帧  0: 无新帧。
  *
@@ -464,7 +464,7 @@ uint8_t Vision_IsFrameReady(void)
 {
     uint8_t is_ready = 0U;
 
-    if (Device_CameraReady())
+    if (SmartcarHal_CameraReady())
     {
         is_ready = 1U;
     }
@@ -484,7 +484,7 @@ uint8_t Vision_IsFrameReady(void)
  */
 void Vision_MarkFrameConsumed(void)
 {
-    Device_CameraClear();
+    SmartcarHal_CameraClear();
 }
 
 /**
@@ -559,9 +559,9 @@ void Vision_GetDebugSnapshot(vision_debug_snapshot_t *p_snapshot)
  *
  * 判定优先级：先十字路口（更严格），再圆环（更宽松）
  *
- * @return 0=无特殊元素, 1=圆环, 2=十字路口
+ * @return 视觉赛道元素类型。
  */
-uint8_t Vision_DetectElement(void)
+vision_track_element_t Vision_DetectElement(void)
 {
     uint8_t i;
     uint8_t left_lost  = 0;
@@ -572,7 +572,7 @@ uint8_t Vision_DetectElement(void)
     if (s_vision_ctx.element_cooldown > 0)
     {
         s_vision_ctx.element_cooldown--;
-        return 0;
+        return VISION_TRACK_ELEMENT_NONE;
     }
 
     /* 扫描检测窗口行，统计各方向丢线行数 */
@@ -599,14 +599,14 @@ uint8_t Vision_DetectElement(void)
     if (both_lost >= ELEM_CROSSROAD_ROWS)
     {
         s_vision_ctx.element_cooldown = ELEM_COOLDOWN_FRAMES;
-        return 2;  /* 十字路口 */
+        return VISION_TRACK_ELEMENT_CROSSROAD;
     }
 
     if (left_lost >= ELEM_RING_ROWS || right_lost >= ELEM_RING_ROWS)
     {
         s_vision_ctx.element_cooldown = ELEM_COOLDOWN_FRAMES;
-        return 1;  /* 圆环 */
+        return VISION_TRACK_ELEMENT_RING;
     }
 
-    return 0;
+    return VISION_TRACK_ELEMENT_NONE;
 }

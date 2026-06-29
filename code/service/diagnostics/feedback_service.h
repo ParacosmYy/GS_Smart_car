@@ -6,10 +6,10 @@
  * @brief 行驶反馈服务接口。
  */
 
-#include <stdint.h>
+#include "vision.h"
 
 /** @brief 根据视觉元素触发提示 */
-void FeedbackService_NotifyTrackElement(uint8_t element);
+void FeedbackService_NotifyTrackElement(vision_track_element_t element);
 
 /** @brief 推进非阻塞反馈时序 */
 void FeedbackService_Tick(void);

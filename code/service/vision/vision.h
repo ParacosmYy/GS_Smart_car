@@ -35,13 +35,20 @@ typedef struct
     uint32_t version; /* Monotonic service stamp for snapshot comparisons. */
 } vision_debug_snapshot_t;
 
+typedef enum
+{
+    VISION_TRACK_ELEMENT_NONE = 0,
+    VISION_TRACK_ELEMENT_RING,
+    VISION_TRACK_ELEMENT_CROSSROAD
+} vision_track_element_t;
+
 /* Public API */
 void Vision_Process(void);
 uint8_t Vision_IsFrameReady(void);
 void Vision_MarkFrameConsumed(void);
 void Vision_GetControlSnapshot(vision_control_snapshot_t *p_snapshot);
 void Vision_GetDebugSnapshot(vision_debug_snapshot_t *p_snapshot);
-uint8_t Vision_DetectElement(void);
+vision_track_element_t Vision_DetectElement(void);
 
 #ifdef __cplusplus
 }
