@@ -32,6 +32,15 @@
 * 日期              作者                备注
 * 2022-09-15       pudding            first version
 ********************************************************************************************************************/
+/**
+ * @file cpu0_main.c
+ * @brief TC264 CPU0 SDK entry。
+ * @author GS_Mark
+ *
+ * @par 设计说明
+ * CPU0 是当前系统主核，负责启动 runtime 并在主循环中运行协作调度。
+ */
+
 #include "system/runtime/smartcar_system.h"
 #pragma section all "cpu0_dsram"
 // 将本语句与#pragma section all restore语句之间的全局变量都放在CPU0的RAM中
@@ -47,6 +56,8 @@
  * @brief CPU0 主函数入口。
  *
  * SDK entry 只装配目标中断端口并进入 system runtime。
+ *
+ * @return 不返回。
  */
 int core0_main(void)
 {

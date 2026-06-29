@@ -32,9 +32,18 @@
 * 日期              作者                备注
 * 2022-09-15       pudding            first version
 ********************************************************************************************************************/
+/**
+ * @file isr.c
+ * @brief TC264 SDK 中断入口转发层。
+ * @author GS_Mark
+ *
+ * @par 设计说明
+ * IFX_INTERRUPT 宏约束入口必须保留在 user 层；具体硬件处理统一转发给 System IRQ router。
+ */
 
 #include "isr_config.h"
 #include "isr.h"
+#include "impl/tc264/isr_adapter.h"
 #include "system/irq/smartcar_irq_router.h"
 
 // TC264 中断入口受 IFX_INTERRUPT 宏约束保留在本文件，具体处理统一交给 SmartcarIrq。
@@ -44,20 +53,24 @@
 /**
  * @brief 编码器测速中断（CCU60 通道0，10ms 周期）。
  *        入口层只转发到 ISR adapter。
+ *
+ * @return void。
  */
 IFX_INTERRUPT(cc60_pit_ch0_isr, 0, CCU6_0_CH0_ISR_PRIORITY)
 {
-    SmartcarIrq_Dispatch(SMARTCAR_IRQ_SOURCE_CCU60_PIT_CH0);
+    SmartcarIrq_PostFacts(IsrAdapter_Ccu60PitCh0());
 }
 
 
 /**
  * @brief 系统时间基 + 陀螺仪触发中断（CCU60 通道1，10ms 周期）。
  *        入口层只转发到 ISR adapter。
+ *
+ * @return void。
  */
 IFX_INTERRUPT(cc60_pit_ch1_isr, 0, CCU6_0_CH1_ISR_PRIORITY)
 {
-    SmartcarIrq_Dispatch(SMARTCAR_IRQ_SOURCE_CCU60_PIT_CH1);
+    SmartcarIrq_PostFacts(IsrAdapter_Ccu60PitCh1());
 }
 
 // **************************** PIT Interrupt Handlers ****************************
@@ -68,10 +81,12 @@ IFX_INTERRUPT(cc60_pit_ch1_isr, 0, CCU6_0_CH1_ISR_PRIORITY)
 /**
  * @brief 外部中断 ERU 通道3 与通道7 共用入口。
  *        入口层只转发到 ISR adapter。
+ *
+ * @return void。
  */
 IFX_INTERRUPT(exti_ch3_ch7_isr, 0, EXTI_CH3_CH7_INT_PRIO)
 {
-    SmartcarIrq_Dispatch(SMARTCAR_IRQ_SOURCE_EXTI_CH3_CH7);
+    SmartcarIrq_PostFacts(IsrAdapter_ExtiCh3Ch7());
 }
 // **************************** External Interrupt Handlers ****************************
 
@@ -80,10 +95,12 @@ IFX_INTERRUPT(exti_ch3_ch7_isr, 0, EXTI_CH3_CH7_INT_PRIO)
 /**
  * @brief 摄像头 DMA 采集完成中断（DMA 通道5）。
  *        入口层只转发到 ISR adapter。
+ *
+ * @return void。
  */
 IFX_INTERRUPT(dma_ch5_isr, 0, DMA_INT_PRIO)
 {
-    SmartcarIrq_Dispatch(SMARTCAR_IRQ_SOURCE_DMA_CH5);
+    SmartcarIrq_PostFacts(IsrAdapter_DmaCh5());
 }
 // **************************** DMA Interrupt Handlers ****************************
 
@@ -93,10 +110,12 @@ IFX_INTERRUPT(dma_ch5_isr, 0, DMA_INT_PRIO)
 /**
  * @brief 串口0 接收中断（调试串口）。
  *        入口层只转发到 ISR adapter。
+ *
+ * @return void。
  */
 IFX_INTERRUPT(uart0_rx_isr, 0, UART0_RX_INT_PRIO)
 {
-    SmartcarIrq_Dispatch(SMARTCAR_IRQ_SOURCE_UART0_RX);
+    SmartcarIrq_PostFacts(IsrAdapter_Uart0Rx());
 }
 
 
@@ -104,35 +123,50 @@ IFX_INTERRUPT(uart0_rx_isr, 0, UART0_RX_INT_PRIO)
 /**
  * @brief 串口1 接收中断（摄像头配置串口）。
  *        入口层只转发到 ISR adapter。
+ *
+ * @return void。
  */
 IFX_INTERRUPT(uart1_rx_isr, 0, UART1_RX_INT_PRIO)
 {
-    SmartcarIrq_Dispatch(SMARTCAR_IRQ_SOURCE_UART1_RX);
+    SmartcarIrq_PostFacts(IsrAdapter_Uart1Rx());
 }
 
 /**
  * @brief 串口3 接收中断（无线转串口模块）。
  *        入口层只转发到 ISR adapter。
+ *
+ * @return void。
  */
 IFX_INTERRUPT(uart3_rx_isr, 0, UART3_RX_INT_PRIO)
 {
-    SmartcarIrq_Dispatch(SMARTCAR_IRQ_SOURCE_UART3_RX);
+    SmartcarIrq_PostFacts(IsrAdapter_Uart3Rx());
 }
 
-/**
- * @brief 串口通讯错误中断集合。
- *        入口层只转发到 ISR adapter。
- */
 // 串口通讯错误中断
+/**
+ * @brief 串口0 通讯错误中断。
+ *
+ * @return void。
+ */
 IFX_INTERRUPT(uart0_er_isr, 0, UART0_ER_INT_PRIO)
 {
-    SmartcarIrq_Dispatch(SMARTCAR_IRQ_SOURCE_UART0_ERROR);
+    SmartcarIrq_PostFacts(IsrAdapter_Uart0Error());
 }
+/**
+ * @brief 串口1 通讯错误中断。
+ *
+ * @return void。
+ */
 IFX_INTERRUPT(uart1_er_isr, 0, UART1_ER_INT_PRIO)
 {
-    SmartcarIrq_Dispatch(SMARTCAR_IRQ_SOURCE_UART1_ERROR);
+    SmartcarIrq_PostFacts(IsrAdapter_Uart1Error());
 }
+/**
+ * @brief 串口3 通讯错误中断。
+ *
+ * @return void。
+ */
 IFX_INTERRUPT(uart3_er_isr, 0, UART3_ER_INT_PRIO)
 {
-    SmartcarIrq_Dispatch(SMARTCAR_IRQ_SOURCE_UART3_ERROR);
+    SmartcarIrq_PostFacts(IsrAdapter_Uart3Error());
 }

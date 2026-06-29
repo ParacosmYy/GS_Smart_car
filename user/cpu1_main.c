@@ -32,6 +32,14 @@
 * 日期              作者                备注
 * 2022-09-15       pudding            first version
 ********************************************************************************************************************/
+/**
+ * @file cpu1_main.c
+ * @brief TC264 CPU1 SDK entry。
+ * @author GS_Mark
+ *
+ * @par 设计说明
+ * CPU1 当前只完成基础中断和多核同步，作为后续视觉或通信任务迁移预留入口。
+ */
 
 #include "platform/system/system_port.h"
 #pragma section all "cpu1_dsram"
@@ -51,6 +59,8 @@
  * 启动流程固定：关看门狗 → 开全局中断 → 等双核同步 → 进空循环。
  * 如需在此核跑任务，把代码写入 while 循环内，并通过 isr_config.h 把对应
  * 中断的 INT_SERVICE 改为 IfxSrc_Tos_cpu1。
+ *
+ * @return void。
  */
 void core1_main(void)
 {

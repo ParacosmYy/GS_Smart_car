@@ -117,45 +117,5 @@
 #include "seekfree_assistant_interface.h"
 //====================================================Ӧ�������====================================================
 
-//=====================================================�û���======================================================
-#include "motor.h"
-#include "pid.h"
-#include "init.h"
-#include "vision.h"
-#include "event.h"
-#include "scheduler.h"
-#include "control.h"
-#include "config.h"
-#include "display.h"
-#include "servo.h"
-#include "input.h"
-#include "buzzer.h"
-//=====================================================�û���======================================================
-//---����---
-#define KEY1 P20_6
-#define KEY2 P20_7
-#define KEY3 P11_2
-#define KEY4 P11_3
-//---���---
-#define MOTOR_L_FORWARD P21_2
-#define MOTOR_L_REVERSE P21_3
-#define MOTOR_R_FORWARD P21_4
-#define MOTOR_R_REVERSE P21_5
-//---���---
-#define servo P33_9
-#define servo_angle_left_max 250
-#define servo_angle_right_max 1250
-//---������---
-#define beep P11_11
-//---���뿪��---
-#define dip_switch1 P11_12
-#define dip_switch2 P10_1
-#define dip_switch3 P10_2
-#define dip_switch4 P10_3
-
-//----------------------------------------������-----------------------------------------
-
-
-
 #endif
 
