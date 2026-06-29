@@ -1,42 +1,29 @@
-/**
- * @file tc264_board_bind.c
- * @brief TC264 板级 binding —— 定义全部 TC264 ops 表并注册。
- *
- * 本文件只做绑定（binding），不做初始化（init）。
- * 初始化在 Lifecycle 阶段由 smartcar_board.c 统一处理。
- */
-
-#include "platform/board/board_ops_if.h"
 #include "platform/target/target_platform.h"
-#include "tc264_board_map.h"
 
-/* 外部 ops 表定义（各 tc264_*_ops.c）*/
-extern const gpio_ops_t     g_tc264_gpio_ops;
-extern const pwm_ops_t      g_tc264_pwm_ops;
-extern const uart_ops_t     g_tc264_uart_ops;
-extern const encoder_ops_t  g_tc264_encoder_ops;
-extern const pit_ops_t      g_tc264_pit_ops;
-extern const camera_ops_t   g_tc264_camera_ops;
-extern const display_ops_t  g_tc264_display_ops;
-extern const imu_ops_t      g_tc264_imu_ops;
-extern const wireless_ops_t g_tc264_wireless_ops;
-extern const key_ops_t      g_tc264_key_ops;
+#include "config.h"
+#include "event.h"
+#include "isr_adapter.h"
 
-static const target_board_ops_t s_tc264_ops =
+static const target_irq_route_t s_tc264_irq_routes[] =
 {
-    .gpio     = &g_tc264_gpio_ops,
-    .pwm      = &g_tc264_pwm_ops,
-    .uart     = &g_tc264_uart_ops,
-    .encoder  = &g_tc264_encoder_ops,
-    .pit      = &g_tc264_pit_ops,
-    .camera   = &g_tc264_camera_ops,
-    .display  = &g_tc264_display_ops,
-    .imu      = &g_tc264_imu_ops,
-    .wireless = &g_tc264_wireless_ops,
-    .key      = &g_tc264_key_ops,
+    {SMARTCAR_IRQ_SOURCE_CCU60_PIT_CH0, IsrAdapter_Ccu60PitCh0, IRQ_FACT_ENCODER_WINDOW, EVT_ENCODER_50MS, 0U},
+    {SMARTCAR_IRQ_SOURCE_CCU60_PIT_CH1, IsrAdapter_Ccu60PitCh1, IRQ_FACT_GYRO_TICK, EVT_GYRO_10MS, PIT_PERIOD_MS},
+    {SMARTCAR_IRQ_SOURCE_EXTI_CH3_CH7,  IsrAdapter_ExtiCh3Ch7,  IRQ_FACT_NONE, EVT_NONE, 0U},
+    {SMARTCAR_IRQ_SOURCE_DMA_CH5,       IsrAdapter_DmaCh5,      IRQ_FACT_CAMERA_FRAME, EVT_CAM_FRAME, 0U},
+    {SMARTCAR_IRQ_SOURCE_UART0_RX,      IsrAdapter_Uart0Rx,     IRQ_FACT_NONE, EVT_NONE, 0U},
+    {SMARTCAR_IRQ_SOURCE_UART1_RX,      IsrAdapter_Uart1Rx,     IRQ_FACT_NONE, EVT_NONE, 0U},
+    {SMARTCAR_IRQ_SOURCE_UART3_RX,      IsrAdapter_Uart3Rx,     IRQ_FACT_NONE, EVT_NONE, 0U},
+    {SMARTCAR_IRQ_SOURCE_UART0_ERROR,   IsrAdapter_Uart0Error,  IRQ_FACT_NONE, EVT_NONE, 0U},
+    {SMARTCAR_IRQ_SOURCE_UART1_ERROR,   IsrAdapter_Uart1Error,  IRQ_FACT_NONE, EVT_NONE, 0U},
+    {SMARTCAR_IRQ_SOURCE_UART3_ERROR,   IsrAdapter_Uart3Error,  IRQ_FACT_NONE, EVT_NONE, 0U},
 };
 
-void TargetPlatform_RegisterAll(void)
+const target_irq_route_t *TargetPlatform_GetIrqRoutes(uint16_t *p_count)
 {
-    Board_BindOps(&s_tc264_ops);
+    if (p_count != 0)
+    {
+        *p_count = (uint16_t)(sizeof(s_tc264_irq_routes) / sizeof(s_tc264_irq_routes[0]));
+    }
+
+    return s_tc264_irq_routes;
 }

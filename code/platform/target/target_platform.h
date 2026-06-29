@@ -1,23 +1,41 @@
 #ifndef PLATFORM_TARGET_PLATFORM_H_
 #define PLATFORM_TARGET_PLATFORM_H_
 
-/**
- * @file target_platform.h
- * @brief 目标平台注册入口（中性头文件）。
- *
- * System runtime 只调用 TargetPlatform_RegisterAll()，不 care 具体芯片型号。
- * Impl 层（如 impl/tc264/tc264_board_bind.c）实现此函数。
- *
- * 换 MCU：新建 impl/<target>/<target>_board_bind.c 实现此函数即可，
- * System/App/Service 零改动。
- */
+#include <stdint.h>
+#include "platform/system/irq_fact.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/** @brief 注册目标平台全部 ops 到 Platform dispatch 层。*/
-void TargetPlatform_RegisterAll(void);
+typedef uint16_t smartcar_irq_source_t;
+
+typedef enum
+{
+    SMARTCAR_IRQ_SOURCE_CCU60_PIT_CH0 = 0,
+    SMARTCAR_IRQ_SOURCE_CCU60_PIT_CH1,
+    SMARTCAR_IRQ_SOURCE_EXTI_CH3_CH7,
+    SMARTCAR_IRQ_SOURCE_DMA_CH5,
+    SMARTCAR_IRQ_SOURCE_UART0_RX,
+    SMARTCAR_IRQ_SOURCE_UART1_RX,
+    SMARTCAR_IRQ_SOURCE_UART3_RX,
+    SMARTCAR_IRQ_SOURCE_UART0_ERROR,
+    SMARTCAR_IRQ_SOURCE_UART1_ERROR,
+    SMARTCAR_IRQ_SOURCE_UART3_ERROR
+} smartcar_irq_source_enum_t;
+
+typedef irq_fact_t (*target_irq_handler_t)(void);
+
+typedef struct
+{
+    smartcar_irq_source_t source;
+    target_irq_handler_t  handler;
+    irq_fact_t            fact_mask;
+    uint32_t              event;
+    uint32_t              tick_ms;
+} target_irq_route_t;
+
+const target_irq_route_t *TargetPlatform_GetIrqRoutes(uint16_t *p_count);
 
 #ifdef __cplusplus
 }
