@@ -20,6 +20,8 @@ typedef struct
     int32_t clamp_r;
 } motor_t;
 
+#define MOTOR_PWM_DUTY_SCALE  100
+
 static motor_t s_motor = {0};
 
 /**
@@ -50,58 +52,44 @@ static int32_t motor_clamp_speed(int32_t speed, int32_t clamp)
 }
 
 /**
- * @brief 将左电机速度命令转换为正反转 PWM。
+ * @brief 将电机速度命令转换为正反转 PWM。
  *
  * Steps:
- *   1. 记录左电机输出快照。
- *   2. 正速度驱动正转通道，负速度驱动反转通道。
+ *   1. 记录电机输出快照。
+ *   2. 正速度驱动传入的正转通道，负速度驱动传入的反转通道。
  *   3. 关闭未使用方向的 PWM 占空比。
  *
- * @param[in,out] p_motor 电机状态对象。
+ * @param[in,out] p_speed_snapshot 电机速度快照。
  * @param[in] speed 已限幅速度命令。
+ * @param[in] fwd_channel 正转 PWM 通道。
+ * @param[in] rev_channel 反转 PWM 通道。
  * @return void。
  */
-static void motor_apply_left(motor_t *p_motor, int32_t speed)
+static void motor_apply_pwm(int32_t *p_speed_snapshot,
+                            int32_t speed,
+                            mcuio_pwm_id_t fwd_channel,
+                            mcuio_pwm_id_t rev_channel)
 {
-    p_motor->speed_l = speed;
+    uint32_t duty = 0U;
+
+    if (p_speed_snapshot == 0)
+    {
+        return;
+    }
+
+    *p_speed_snapshot = speed;
 
     if (speed > 0)
     {
-        McuIo_PwmSetDuty(SMARTCAR_PWM_MOTOR_L_FWD, (uint32_t)(speed * 100));
-        McuIo_PwmSetDuty(SMARTCAR_PWM_MOTOR_L_REV, 0U);
+        duty = (uint32_t)(speed * MOTOR_PWM_DUTY_SCALE);
+        McuIo_PwmSetDuty(fwd_channel, duty);
+        McuIo_PwmSetDuty(rev_channel, 0U);
     }
     else
     {
-        McuIo_PwmSetDuty(SMARTCAR_PWM_MOTOR_L_REV, (uint32_t)(-speed * 100));
-        McuIo_PwmSetDuty(SMARTCAR_PWM_MOTOR_L_FWD, 0U);
-    }
-}
-
-/**
- * @brief 将右电机速度命令转换为正反转 PWM。
- *
- * Steps:
- *   1. 记录右电机输出快照。
- *   2. 正速度驱动正转通道，负速度驱动反转通道。
- *   3. 关闭未使用方向的 PWM 占空比。
- *
- * @param[in,out] p_motor 电机状态对象。
- * @param[in] speed 已限幅速度命令。
- * @return void。
- */
-static void motor_apply_right(motor_t *p_motor, int32_t speed)
-{
-    p_motor->speed_r = speed;
-
-    if (speed > 0)
-    {
-        McuIo_PwmSetDuty(SMARTCAR_PWM_MOTOR_R_FWD, (uint32_t)(speed * 100));
-        McuIo_PwmSetDuty(SMARTCAR_PWM_MOTOR_R_REV, 0U);
-    }
-    else
-    {
-        McuIo_PwmSetDuty(SMARTCAR_PWM_MOTOR_R_REV, (uint32_t)(-speed * 100));
-        McuIo_PwmSetDuty(SMARTCAR_PWM_MOTOR_R_FWD, 0U);
+        duty = (uint32_t)(-speed * MOTOR_PWM_DUTY_SCALE);
+        McuIo_PwmSetDuty(rev_channel, duty);
+        McuIo_PwmSetDuty(fwd_channel, 0U);
     }
 }
 
@@ -137,7 +125,10 @@ void Motor_Init(void)
  */
 void Motor_SetLeft(int32_t speed)
 {
-    motor_apply_left(&s_motor, motor_clamp_speed(speed, s_motor.clamp_l));
+    motor_apply_pwm(&s_motor.speed_l,
+                    motor_clamp_speed(speed, s_motor.clamp_l),
+                    SMARTCAR_PWM_MOTOR_L_FWD,
+                    SMARTCAR_PWM_MOTOR_L_REV);
 }
 
 /**
@@ -152,5 +143,8 @@ void Motor_SetLeft(int32_t speed)
  */
 void Motor_SetRight(int32_t speed)
 {
-    motor_apply_right(&s_motor, motor_clamp_speed(speed, s_motor.clamp_r));
+    motor_apply_pwm(&s_motor.speed_r,
+                    motor_clamp_speed(speed, s_motor.clamp_r),
+                    SMARTCAR_PWM_MOTOR_R_FWD,
+                    SMARTCAR_PWM_MOTOR_R_REV);
 }

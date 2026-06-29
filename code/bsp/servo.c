@@ -12,6 +12,9 @@
 #include "smartcar_board_resources.h"
 #include "platform/port_if.h"
 
+#define SERVO_SAFE_MIN_DUTY  0LL
+#define SERVO_SAFE_MAX_DUTY  ((int64_t)UINT32_MAX)
+
 typedef struct
 {
     uint32_t duty;
@@ -26,8 +29,9 @@ static servo_t s_servo = {0};
  *
  * Steps:
  *   1. 根据中位和允许范围计算占空比上下界。
- *   2. 将输入偏移叠加到中位。
- *   3. 限幅后写入 PWM。
+ *   2. 将占空比上下界约束到 uint32_t 可表达范围。
+ *   3. 将输入偏移叠加到中位。
+ *   4. 限幅后写入 PWM。
  *
  * @param[in,out] p_servo 舵机状态对象。
  * @param[in] offset 相对中位的占空比偏移。
@@ -35,9 +39,24 @@ static servo_t s_servo = {0};
  */
 static void servo_apply(servo_t *p_servo, int32_t offset)
 {
-    int32_t min_duty = (int32_t)p_servo->center - (int32_t)p_servo->range;
-    int32_t max_duty = (int32_t)p_servo->center + (int32_t)p_servo->range;
-    int32_t target = (int32_t)p_servo->center + offset;
+    int64_t min_duty = (int64_t)p_servo->center - (int64_t)p_servo->range;
+    int64_t max_duty = (int64_t)p_servo->center + (int64_t)p_servo->range;
+    int64_t target = (int64_t)p_servo->center + (int64_t)offset;
+
+    if (min_duty < SERVO_SAFE_MIN_DUTY)
+    {
+        min_duty = SERVO_SAFE_MIN_DUTY;
+    }
+
+    if (max_duty > SERVO_SAFE_MAX_DUTY)
+    {
+        max_duty = SERVO_SAFE_MAX_DUTY;
+    }
+
+    if (max_duty < min_duty)
+    {
+        max_duty = min_duty;
+    }
 
     if (target < min_duty)
     {
@@ -49,7 +68,7 @@ static void servo_apply(servo_t *p_servo, int32_t offset)
     }
 
     p_servo->duty = (uint32_t)target;
-    McuIo_PwmSetDuty(SMARTCAR_PWM_SERVO, (uint32_t)target);
+    McuIo_PwmSetDuty(SMARTCAR_PWM_SERVO, p_servo->duty);
 }
 
 /**

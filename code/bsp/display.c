@@ -10,14 +10,16 @@
 #include "display.h"
 #include "platform/port_if.h"
 
-#define DISPLAY_TRACK_BLIND_ROWS  10U
+#define DISPLAY_TRACK_BLIND_ROWS        10U
+#define DISPLAY_BOLD_POINT_RADIUS       1
 
 /**
  * @brief 绘制 3x3 加粗点。
  *
  * Steps:
  *   1. 以输入坐标为中心遍历 3x3 邻域。
- *   2. 调用显示端口逐点绘制。
+ *   2. 跳过下界外的邻域点，避免边缘坐标下溢。
+ *   3. 调用显示端口逐点绘制。
  *
  * @param[in] x 中心点 X 坐标。
  * @param[in] y 中心点 Y 坐标。
@@ -28,12 +30,20 @@ static void Display_DrawPointBold(uint8_t x, uint8_t y, uint16_t color)
 {
     int8_t dx;
     int8_t dy;
+    int16_t point_x;
+    int16_t point_y;
 
-    for (dy = -1; dy <= 1; dy++)
+    for (dy = -DISPLAY_BOLD_POINT_RADIUS; dy <= DISPLAY_BOLD_POINT_RADIUS; dy++)
     {
-        for (dx = -1; dx <= 1; dx++)
+        for (dx = -DISPLAY_BOLD_POINT_RADIUS; dx <= DISPLAY_BOLD_POINT_RADIUS; dx++)
         {
-            Device_DisplayPoint((int16_t)(uint16_t)x + dx, (int16_t)(uint16_t)y + dy, color);
+            point_x = (int16_t)x + dx;
+            point_y = (int16_t)y + dy;
+
+            if ((point_x >= 0) && (point_y >= 0))
+            {
+                Device_DisplayPoint(point_x, point_y, color);
+            }
         }
     }
 }
