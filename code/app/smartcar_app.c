@@ -176,7 +176,6 @@ static void FeedbackTask_10ms(event_mask_t events)
 static void DiagnosticsTask_100ms(event_mask_t events)
 {
     DebugDisplayService_Update(events);
-    DebugDisplayService_DrawVisionLines();
 }
 
 /**

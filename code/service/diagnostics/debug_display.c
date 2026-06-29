@@ -38,25 +38,6 @@
 #define DEBUG_DISPLAY_STATUS_DIGITS       1
 
 /**
- * @brief 绘制视觉边线和中线。
- *
- * Steps:
- *   1. 读取视觉调试快照。
- *   2. 通过 TrackDisplay 端口绘制三条赛道线。
- *
- * @return void。
- */
-void DebugDisplayService_DrawVisionLines(void)
-{
-    vision_debug_snapshot_t vision_snapshot = {0};
-    Vision_GetDebugSnapshot(&vision_snapshot);
-    Display_DrawTrackLines(vision_snapshot.p_left_line,
-                           vision_snapshot.p_right_line,
-                           vision_snapshot.p_mid_line,
-                           vision_snapshot.line_count);
-}
-
-/**
  * @brief 刷新调试显示信息。
  *
  * Steps:
@@ -69,24 +50,30 @@ void DebugDisplayService_DrawVisionLines(void)
 void DebugDisplayService_Update(uint32_t events)
 {
     vision_debug_snapshot_t vision_snapshot = {0};
+    sensor_service_snapshot_t sensor_snapshot = {0};
     control_output_t control_output = {0.0f, 0.0f, 0.0f};
     (void)events;
 
     Vision_GetDebugSnapshot(&vision_snapshot);
+    SensorService_GetSnapshot(&sensor_snapshot);
     Control_GetOutputSnapshot(&control_output);
 
     SmartcarHal_DisplayGray(DEBUG_DISPLAY_IMAGE_X, DEBUG_DISPLAY_IMAGE_Y,
                             vision_snapshot.p_binary_zip[0],
                             vision_snapshot.image_width, vision_snapshot.image_height,
                             vision_snapshot.image_width, vision_snapshot.image_height, 0);
+    Display_DrawTrackLines(vision_snapshot.p_left_line,
+                           vision_snapshot.p_right_line,
+                           vision_snapshot.p_mid_line,
+                           vision_snapshot.line_count);
 
     SmartcarHal_DisplayStr(DEBUG_DISPLAY_ENCODER_LABEL_X, DEBUG_DISPLAY_LEFT_ENCODER_Y, "left:");
     SmartcarHal_DisplayInt(DEBUG_DISPLAY_ENCODER_VALUE_X, DEBUG_DISPLAY_LEFT_ENCODER_Y,
-                           SensorService_GetLeftEncoderSpeed(), DEBUG_DISPLAY_ENCODER_DIGITS);
+                           sensor_snapshot.left_encoder_speed, DEBUG_DISPLAY_ENCODER_DIGITS);
 
     SmartcarHal_DisplayStr(DEBUG_DISPLAY_ENCODER_LABEL_X, DEBUG_DISPLAY_RIGHT_ENCODER_Y, "right:");
     SmartcarHal_DisplayInt(DEBUG_DISPLAY_ENCODER_VALUE_X, DEBUG_DISPLAY_RIGHT_ENCODER_Y,
-                           SensorService_GetRightEncoderSpeed(), DEBUG_DISPLAY_ENCODER_DIGITS);
+                           sensor_snapshot.right_encoder_speed, DEBUG_DISPLAY_ENCODER_DIGITS);
 
     SmartcarHal_DisplayStr(DEBUG_DISPLAY_PID_LABEL_X, DEBUG_DISPLAY_LEFT_PID_Y, "l_spd:");
     SmartcarHal_DisplayStr(DEBUG_DISPLAY_PID_LABEL_X, DEBUG_DISPLAY_RIGHT_PID_Y, "r_spd:");

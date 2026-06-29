@@ -146,26 +146,6 @@ uint32_t Scheduler_GetNowMs(void)
 }
 
 /**
- * @brief 注册一个兼容默认阶段的协作任务。
- *
- * Steps:
- *   1. 使用普通事件阶段作为兼容默认值。
- *   2. 调用 Scheduler_AddEx 完成实际注册。
- *
- * @param[in] fn 任务函数。
- * @param[in] period_ms 周期任务间隔；0 表示非周期。
- * @param[in] trigger 事件触发掩码；EVT_NONE 表示非事件触发。
- * @return 任务索引；失败返回 -1。
- */
-int8_t Scheduler_Add(task_fn_t fn, uint32_t period_ms, event_mask_t trigger)
-{
-    return Scheduler_AddEx(fn,
-                           period_ms,
-                           trigger,
-                           SCHEDULER_TASK_PHASE_NORMAL_EVENT);
-}
-
-/**
  * @brief 注册一个指定调度阶段的协作任务。
  *
  * Steps:

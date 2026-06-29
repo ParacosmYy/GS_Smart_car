@@ -24,12 +24,6 @@ extern "C" {
 #include <stdint.h>
 //******************************* Includes **********************************//
 
-//******************************* Declaring *********************************//
-/**
- * @brief 绘制视觉边线与中线
- */
-void DebugDisplayService_DrawVisionLines(void);
-
 /**
  * @brief 刷新调试显示
  */

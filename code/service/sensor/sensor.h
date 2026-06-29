@@ -46,14 +46,4 @@ float SensorService_GetHeadingAngle(void);
  */
 void SensorService_GetSnapshot(sensor_service_snapshot_t *p_snapshot);
 
-/**
- * @brief 获取左轮编码器速度
- */
-int SensorService_GetLeftEncoderSpeed(void);
-
-/**
- * @brief 获取右轮编码器速度
- */
-int SensorService_GetRightEncoderSpeed(void);
-
 #endif /* CODE_SERVICE_SENSOR_SENSOR_H_ */

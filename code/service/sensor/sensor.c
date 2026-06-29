@@ -218,24 +218,4 @@ void SensorService_ProcessEncoder50ms(void)
     }
 }
 
-/**
- * @brief 获取左轮编码器速度。
- *
- * @return 左轮窗口平均速度。
- */
-int SensorService_GetLeftEncoderSpeed(void)
-{
-    return s_sensor_service_ctx.encoder.left_speed;
-}
-
-/**
- * @brief 获取右轮编码器速度。
- *
- * @return 右轮窗口平均速度。
- */
-int SensorService_GetRightEncoderSpeed(void)
-{
-    return s_sensor_service_ctx.encoder.right_speed;
-}
-
 //******************************** Implement ********************************//

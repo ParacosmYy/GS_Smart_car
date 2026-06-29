@@ -65,15 +65,6 @@ void Scheduler_AddTickFromIsr(uint32_t elapsed_ms);
 uint32_t Scheduler_GetNowMs(void);
 
 /**
- * @brief 注册一个任务
- * @param fn        任务函数
- * @param period_ms 执行周期（0=仅事件触发）
- * @param trigger   触发事件（0=纯周期触发）
- * @return 任务槽位索引（>=0），-1=参数非法或表满
- */
-int8_t Scheduler_Add(task_fn_t fn, uint32_t period_ms, event_mask_t trigger);
-
-/**
  * @brief 注册一个指定调度阶段的任务
  * @param fn        任务函数
  * @param period_ms 执行周期（0=仅事件触发）
